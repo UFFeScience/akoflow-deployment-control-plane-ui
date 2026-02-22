@@ -1,0 +1,13 @@
+services:
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    environment:
+      NODE_ENV: development
+      NODE_OPTIONS: "--inspect=0.0.0.0:9229"
+    command: sh -c "npm install && node --inspect=0.0.0.0:9229 node_modules/next/dist/bin/next dev"
