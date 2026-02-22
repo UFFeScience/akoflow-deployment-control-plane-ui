@@ -7,9 +7,9 @@ import WelcomeModal from "@/components/welcome-modal"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
 import { experimentsApi } from "@/lib/api/experiments"
-import { instancesApi } from "@/lib/api/instances"
 import { projectsApi } from "@/lib/api/projects"
-import type { Experiment, Instance, Project } from "@/lib/api/types"
+import { clustersApi } from "@/lib/api/clusters"
+import type { Cluster, Experiment, Instance, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const { currentOrg } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [experiments, setExperiments] = useState<Experiment[]>([])
+  const [clusters, setClusters] = useState<Cluster[]>([])
   const [instances, setInstances] = useState<Instance[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -40,6 +41,7 @@ export default function DashboardPage() {
         if (active) {
           setProjects([])
           setExperiments([])
+          setClusters([])
           setInstances([])
           setIsLoading(false)
         }
@@ -61,8 +63,15 @@ export default function DashboardPage() {
         if (!active) return
         setExperiments(experimentData)
 
+        const clusterLists = await Promise.all(
+          experimentData.map((exp) => clustersApi.list(exp.id).catch(() => []))
+        )
+        const clusterData = clusterLists.flat()
+        if (!active) return
+        setClusters(clusterData)
+
         const instanceLists = await Promise.all(
-          experimentData.map((exp) => instancesApi.list(exp.id).catch(() => []))
+          clusterData.map((cluster) => clustersApi.instances(cluster.id).catch(() => []))
         )
         if (!active) return
         setInstances(instanceLists.flat())
@@ -70,6 +79,7 @@ export default function DashboardPage() {
         if (active) {
           setProjects([])
           setExperiments([])
+          setClusters([])
           setInstances([])
         }
       } finally {

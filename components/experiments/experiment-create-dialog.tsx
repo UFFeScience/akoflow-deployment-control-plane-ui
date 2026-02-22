@@ -27,13 +27,13 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
   const [form, setForm] = useState({
     name: "",
     description: "",
-    templateId: "",
+    templateId: "none",
     executionMode: "manual" as const,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function resetForm() {
-    setForm({ name: "", description: "", templateId: "", executionMode: "manual" })
+    setForm({ name: "", description: "", templateId: "none", executionMode: "manual" })
   }
 
   async function handleSubmit() {
@@ -43,7 +43,7 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
       await onSubmit({
         name: form.name.trim(),
         description: form.description.trim(),
-        templateId: form.templateId || undefined,
+        templateId: form.templateId === "none" ? undefined : form.templateId,
         executionMode: form.executionMode,
       })
       resetForm()
@@ -71,7 +71,7 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
                 <SelectValue placeholder="No template" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="" className="text-xs">
+                <SelectItem value="none" className="text-xs">
                   No template
                 </SelectItem>
                 {templates.map((t) => (

@@ -1,13 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import { ExperimentHeader } from "@/components/experiments/experiment-header"
 import { ExperimentTabs } from "@/components/experiments/experiment-tabs"
 import { experimentsApi } from "@/lib/api/experiments"
-import { instancesApi } from "@/lib/api/instances"
 import { projectsApi } from "@/lib/api/projects"
-import type { Experiment, Instance, InstanceConfig, Project } from "@/lib/api/types"
+import { clustersApi } from "@/lib/api/clusters"
+import { providersApi } from "@/lib/api/providers"
+import { instanceTypesApi } from "@/lib/api/instance-types"
+import { templatesApi } from "@/lib/api/templates"
+import type {
+  Cluster,
+  Experiment,
+  Instance,
+  InstanceType,
+  Project,
+  Provider,
+  Template,
+} from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function ExperimentDetailPage() {
@@ -17,9 +28,18 @@ export default function ExperimentDetailPage() {
   const { currentOrg } = useAuth()
   const [experiment, setExperiment] = useState<Experiment | null>(null)
   const [project, setProject] = useState<Project | null>(null)
-  const [instances, setInstances] = useState<Instance[]>([])
-  const [configs, setConfigs] = useState<InstanceConfig[]>([])
+  const [clusters, setClusters] = useState<Cluster[]>([])
+  const [instancesByCluster, setInstancesByCluster] = useState<Record<string, Instance[]>>({})
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingClusters, setIsLoadingClusters] = useState(true)
+
+  const totalInstances = useMemo(
+    () => Object.values(instancesByCluster).reduce((sum, list) => sum + list.length, 0),
+    [instancesByCluster]
+  )
 
   useEffect(() => {
     let active = true
@@ -27,26 +47,33 @@ export default function ExperimentDetailPage() {
     async function loadExperiment() {
       setIsLoading(true)
       try {
-        const [experimentData, projectData, instanceData] = await Promise.all([
+        const [experimentData, projectData, providerData, instanceTypeData, templateData] = await Promise.all([
           experimentsApi.get(projectId, experimentId),
           currentOrg ? projectsApi.get(currentOrg.id, projectId) : Promise.resolve(null),
-          instancesApi.list(experimentId).catch(() => []),
+          providersApi.list().catch(() => []),
+          instanceTypesApi.list().catch(() => []),
+          templatesApi.list().catch(() => []),
         ])
+        const clusterData = await clustersApi.list(experimentId).catch(() => [])
+        const instancesMap = await loadInstances(clusterData)
         if (!active) return
         setExperiment(experimentData)
         setProject(projectData)
-        setInstances(instanceData)
-        const instanceConfigs = instanceData.flatMap((inst) => inst.configs || [])
-        setConfigs(instanceConfigs)
+        setProviders(providerData)
+        setInstanceTypes(instanceTypeData)
+        setTemplates(templateData)
+        setClusters(clusterData)
+        setInstancesByCluster(instancesMap)
       } catch {
         if (active) {
           setExperiment(null)
           setProject(null)
-          setInstances([])
-          setConfigs([])
+          setClusters([])
+          setInstancesByCluster({})
         }
       } finally {
         if (active) setIsLoading(false)
+        if (active) setIsLoadingClusters(false)
       }
     }
 
@@ -56,6 +83,32 @@ export default function ExperimentDetailPage() {
       active = false
     }
   }, [currentOrg, experimentId, projectId])
+
+  async function loadInstances(targetClusters: Cluster[]) {
+    setIsLoadingClusters(true)
+    const entries = await Promise.all(
+      targetClusters.map(async (cluster) => {
+        const inst = await clustersApi.instances(cluster.id).catch(() => [])
+        return [cluster.id, inst] as const
+      })
+    )
+    const map = Object.fromEntries(entries) as Record<string, Instance[]>
+    setIsLoadingClusters(false)
+    return map
+  }
+
+  async function refreshClusters() {
+    try {
+      const data = await clustersApi.list(experimentId)
+      setClusters(data)
+      const map = await loadInstances(data)
+      setInstancesByCluster(map)
+    } catch {
+      setClusters([])
+      setInstancesByCluster({})
+      setIsLoadingClusters(false)
+    }
+  }
 
   if (!experiment && !isLoading) {
     return (
@@ -71,16 +124,23 @@ export default function ExperimentDetailPage() {
         projectId={projectId}
         project={project}
         experiment={experiment}
-        instancesCount={instances.length}
+        instancesCount={totalInstances}
       />
 
       <ExperimentTabs
         experimentId={experimentId}
         experiment={experiment}
-        instances={instances}
-        configs={configs}
-        onInstancesChange={setInstances}
-        onConfigsChange={setConfigs}
+        clusters={clusters}
+        instancesByCluster={instancesByCluster}
+        providers={providers}
+        instanceTypes={instanceTypes}
+        templates={templates}
+        isLoadingClusters={isLoadingClusters}
+        onClustersChange={(next) => {
+          setClusters(next)
+          loadInstances(next).then((map) => setInstancesByCluster(map))
+        }}
+        onRefreshClusters={refreshClusters}
       />
     </div>
   )

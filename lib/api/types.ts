@@ -38,10 +38,11 @@ export interface Template {
   id: string
   name: string
   description?: string
-  executionMode: "manual" | "scheduled" | "auto"
-  defaultInstances: TemplateInstance[]
-  requiredMetadata: string[]
+  executionMode?: "manual" | "scheduled" | "auto"
+  latestVersion?: number
+  versions?: TemplateVersion[]
   createdAt?: string
+  updatedAt?: string
   experimentCount?: number
 }
 
@@ -79,6 +80,11 @@ export interface Instance {
   provider: "aws" | "gcp" | "hpc"
   region: string
   status: "running" | "stopped" | "pending" | "failed"
+  clusterId?: string
+  role?: string
+  health?: string
+  publicIp?: string
+  privateIp?: string
   createdAt?: string
   configs?: InstanceConfig[]
 }
@@ -110,6 +116,52 @@ export interface LogEntry {
   level: "info" | "warning" | "error" | "debug"
   message: string
   source?: string
+}
+
+export interface Provider {
+  id: string
+  name: string
+  status: "UP" | "DEGRADED" | "DOWN"
+  regions?: string[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface InstanceType {
+  id: string
+  providerId: string
+  name: string
+  status: "active" | "inactive" | "deprecated"
+  cpu?: string
+  memory?: string
+  gpu?: string
+  region?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface Cluster {
+  id: string
+  experimentId: string
+  name?: string
+  providerId: string
+  providerName?: string
+  region: string
+  role?: string
+  nodeCount: number
+  instanceTypeId: string
+  instanceType?: string
+  status: "creating" | "running" | "failed" | "deleting" | "scaling" | "stopped"
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface TemplateVersion {
+  id: string
+  templateId: string
+  version: number
+  createdAt?: string
+  metadata?: Record<string, unknown>
 }
 
 export interface AuthResponse {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useRef, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,7 +10,6 @@ import type { Instance, LogEntry } from "@/lib/api/types"
 import { logsApi } from "@/lib/api/logs"
 
 interface LogsTabProps {
-  experimentId: string
   instances: Instance[]
 }
 
@@ -32,22 +31,37 @@ function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
 }
 
-export function LogsTab({ experimentId, instances }: LogsTabProps) {
+export function LogsTab({ instances }: LogsTabProps) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [filterLevel, setFilterLevel] = useState<string>("all")
-  const [filterInstance, setFilterInstance] = useState<string>("all")
+  const [selectedInstance, setSelectedInstance] = useState<string>("")
   const [autoScroll, setAutoScroll] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (!selectedInstance && instances.length > 0) {
+      setSelectedInstance(instances[0].id)
+    }
+  }, [instances, selectedInstance])
+
+  useEffect(() => {
+    if (!selectedInstance) {
+      setLogs([])
+      return
+    }
+
     let active = true
+    setIsLoading(true)
 
     async function loadLogs() {
       try {
-        const data = await logsApi.list({ experimentId })
+        const data = await logsApi.byInstance(selectedInstance)
         if (active) setLogs(data)
       } catch {
         if (active) setLogs([])
+      } finally {
+        if (active) setIsLoading(false)
       }
     }
 
@@ -56,23 +70,9 @@ export function LogsTab({ experimentId, instances }: LogsTabProps) {
     return () => {
       active = false
     }
-  }, [experimentId])
+  }, [selectedInstance])
 
-  const allLogs = useMemo(() => {
-    return logs
-      .filter((log) => log.experimentId === experimentId)
-      .filter((log) => filterLevel === "all" || log.level === filterLevel)
-      .filter((log) => filterInstance === "all" || log.instanceId === filterInstance)
-  }, [experimentId, filterLevel, filterInstance, logs])
-
-  const instanceLogs = useMemo(() => {
-    if (filterInstance === "all") return []
-    return logs
-      .filter((log) => log.instanceId === filterInstance)
-      .filter((log) => filterLevel === "all" || log.level === filterLevel)
-  }, [filterInstance, filterLevel, logs])
-
-  const displayLogs = filterInstance !== "all" ? instanceLogs : allLogs
+  const displayLogs = logs.filter((log) => filterLevel === "all" || log.level === filterLevel)
 
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -107,12 +107,11 @@ export function LogsTab({ experimentId, instances }: LogsTabProps) {
             <SelectItem value="debug" className="text-xs">Debug</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterInstance} onValueChange={setFilterInstance}>
-          <SelectTrigger className="w-40 h-7 text-[10px]">
-            <SelectValue placeholder="All instances" />
+        <Select value={selectedInstance} onValueChange={setSelectedInstance}>
+          <SelectTrigger className="w-48 h-7 text-[10px]">
+            <SelectValue placeholder="Select instance" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-xs">All instances</SelectItem>
             {instances.map((inst) => (
               <SelectItem key={inst.id} value={inst.id} className="text-xs">
                 {inst.provider.toUpperCase()} - {inst.region}
@@ -124,7 +123,7 @@ export function LogsTab({ experimentId, instances }: LogsTabProps) {
           <Switch checked={autoScroll} onCheckedChange={setAutoScroll} className="scale-75" />
           <span className="text-[10px] text-muted-foreground">Auto-scroll</span>
         </div>
-        <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={handleDownload}>
+        <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={handleDownload} disabled={!selectedInstance}>
           <Download className="mr-1 h-3 w-3" />
           Download
         </Button>
@@ -133,8 +132,9 @@ export function LogsTab({ experimentId, instances }: LogsTabProps) {
       {/* Section labels */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-medium text-muted-foreground">
-          {filterInstance !== "all" ? "Instance Logs" : "Experiment Logs"} ({displayLogs.length})
+          {selectedInstance ? "Instance Logs" : "Select an instance"} ({displayLogs.length})
         </span>
+        {isLoading && <span className="text-[10px] text-muted-foreground">Loading...</span>}
       </div>
 
       {/* Terminal */}
@@ -144,14 +144,16 @@ export function LogsTab({ experimentId, instances }: LogsTabProps) {
           <span className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
           <span className="ml-2 text-[10px] text-gray-500 font-mono">
-            {filterInstance !== "all"
-              ? `${instances.find((i) => i.id === filterInstance)?.provider.toUpperCase()} - ${instances.find((i) => i.id === filterInstance)?.region}`
-              : experimentId}
+            {selectedInstance
+              ? `${instances.find((i) => i.id === selectedInstance)?.provider.toUpperCase()} - ${instances.find((i) => i.id === selectedInstance)?.region}`
+              : "No instance selected"}
           </span>
         </div>
         <div ref={scrollRef} className="overflow-y-auto p-3 font-mono text-[11px] leading-5 max-h-[420px] min-h-[200px]">
           {displayLogs.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-gray-600">No log entries</div>
+            <div className="flex items-center justify-center py-8 text-gray-600">
+              {isLoading ? "Fetching logs..." : "No log entries"}
+            </div>
           ) : (
             displayLogs.map((log) => (
               <div key={log.id} className="flex gap-2 py-px hover:bg-[#161b22] rounded px-1 -mx-1 transition-colors">
