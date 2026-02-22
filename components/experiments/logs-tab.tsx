@@ -9,6 +9,11 @@ import { cn } from "@/lib/utils"
 import type { Instance, LogEntry } from "@/lib/api/types"
 import { logsApi } from "@/lib/api/logs"
 
+function toProviderLabel(value: unknown): string {
+  const str = typeof value === "string" ? value : value ? String(value) : "unknown"
+  return str.toUpperCase()
+}
+
 interface LogsTabProps {
   instances: Instance[]
 }
@@ -114,7 +119,7 @@ export function LogsTab({ instances }: LogsTabProps) {
           <SelectContent>
             {instances.map((inst) => (
               <SelectItem key={inst.id} value={inst.id} className="text-xs">
-                {inst.provider.toUpperCase()} - {inst.region}
+                {toProviderLabel(inst.provider ?? (inst as any).provider_id ?? (inst as any).cloud_provider)} - {inst.region ?? "unknown"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -145,7 +150,7 @@ export function LogsTab({ instances }: LogsTabProps) {
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
           <span className="ml-2 text-[10px] text-gray-500 font-mono">
             {selectedInstance
-              ? `${instances.find((i) => i.id === selectedInstance)?.provider.toUpperCase()} - ${instances.find((i) => i.id === selectedInstance)?.region}`
+              ? `${toProviderLabel(instances.find((i) => i.id === selectedInstance)?.provider ?? (instances.find((i) => i.id === selectedInstance) as any)?.provider_id ?? (instances.find((i) => i.id === selectedInstance) as any)?.cloud_provider)} - ${instances.find((i) => i.id === selectedInstance)?.region ?? "unknown"}`
               : "No instance selected"}
           </span>
         </div>

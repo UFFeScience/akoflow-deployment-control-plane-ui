@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -53,13 +54,23 @@ export function ClustersTab({
     templateId: "none",
     providerId: healthyProviders[0]?.id || "",
     region: "",
-    instanceTypeId: "",
-    role: "",
-    nodeCount: 1,
+    instanceGroups: [
+      {
+        id: crypto.randomUUID(),
+        instanceTypeId: "",
+        role: "",
+          quantity: 1,
+          metadata: "",
+      },
+    ],
   })
 
   const filteredInstanceTypes = useMemo(
-    () => instanceTypes.filter((it) => !form.providerId || it.providerId === form.providerId),
+    () =>
+      instanceTypes.filter((it) => {
+        const providerId = (it as any).providerId || (it as any).provider_id
+        return !form.providerId || providerId === form.providerId
+      }),
     [instanceTypes, form.providerId]
   )
 
@@ -75,24 +86,58 @@ export function ClustersTab({
       templateId: "none",
       providerId: healthyProviders[0]?.id || "",
       region: "",
-      instanceTypeId: "",
-      role: "",
-      nodeCount: 1,
+      instanceGroups: [
+        {
+          id: crypto.randomUUID(),
+          instanceTypeId: "",
+          role: "",
+          quantity: 1,
+          metadata: "",
+        },
+      ],
     })
     setOpen(true)
   }
 
   async function handleCreate() {
-    if (!form.providerId || !form.region || !form.instanceTypeId || form.nodeCount <= 0) return
+    if (!form.providerId || !form.region) return
+    const instancesPayload = [] as {
+      instanceTypeId: string
+      role?: string
+      quantity: number
+      metadata?: Record<string, unknown>
+    }[]
+
+    for (const g of form.instanceGroups.filter((g) => g.instanceTypeId && g.quantity > 0)) {
+      let metadata: Record<string, unknown> | undefined
+
+      if (g.metadata && g.metadata.trim().length > 0) {
+        try {
+          metadata = JSON.parse(g.metadata)
+        } catch (err) {
+          toast.error(`Invalid metadata JSON in group ${g.role || g.instanceTypeId}`)
+          return
+        }
+      }
+
+      instancesPayload.push({
+        instanceTypeId: g.instanceTypeId,
+        role: g.role || undefined,
+        quantity: g.quantity,
+        metadata,
+      })
+    }
+
+    if (instancesPayload.length === 0) return
+    const nodeCount = instancesPayload.reduce((sum, g) => sum + g.quantity, 0)
     setIsSaving(true)
     try {
       const payload = {
         templateId: form.templateId === "none" ? undefined : form.templateId,
         providerId: form.providerId,
         region: form.region,
-        instanceTypeId: form.instanceTypeId,
-        role: form.role || undefined,
-        nodeCount: form.nodeCount,
+        instanceGroups: instancesPayload,
+        nodeCount,
       }
       const newCluster = await clustersApi.create(experimentId, payload)
       const next = [newCluster, ...clusters]
@@ -171,8 +216,12 @@ export function ClustersTab({
                   <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{cluster.role || "--"}</TableCell>
                   <TableCell className="py-1.5"><StatusBadge type="provider" value={cluster.providerId} /></TableCell>
                   <TableCell className="py-1.5 text-[11px] text-muted-foreground">{cluster.region}</TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">{cluster.instanceType || cluster.instanceTypeId}</TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">{cluster.nodeCount}</TableCell>
+                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">
+                    {(cluster.instanceGroups || [])
+                      .map((g) => `${g.instanceTypeId}${g.role ? ` (${g.role})` : ""} x${g.quantity ?? 0}`)
+                      .join(", ") || cluster.instanceType || cluster.instanceTypeId || "--"}
+                  </TableCell>
+                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">{cluster.nodeCount ?? (cluster.instanceGroups || []).reduce((s, g) => s + (g.quantity ?? 0), 0) ?? "--"}</TableCell>
                   <TableCell className="py-1.5"><StatusBadge type="status" value={cluster.status} /></TableCell>
                   <TableCell className="py-1.5">
                     <Button
@@ -218,7 +267,16 @@ export function ClustersTab({
                 <Label className="text-xs">Provider</Label>
                 <Select
                   value={form.providerId}
-                  onValueChange={(v) => setForm((prev) => ({ ...prev, providerId: v, region: "", instanceTypeId: "" }))}
+                  onValueChange={(v) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      providerId: v,
+                      region: "",
+                      instanceGroups: [
+                        { id: crypto.randomUUID(), instanceTypeId: "", role: "", quantity: 1, metadata: "" },
+                      ],
+                    }))
+                  }
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select provider" />
@@ -255,45 +313,128 @@ export function ClustersTab({
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Instance type</Label>
-                <Select
-                  value={form.instanceTypeId}
-                  onValueChange={(v) => setForm((prev) => ({ ...prev, instanceTypeId: v }))}
-                  disabled={!form.providerId}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredInstanceTypes.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-xs">
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Role</Label>
-                <Input
-                  className="h-8 text-xs"
-                  placeholder="worker / trainer"
-                  value={form.role}
-                  onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-                />
-              </div>
-            </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Node count</Label>
-              <Input
-                type="number"
-                min={1}
-                className="h-8 text-xs"
-                value={form.nodeCount}
-                onChange={(e) => setForm((prev) => ({ ...prev, nodeCount: Math.max(1, parseInt(e.target.value) || 1) }))}
-              />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Instance groups</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      instanceGroups: [
+                        ...prev.instanceGroups,
+                        { id: crypto.randomUUID(), instanceTypeId: "", role: "", quantity: 1, metadata: "" },
+                      ],
+                    }))
+                  }
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  Add group
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+                {form.instanceGroups.map((group, idx) => (
+                  <div key={group.id} className="grid grid-cols-8 gap-2 items-end">
+                    <div className="col-span-3 flex flex-col gap-1">
+                      <Label className="text-[11px] text-muted-foreground">Type</Label>
+                      <Select
+                        value={group.instanceTypeId}
+                        onValueChange={(v) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            instanceGroups: prev.instanceGroups.map((g) =>
+                              g.id === group.id ? { ...g, instanceTypeId: v } : g
+                            ),
+                          }))
+                        }
+                        disabled={!form.providerId}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredInstanceTypes.map((t) => (
+                            <SelectItem key={t.id} value={t.id} className="text-xs">
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 flex flex-col gap-1">
+                      <Label className="text-[11px] text-muted-foreground">Quantity</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        className="h-8 text-xs"
+                        value={group.quantity}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            instanceGroups: prev.instanceGroups.map((g) =>
+                              g.id === group.id
+                                ? { ...g, quantity: Math.max(1, parseInt(e.target.value) || 1) }
+                                : g
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2 flex flex-col gap-1">
+                      <Label className="text-[11px] text-muted-foreground">Role</Label>
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="worker / trainer"
+                        value={group.role}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            instanceGroups: prev.instanceGroups.map((g) =>
+                              g.id === group.id ? { ...g, role: e.target.value } : g
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="col-span-8 flex flex-col gap-1">
+                      <Label className="text-[11px] text-muted-foreground">Metadata (JSON, optional)</Label>
+                      <Textarea
+                        className="text-xs"
+                        rows={3}
+                        placeholder='{"team":"ml","env":"staging"}'
+                        value={group.metadata}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            instanceGroups: prev.instanceGroups.map((g) =>
+                              g.id === group.id ? { ...g, metadata: e.target.value } : g
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="col-span-1 flex justify-end pb-1">
+                      {form.instanceGroups.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              instanceGroups: prev.instanceGroups.filter((g) => g.id !== group.id),
+                            }))
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -304,7 +445,7 @@ export function ClustersTab({
               size="sm"
               className="text-xs"
               onClick={handleCreate}
-              disabled={isSaving || !form.providerId || !form.region || !form.instanceTypeId}
+              disabled={isSaving || !form.providerId || !form.region || form.instanceGroups.every((g) => !g.instanceTypeId)}
             >
               {isSaving ? "Creating..." : "Create"}
             </Button>

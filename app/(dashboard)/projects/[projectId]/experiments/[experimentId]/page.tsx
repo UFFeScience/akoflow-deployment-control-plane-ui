@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { ExperimentHeader } from "@/components/experiments/experiment-header"
 import { ExperimentTabs } from "@/components/experiments/experiment-tabs"
@@ -21,6 +21,67 @@ import type {
 } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
+function normalizeStatus(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.trim().length > 0) return value.toLowerCase()
+  return fallback
+}
+
+function normalizeCluster(raw: any): Cluster {
+  const status = normalizeStatus(raw?.status, "creating") as Cluster["status"]
+  const groups = (raw?.instance_groups || raw?.instanceGroups || []).map((g: any) => ({
+    id: g?.id?.toString?.() ?? g?.id,
+    clusterId: g?.cluster_id ?? g?.clusterId ?? raw?.id,
+    instanceTypeId: g?.instance_type_id ?? g?.instanceTypeId,
+    instanceTypeName: g?.instance_type_name ?? g?.instanceTypeName ?? g?.instance_type?.name,
+    instanceType: g?.instance_type ?? g?.instanceType ?? g?.instance_type_name,
+    role: g?.role,
+    quantity: g?.quantity ?? 0,
+    metadata: g?.metadata ?? g?.metadata_json ?? null,
+    createdAt: g?.created_at ?? g?.createdAt,
+    updatedAt: g?.updated_at ?? g?.updatedAt,
+  }))
+  const summedNodeCount = groups.reduce((sum: number, g: any) => sum + (Number(g.quantity) || 0), 0)
+
+  return {
+    ...raw,
+    id: raw?.id?.toString?.() ?? raw?.id,
+    experimentId: raw?.experimentId ?? raw?.experiment_id ?? raw?.experiment?.id,
+    providerId: raw?.providerId ?? raw?.provider_id ?? raw?.provider ?? raw?.provider?.id,
+    providerName: raw?.providerName ?? raw?.provider_name ?? raw?.provider_label ?? raw?.provider?.name,
+    region: raw?.region,
+    role: raw?.role,
+    nodeCount: raw?.nodeCount ?? raw?.node_count ?? raw?.nodes ?? raw?.total_nodes ?? summedNodeCount,
+    instanceTypeId: raw?.instanceTypeId ?? raw?.instance_type_id ?? raw?.instance_type?.id,
+    instanceType: raw?.instanceType ?? raw?.instance_type ?? raw?.instance_type_name,
+    instanceGroups: groups,
+    status,
+    createdAt: raw?.createdAt ?? raw?.created_at,
+    updatedAt: raw?.updatedAt ?? raw?.updated_at,
+  }
+}
+
+function normalizeInstance(raw: any, cluster?: Cluster): Instance {
+  const status = normalizeStatus(raw?.status, "pending") as Instance["status"]
+  const health = normalizeStatus(raw?.health ?? raw?.health_status, "")
+  const provider = raw?.provider ?? raw?.provider_id ?? raw?.cloud_provider ?? cluster?.providerId ?? cluster?.providerName
+
+  return {
+    ...raw,
+    id: raw?.id?.toString?.() ?? raw?.id,
+    experimentId: raw?.experimentId ?? raw?.experiment_id ?? cluster?.experimentId,
+    clusterId: raw?.clusterId ?? raw?.cluster_id ?? cluster?.id,
+    instanceGroupId: raw?.instance_group_id ?? raw?.instanceGroupId,
+    provider: typeof provider === "string" ? provider.toLowerCase() : provider,
+    region: raw?.region ?? cluster?.region,
+    role: raw?.role ?? raw?.instance_role ?? raw?.kind,
+    status,
+    health,
+    publicIp: raw?.publicIp ?? raw?.public_ip ?? raw?.ip_public,
+    privateIp: raw?.privateIp ?? raw?.private_ip ?? raw?.ip_private,
+    createdAt: raw?.createdAt ?? raw?.created_at,
+  } as Instance
+}
+
 export default function ExperimentDetailPage() {
   const params = useParams()
   const projectId = params.projectId as string
@@ -35,10 +96,57 @@ export default function ExperimentDetailPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingClusters, setIsLoadingClusters] = useState(true)
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false)
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null)
+  const isRefreshingRef = useRef(false)
 
   const totalInstances = useMemo(
     () => Object.values(instancesByCluster).reduce((sum, list) => sum + list.length, 0),
     [instancesByCluster]
+  )
+
+  const loadInstances = useCallback(async (targetClusters: Cluster[], withLoading = true) => {
+    if (withLoading) setIsLoadingClusters(true)
+    const entries = await Promise.all(
+      targetClusters.map(async (cluster) => {
+        const inst = await clustersApi.instances(cluster.id).catch(() => [])
+        return [cluster.id, inst.map((item: any) => normalizeInstance(item, cluster))] as const
+      })
+    )
+    const map = Object.fromEntries(entries) as Record<string, Instance[]>
+    if (withLoading) setIsLoadingClusters(false)
+    return map
+  }, [])
+
+  const refreshExperimentData = useCallback(
+    async (options: { silent?: boolean } = {}) => {
+      if (isRefreshingRef.current) return
+      isRefreshingRef.current = true
+      setIsRefreshingStatus(true)
+
+      try {
+        const [experimentData, clusterData] = await Promise.all([
+          experimentsApi.get(projectId, experimentId).catch(() => null),
+          clustersApi.list(experimentId).catch(() => []),
+        ])
+
+        const normalized = clusterData.map((c) => normalizeCluster(c))
+        const map = await loadInstances(normalized, !options.silent)
+
+        if (experimentData) setExperiment(experimentData)
+        setClusters(normalized)
+        setInstancesByCluster(map)
+        setLastRefreshedAt(new Date())
+      } catch {
+        setClusters([])
+        setInstancesByCluster({})
+        if (!options.silent) setIsLoadingClusters(false)
+      } finally {
+        isRefreshingRef.current = false
+        setIsRefreshingStatus(false)
+      }
+    },
+    [experimentId, loadInstances, projectId]
   )
 
   useEffect(() => {
@@ -55,15 +163,26 @@ export default function ExperimentDetailPage() {
           templatesApi.list().catch(() => []),
         ])
         const clusterData = await clustersApi.list(experimentId).catch(() => [])
-        const instancesMap = await loadInstances(clusterData)
+        const normalizedClusters = clusterData.map((c) => normalizeCluster(c))
+        const instancesMap = await loadInstances(normalizedClusters)
         if (!active) return
         setExperiment(experimentData)
         setProject(projectData)
         setProviders(providerData)
-        setInstanceTypes(instanceTypeData)
+        setInstanceTypes(
+          instanceTypeData.map((it) => ({
+            ...it,
+            providerId: (it as any).providerId || (it as any).provider_id || (it as any).provider?.id || it.providerId,
+            status: (it as any).status,
+            vcpus: (it as any).vcpus ?? (it as any).cpu,
+            memory: (it as any).memory ?? (it as any).memory_mb,
+            gpu: (it as any).gpu ?? (it as any).gpu_count,
+          }))
+        )
         setTemplates(templateData)
-        setClusters(clusterData)
+        setClusters(normalizedClusters)
         setInstancesByCluster(instancesMap)
+        setLastRefreshedAt(new Date())
       } catch {
         if (active) {
           setExperiment(null)
@@ -79,36 +198,15 @@ export default function ExperimentDetailPage() {
 
     loadExperiment()
 
+    const intervalId = setInterval(() => {
+      refreshExperimentData({ silent: true })
+    }, 5000)
+
     return () => {
       active = false
+      clearInterval(intervalId)
     }
-  }, [currentOrg, experimentId, projectId])
-
-  async function loadInstances(targetClusters: Cluster[]) {
-    setIsLoadingClusters(true)
-    const entries = await Promise.all(
-      targetClusters.map(async (cluster) => {
-        const inst = await clustersApi.instances(cluster.id).catch(() => [])
-        return [cluster.id, inst] as const
-      })
-    )
-    const map = Object.fromEntries(entries) as Record<string, Instance[]>
-    setIsLoadingClusters(false)
-    return map
-  }
-
-  async function refreshClusters() {
-    try {
-      const data = await clustersApi.list(experimentId)
-      setClusters(data)
-      const map = await loadInstances(data)
-      setInstancesByCluster(map)
-    } catch {
-      setClusters([])
-      setInstancesByCluster({})
-      setIsLoadingClusters(false)
-    }
-  }
+  }, [currentOrg, experimentId, projectId, loadInstances, refreshExperimentData])
 
   if (!experiment && !isLoading) {
     return (
@@ -125,6 +223,8 @@ export default function ExperimentDetailPage() {
         project={project}
         experiment={experiment}
         instancesCount={totalInstances}
+        isRefreshing={isRefreshingStatus}
+        lastUpdatedAt={lastRefreshedAt}
       />
 
       <ExperimentTabs
@@ -137,10 +237,11 @@ export default function ExperimentDetailPage() {
         templates={templates}
         isLoadingClusters={isLoadingClusters}
         onClustersChange={(next) => {
-          setClusters(next)
-          loadInstances(next).then((map) => setInstancesByCluster(map))
+          const normalized = next.map((c) => normalizeCluster(c))
+          setClusters(normalized)
+          loadInstances(normalized).then((map) => setInstancesByCluster(map))
         }}
-        onRefreshClusters={refreshClusters}
+        onRefreshClusters={() => refreshExperimentData({ silent: false })}
       />
     </div>
   )

@@ -77,6 +77,7 @@ export interface Instance {
   id: string
   experimentId: string
   experimentName?: string
+  instanceGroupId?: string
   provider: "aws" | "gcp" | "hpc"
   region: string
   status: "running" | "stopped" | "pending" | "failed"
@@ -87,6 +88,19 @@ export interface Instance {
   privateIp?: string
   createdAt?: string
   configs?: InstanceConfig[]
+}
+
+export interface InstanceGroup {
+  id: string
+  clusterId: string
+  instanceTypeId: string
+  instanceTypeName?: string
+  instanceType?: string
+  role?: string
+  quantity: number
+  metadata?: Record<string, unknown> | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface InstanceConfig {
@@ -129,13 +143,20 @@ export interface Provider {
 
 export interface InstanceType {
   id: string
-  providerId: string
+  providerId?: string
+  provider_id?: string
   name: string
-  status: "active" | "inactive" | "deprecated"
-  cpu?: string
-  memory?: string
-  gpu?: string
+  status: "ACTIVE" | "DEGRADED" | "DOWN" | "MAINTENANCE" | "AVAILABLE" | "UNAVAILABLE" | "DEPRECATED" | "active" | "inactive" | "deprecated"
+  cpu?: string | number
+  memory?: string | number
+  memory_mb?: number
+  gpu?: string | number
+  gpu_count?: number
+  vcpus?: number
+  storage_default_gb?: number
+  network_bandwidth?: string
   region?: string
+  is_active?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -152,6 +173,7 @@ export interface Cluster {
   instanceTypeId: string
   instanceType?: string
   status: "creating" | "running" | "failed" | "deleting" | "scaling" | "stopped"
+  instanceGroups?: InstanceGroup[]
   createdAt?: string
   updatedAt?: string
 }

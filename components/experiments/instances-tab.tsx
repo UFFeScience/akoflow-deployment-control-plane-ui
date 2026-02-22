@@ -15,12 +15,29 @@ interface InstancesTabProps {
 
 export function InstancesTab({ clusters, instancesByCluster, isLoading = false, onRefresh }: InstancesTabProps) {
   const rows = clusters.flatMap((cluster) =>
-    (instancesByCluster[cluster.id] || []).map((inst) => ({
-      ...inst,
-      clusterName: cluster.name || cluster.role || cluster.id,
-      clusterRole: cluster.role,
-      clusterStatus: cluster.status,
-    }))
+    (instancesByCluster[cluster.id] || []).map((inst) => {
+      const status = (inst.status || (inst as any).state || "").toString().toLowerCase()
+      const health = (inst.health || (inst as any).health_status || "").toString().toLowerCase()
+      const provider = (
+        (inst as any).provider || (inst as any).provider_id || (inst as any).cloud_provider || cluster.providerId || cluster.providerName || ""
+      )
+        .toString()
+        .toLowerCase()
+
+      return {
+        ...inst,
+        status,
+        health,
+        provider,
+        region: inst.region || cluster.region,
+        publicIp: inst.publicIp ?? (inst as any).public_ip,
+        privateIp: inst.privateIp ?? (inst as any).private_ip,
+        instanceRole: inst.role || (inst as any).instance_role || (inst as any).role || cluster.role,
+        clusterName: cluster.name || cluster.role || cluster.id,
+        clusterRole: cluster.role,
+        clusterStatus: cluster.status,
+      }
+    })
   )
 
   return (
@@ -66,10 +83,10 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
               {rows.map((row) => (
                 <TableRow key={row.id} className="h-9">
                   <TableCell className="py-1.5 text-xs font-medium text-foreground">{row.clusterName}</TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{row.clusterRole || "--"}</TableCell>
-                  <TableCell className="py-1.5"><StatusBadge type="provider" value={row.provider} /></TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">{row.region}</TableCell>
-                  <TableCell className="py-1.5"><StatusBadge type="status" value={row.status} /></TableCell>
+                  <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{row.instanceRole || row.clusterRole || "--"}</TableCell>
+                  <TableCell className="py-1.5"><StatusBadge type="provider" value={row.provider || "unknown"} /></TableCell>
+                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">{row.region || "--"}</TableCell>
+                  <TableCell className="py-1.5"><StatusBadge type="status" value={row.status || "pending"} /></TableCell>
                   <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden lg:table-cell">{row.health || "--"}</TableCell>
                   <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden lg:table-cell">{row.publicIp || "--"}</TableCell>
                   <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden xl:table-cell">{row.privateIp || "--"}</TableCell>

@@ -12,15 +12,18 @@ interface TopologyTabProps {
   instancesByCluster: Record<string, Instance[]>
 }
 
+const toStatus = (value: unknown, fallback = "pending") =>
+  typeof value === "string" && value.trim() ? value.toLowerCase() : fallback
+
 function ClusterCard({ cluster, instances }: { cluster: Cluster; instances: Instance[] }) {
-  const running = instances.filter((i) => i.status === "running").length
-  const total = instances.length || cluster.nodeCount
+  const running = instances.filter((i) => toStatus(i.status) === "running").length
+  const total = instances.length > 0 ? instances.length : cluster.nodeCount
 
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-3 w-full sm:w-60">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-foreground">{cluster.name || cluster.role || "Cluster"}</span>
-        <StatusBadge type="status" value={cluster.status} />
+        <StatusBadge type="status" value={toStatus(cluster.status)} />
       </div>
       <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
         <Server className="h-3 w-3" />

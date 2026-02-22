@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TopologyTab } from "@/components/experiments/topology-tab"
 import { ClustersTab } from "@/components/experiments/clusters-tab"
@@ -35,9 +35,18 @@ export function ExperimentTabs({
   onRefreshClusters,
 }: ExperimentTabsProps) {
   const allInstances = useMemo(() => Object.values(instancesByCluster).flat(), [instancesByCluster])
+  const [activeTab, setActiveTab] = useState<string>("topology")
 
   return (
-    <Tabs defaultValue="topology" className="w-full">
+    <Tabs
+      defaultValue="topology"
+      value={activeTab}
+      onValueChange={async (val) => {
+        setActiveTab(val)
+        await onRefreshClusters()
+      }}
+      className="w-full"
+    >
       <TabsList className="h-8">
         <TabsTrigger value="topology" className="text-xs h-6 px-3">
           Topology

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import type { Experiment, Project } from "@/lib/api/types"
@@ -9,9 +9,26 @@ interface ExperimentHeaderProps {
   project: Project | null
   experiment: Experiment | null
   instancesCount: number
+  isRefreshing?: boolean
+  lastUpdatedAt?: Date | null
 }
 
-export function ExperimentHeader({ projectId, project, experiment, instancesCount }: ExperimentHeaderProps) {
+export function ExperimentHeader({
+  projectId,
+  project,
+  experiment,
+  instancesCount,
+  isRefreshing = false,
+  lastUpdatedAt,
+}: ExperimentHeaderProps) {
+  const lastUpdatedLabel = lastUpdatedAt
+    ? new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(lastUpdatedAt)
+    : null
+
   return (
     <div>
       <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-xs text-muted-foreground h-6 px-2" asChild>
@@ -33,6 +50,16 @@ export function ExperimentHeader({ projectId, project, experiment, instancesCoun
         )}
         {experiment?.executionMode && <span className="capitalize">{experiment.executionMode} mode</span>}
         <span>{instancesCount} instances</span>
+      </div>
+      <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        </span>
+        <span className="font-semibold uppercase tracking-wide text-[9px] text-emerald-600">Live</span>
+        {isRefreshing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+        <span>Refreshing every 5s</span>
+        {lastUpdatedLabel && <span className="text-[9px]">Last update {lastUpdatedLabel}</span>}
       </div>
     </div>
   )
