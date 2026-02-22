@@ -2,7 +2,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
-import type { Experiment, Project } from "@/lib/api"
+import type { Experiment, Project } from "@/lib/api/types"
 
 interface ExperimentHeaderProps {
   projectId: string

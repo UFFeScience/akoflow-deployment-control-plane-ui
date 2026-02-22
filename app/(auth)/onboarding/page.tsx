@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { organizationsApi, projectsApi } from "@/lib/api"
+import { organizationsApi } from "@/lib/api/organizations"
+import { projectsApi } from "@/lib/api/projects"
 import { useAuth } from "@/contexts/auth-context"
 import { FolderKanban, Building2 } from "lucide-react"
 

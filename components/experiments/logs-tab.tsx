@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
-import type { Instance, LogEntry } from "@/lib/api"
-import { logsApi } from "@/lib/api"
+import type { Instance, LogEntry } from "@/lib/api/types"
+import { logsApi } from "@/lib/api/logs"
 
 interface LogsTabProps {
   experimentId: string

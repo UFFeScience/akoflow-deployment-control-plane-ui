@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { Server, Cpu, MemoryStick, MonitorSpeaker, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { Instance, InstanceConfig, Experiment } from "@/lib/api"
+import type { Instance, InstanceConfig, Experiment } from "@/lib/api/types"
 
 interface TopologyTabProps {
   experiment: Experiment

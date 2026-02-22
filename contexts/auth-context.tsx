@@ -2,8 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import type { User, Organization } from "@/lib/api"
-import { authApi, organizationsApi, userApi } from "@/lib/api"
+import type { User, Organization } from "@/lib/api/types"
+import { authApi } from "@/lib/api/auth"
+import { organizationsApi } from "@/lib/api/organizations"
+import { userApi } from "@/lib/api/user"
 
 interface AuthContextType {
   user: User | null

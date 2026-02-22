@@ -6,7 +6,7 @@ import { TopologyTab } from "@/components/experiments/topology-tab"
 import { InstancesTab } from "@/components/experiments/instances-tab"
 import { ScalingTab } from "@/components/experiments/scaling-tab"
 import { LogsTab } from "@/components/experiments/logs-tab"
-import type { Experiment, Instance, InstanceConfig } from "@/lib/api"
+import type { Experiment, Instance, InstanceConfig } from "@/lib/api/types"
 
 interface ExperimentTabsProps {
   experimentId: string

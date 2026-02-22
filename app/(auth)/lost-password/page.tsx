@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Beaker, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
-import { authApi } from "@/lib/api"
+import { authApi } from "@/lib/api/auth"
 
 export default function LostPasswordPage() {
   const [email, setEmail] = useState("")

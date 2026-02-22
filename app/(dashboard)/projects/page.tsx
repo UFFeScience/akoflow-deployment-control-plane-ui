@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { ProjectCreateDialog } from "@/components/projects/project-create-dialog"
 import { ProjectsTable } from "@/components/projects/projects-table"
 import { useAuth } from "@/contexts/auth-context"
-import { projectsApi } from "@/lib/api"
-import type { Project } from "@/lib/api"
+import { projectsApi } from "@/lib/api/projects"
+import type { Project } from "@/lib/api/types"
 import { toast } from "sonner"
 
 export default function ProjectsPage() {

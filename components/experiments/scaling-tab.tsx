@@ -3,9 +3,9 @@
 import { Plus, Minus, Cpu, MemoryStick, MonitorSpeaker } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
-import type { Instance, InstanceConfig } from "@/lib/api"
+import type { Instance, InstanceConfig } from "@/lib/api/types"
 import { toast } from "sonner"
-import { instancesApi } from "@/lib/api"
+import { instancesApi } from "@/lib/api/instances"
 
 interface ScalingTabProps {
   experimentId: string

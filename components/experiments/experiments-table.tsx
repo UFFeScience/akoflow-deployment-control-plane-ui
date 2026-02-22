@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
-import type { Experiment } from "@/lib/api"
+import type { Experiment } from "@/lib/api/types"
 
 interface ExperimentsTableProps {
   projectId: string

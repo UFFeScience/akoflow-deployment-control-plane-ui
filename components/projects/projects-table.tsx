@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import type { Project } from "@/lib/api"
+import type { Project } from "@/lib/api/types"
 
 interface ProjectsTableProps {
   projects: Project[]

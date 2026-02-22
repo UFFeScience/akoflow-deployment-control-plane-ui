@@ -4,8 +4,10 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { ExperimentHeader } from "@/components/experiments/experiment-header"
 import { ExperimentTabs } from "@/components/experiments/experiment-tabs"
-import { experimentsApi, instancesApi, projectsApi } from "@/lib/api"
-import type { Experiment, Instance, InstanceConfig, Project } from "@/lib/api"
+import { experimentsApi } from "@/lib/api/experiments"
+import { instancesApi } from "@/lib/api/instances"
+import { projectsApi } from "@/lib/api/projects"
+import type { Experiment, Instance, InstanceConfig, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function ExperimentDetailPage() {

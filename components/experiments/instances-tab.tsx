@@ -16,8 +16,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { StatusBadge } from "@/components/status-badge"
-import type { Instance, InstanceConfig } from "@/lib/api"
-import { configApi, instancesApi } from "@/lib/api"
+import type { Instance, InstanceConfig } from "@/lib/api/types"
+import { configApi } from "@/lib/api/instance-config"
+import { instancesApi } from "@/lib/api/instances"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 

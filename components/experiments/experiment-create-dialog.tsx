@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Template } from "@/lib/api"
+import type { Template } from "@/lib/api/types"
 
 interface ExperimentCreateDialogProps {
   open: boolean
