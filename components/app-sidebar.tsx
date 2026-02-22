@@ -20,6 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { useRouter } from "next/navigation"
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -28,6 +30,7 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, organizations, currentOrg, setCurrentOrg, logout } = useAuth()
 
   const initials = user?.name
@@ -95,29 +98,40 @@ export function AppSidebar() {
 
       {/* User */}
       <div className="border-t border-sidebar-border px-3 py-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-xs hover:bg-sidebar-accent transition-colors">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-sidebar-primary/10 text-[10px] font-bold text-sidebar-primary">
-                {initials}
-              </div>
-              <div className="flex flex-1 flex-col items-start truncate">
-                <span className="truncate text-xs font-medium text-sidebar-foreground">{user?.name}</span>
-              </div>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="flex flex-col">
-              <span className="text-xs font-medium">{user?.name}</span>
-              <span className="text-[10px] text-muted-foreground font-normal">{user?.email}</span>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive text-xs">
-              <LogOut className="h-3 w-3" />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex flex-1 items-center gap-2.5 rounded px-2 py-1.5 text-xs hover:bg-sidebar-accent transition-colors"
+              >
+                <div className="flex h-6 w-6 items-center justify-center rounded bg-sidebar-primary/10 text-[10px] font-bold text-sidebar-primary">
+                  {initials}
+                </div>
+                <div className="flex flex-1 flex-col items-start truncate">
+                  <span className="truncate text-xs font-medium text-sidebar-foreground">{user?.name}</span>
+                  <span className="truncate text-[10px] text-muted-foreground">{user?.email}</span>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => router.push("/user")} className="text-xs">
+                Perfil
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="flex flex-col">
+                <span className="text-xs font-medium">{user?.name}</span>
+                <span className="text-[10px] text-muted-foreground font-normal">{user?.email}</span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive text-xs">
+                <LogOut className="h-3 w-3" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
   )

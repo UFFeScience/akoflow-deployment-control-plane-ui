@@ -6,6 +6,17 @@ import { StatusBadge } from "@/components/status-badge"
 import { RefreshCw, Server } from "lucide-react"
 import type { Cluster, Instance } from "@/lib/api/types"
 
+function getInstanceLabel(inst?: Partial<Instance> | null): string {
+  if (!inst) return "Unknown instance"
+  const name = (inst as any).name as string | undefined
+  if (name && name.trim()) return name.trim()
+  const publicIp = (inst as any).publicIp || (inst as any).public_ip
+  const privateIp = (inst as any).privateIp || (inst as any).private_ip
+  if (publicIp) return String(publicIp)
+  if (privateIp) return String(privateIp)
+  return `instance-${inst.id}`
+}
+
 interface InstancesTabProps {
   clusters: Cluster[]
   instancesByCluster: Record<string, Instance[]>
@@ -29,6 +40,7 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
         status,
         health,
         provider,
+        instanceLabel: getInstanceLabel(inst),
         region: inst.region || cluster.region,
         publicIp: inst.publicIp ?? (inst as any).public_ip,
         privateIp: inst.privateIp ?? (inst as any).private_ip,
@@ -69,6 +81,7 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="text-[11px] font-medium h-8">Instance</TableHead>
                 <TableHead className="text-[11px] font-medium h-8">Cluster</TableHead>
                 <TableHead className="text-[11px] font-medium h-8 hidden md:table-cell">Role</TableHead>
                 <TableHead className="text-[11px] font-medium h-8">Provider</TableHead>
@@ -82,6 +95,7 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id} className="h-9">
+                  <TableCell className="py-1.5 text-xs font-medium text-foreground">{row.instanceLabel}</TableCell>
                   <TableCell className="py-1.5 text-xs font-medium text-foreground">{row.clusterName}</TableCell>
                   <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{row.instanceRole || row.clusterRole || "--"}</TableCell>
                   <TableCell className="py-1.5"><StatusBadge type="provider" value={row.provider || "unknown"} /></TableCell>

@@ -14,6 +14,23 @@ function toProviderLabel(value: unknown): string {
   return str.toUpperCase()
 }
 
+function getInstanceLabel(inst?: Partial<Instance> | null): string {
+  if (!inst) return "Unknown instance"
+  const name = (inst as any).name as string | undefined
+  if (name && name.trim()) return name.trim()
+  const publicIp = (inst as any).publicIp || (inst as any).public_ip
+  const privateIp = (inst as any).privateIp || (inst as any).private_ip
+  if (publicIp) return String(publicIp)
+  if (privateIp) return String(privateIp)
+  return `instance-${inst.id}`
+}
+
+function getInstanceRole(inst?: Partial<Instance> | null): string {
+  if (!inst) return "--"
+  const role = (inst as any).role ?? (inst as any).instance_role
+  return typeof role === "string" && role.trim().length > 0 ? role.trim() : "--"
+}
+
 interface LogsTabProps {
   instances: Instance[]
 }
@@ -119,7 +136,7 @@ export function LogsTab({ instances }: LogsTabProps) {
           <SelectContent>
             {instances.map((inst) => (
               <SelectItem key={inst.id} value={inst.id} className="text-xs">
-                {toProviderLabel(inst.provider ?? (inst as any).provider_id ?? (inst as any).cloud_provider)} - {inst.region ?? "unknown"}
+                {getInstanceLabel(inst)} · {getInstanceRole(inst)} · {toProviderLabel(inst.provider ?? (inst as any).provider_id ?? (inst as any).cloud_provider)} · {inst.region ?? "unknown"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -150,7 +167,7 @@ export function LogsTab({ instances }: LogsTabProps) {
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
           <span className="ml-2 text-[10px] text-gray-500 font-mono">
             {selectedInstance
-              ? `${toProviderLabel(instances.find((i) => i.id === selectedInstance)?.provider ?? (instances.find((i) => i.id === selectedInstance) as any)?.provider_id ?? (instances.find((i) => i.id === selectedInstance) as any)?.cloud_provider)} - ${instances.find((i) => i.id === selectedInstance)?.region ?? "unknown"}`
+              ? `${getInstanceLabel(instances.find((i) => i.id === selectedInstance))} · ${getInstanceRole(instances.find((i) => i.id === selectedInstance))} · ${toProviderLabel(instances.find((i) => i.id === selectedInstance)?.provider ?? (instances.find((i) => i.id === selectedInstance) as any)?.provider_id ?? (instances.find((i) => i.id === selectedInstance) as any)?.cloud_provider)} · ${instances.find((i) => i.id === selectedInstance)?.region ?? "unknown"}`
               : "No instance selected"}
           </span>
         </div>
@@ -167,6 +184,8 @@ export function LogsTab({ instances }: LogsTabProps) {
                   {log.level.slice(0, 4)}
                 </span>
                 {log.source && <span className="shrink-0 text-indigo-400/60">[{log.source}]</span>}
+                  <span className="shrink-0 text-gray-500">{getInstanceLabel(instances.find((i) => i.id === selectedInstance))}</span>
+                  <span className="shrink-0 text-gray-500">{getInstanceRole(instances.find((i) => i.id === selectedInstance))}</span>
                 <span className={cn("break-all", levelTextColor[log.level] || "text-gray-400")}>{log.message}</span>
               </div>
             ))

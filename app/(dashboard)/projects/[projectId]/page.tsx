@@ -5,14 +5,11 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ExperimentCreateDialog } from "@/components/experiments/experiment-create-dialog"
 import { ExperimentsTable } from "@/components/experiments/experiments-table"
 import { experimentsApi } from "@/lib/api/experiments"
 import { projectsApi } from "@/lib/api/projects"
-import { templatesApi } from "@/lib/api/templates"
-import type { Experiment, Project, Template } from "@/lib/api/types"
+import type { Experiment, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
-import { toast } from "sonner"
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -20,9 +17,7 @@ export default function ProjectDetailPage() {
   const { currentOrg } = useAuth()
   const [project, setProject] = useState<Project | null>(null)
   const [experiments, setExperiments] = useState<Experiment[]>([])
-  const [templates, setTemplates] = useState<Template[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -39,20 +34,17 @@ export default function ProjectDetailPage() {
 
       setIsLoading(true)
       try {
-        const [projectData, experimentData, templateData] = await Promise.all([
+        const [projectData, experimentData] = await Promise.all([
           projectsApi.get(currentOrg.id, projectId),
           experimentsApi.list(projectId).catch(() => []),
-          templatesApi.list().catch(() => []),
         ])
         if (!active) return
         setProject(projectData)
         setExperiments(experimentData)
-        setTemplates(templateData)
       } catch {
         if (active) {
           setProject(null)
           setExperiments([])
-          setTemplates([])
         }
       } finally {
         if (active) setIsLoading(false)
@@ -74,21 +66,6 @@ export default function ProjectDetailPage() {
     )
   }
 
-  async function handleCreate(data: { name: string; description: string; templateId?: string; executionMode: "manual" | "auto" }) {
-    try {
-      const newExp = await experimentsApi.create(projectId, {
-        name: data.name,
-        description: data.description || undefined,
-        templateId: data.templateId,
-        executionMode: data.executionMode,
-      })
-      setExperiments((prev) => [newExp, ...prev])
-      toast.success("Experiment created")
-    } catch {
-      toast.error("Failed to create experiment")
-    }
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -106,19 +83,14 @@ export default function ProjectDetailPage() {
 
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-medium text-muted-foreground">Experiments</h2>
-        <Button size="sm" className="h-7 text-xs" onClick={() => setShowCreate(true)}>
-          <Plus className="mr-1 h-3 w-3" />
-          Create Experiment
+        <Button size="sm" className="h-7 text-xs" asChild>
+          <Link href={`/projects/${projectId}/experiments/new`}>
+            <Plus className="mr-1 h-3 w-3" />
+            Create Experiment
+          </Link>
         </Button>
       </div>
       <ExperimentsTable projectId={projectId} experiments={experiments} isLoading={isLoading} />
-
-      <ExperimentCreateDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        templates={templates}
-        onSubmit={handleCreate}
-      />
     </div>
   )
 }
