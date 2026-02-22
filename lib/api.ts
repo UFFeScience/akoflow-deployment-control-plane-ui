@@ -65,6 +65,12 @@ export const authApi = {
   logout: () => request("/auth/logout", { method: "POST" }),
 }
 
+// UI / Render helpers
+export const uiApi = {
+  getPasswordRules: () => request<{ rules: any }>('/ui/password-rules'),
+  getPasswordRender: () => request<{ ui: any }>('/ui/render/password-rules'),
+}
+
 // User
 export const userApi = {
   get: () => request<User>("/user"),
