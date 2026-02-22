@@ -57,7 +57,12 @@ export default function DashboardPage() {
         setProjects(projectData)
 
         const experimentLists = await Promise.all(
-          projectData.map((project) => experimentsApi.list(project.id).catch(() => []))
+          projectData.map((project) =>
+            experimentsApi
+              .list(project.id)
+              .then((items) => items.map((exp) => ({ ...exp, projectId: exp.projectId || project.id })))
+              .catch(() => [])
+          )
         )
         const experimentData = experimentLists.flat()
         if (!active) return

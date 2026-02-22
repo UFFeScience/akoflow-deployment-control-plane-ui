@@ -1,10 +1,13 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { ChevronRight, PanelLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { projectsApi } from "@/lib/api/projects"
+import { useAuth } from "@/contexts/auth-context"
 
 interface AppHeaderProps {
   onToggleSidebar?: () => void
@@ -16,21 +19,56 @@ const labelMap: Record<string, string> = {
   experiments: "Experiments",
 }
 
-function getBreadcrumbs(pathname: string): { label: string; href: string }[] {
+function getBreadcrumbs(
+  pathname: string,
+  projectNames: Record<string, string>
+): { label: string; href: string }[] {
   const segments = pathname.split("/").filter(Boolean)
   const crumbs: { label: string; href: string }[] = []
   let path = ""
-  for (const segment of segments) {
+
+  for (let i = 0; i < segments.length; i += 1) {
+    const segment = segments[i]
     path += `/${segment}`
-    const label = labelMap[segment] || segment
-    crumbs.push({ label: label.charAt(0).toUpperCase() + label.slice(1), href: path })
+
+    const isProjectId = segments[i - 1] === "projects"
+    const rawLabel = isProjectId ? projectNames[segment] || segment : labelMap[segment] || segment
+    const label = isProjectId ? rawLabel : rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
+
+    crumbs.push({ label, href: path })
   }
+
   return crumbs
 }
 
 export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const pathname = usePathname()
-  const breadcrumbs = getBreadcrumbs(pathname)
+  const { currentOrg } = useAuth()
+  const [projectNames, setProjectNames] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const segments = pathname.split("/").filter(Boolean)
+    const projectIndex = segments.findIndex((segment) => segment === "projects")
+    const projectId = projectIndex >= 0 ? segments[projectIndex + 1] : undefined
+
+    if (!projectId || !currentOrg || projectNames[projectId]) return
+
+    let active = true
+
+    projectsApi
+      .get(currentOrg.id, projectId)
+      .then((project) => {
+        if (!active || !project) return
+        setProjectNames((prev) => ({ ...prev, [projectId]: project.name }))
+      })
+      .catch(() => undefined)
+
+    return () => {
+      active = false
+    }
+  }, [pathname, currentOrg, projectNames])
+
+  const breadcrumbs = getBreadcrumbs(pathname, projectNames)
 
   return (
     <header className="flex h-10 items-center gap-3 border-b border-border bg-card px-4" role="banner">
