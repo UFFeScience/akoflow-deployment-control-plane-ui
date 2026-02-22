@@ -67,7 +67,7 @@ export default function UserPage() {
 
     setIsSavingPassword(true)
     try {
-      await userApi.changePassword({ currentPassword, newPassword })
+      await userApi.changePassword({ currentPassword, newPassword, confirmPassword })
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")

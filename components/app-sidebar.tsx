@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
@@ -11,6 +12,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Check,
+  UserRound,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useRouter } from "next/navigation"
+import { membersApi } from "@/lib/api/members"
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -32,6 +35,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, organizations, currentOrg, setCurrentOrg, logout } = useAuth()
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false)
 
   const initials = user?.name
     ? user.name
@@ -40,6 +44,32 @@ export function AppSidebar() {
         .join("")
         .toUpperCase()
     : "?"
+
+  useEffect(() => {
+    let active = true
+    async function loadRole() {
+      if (!currentOrg || !user) {
+        if (active) setIsOrgAdmin(false)
+        return
+      }
+      try {
+        const members = await membersApi.list(currentOrg.id)
+        const normalized = members.map((m: any) => ({
+          userId: m.user_id ?? m.userId ?? m.user?.id,
+          email: m.email ?? m.user?.email,
+          role: m.role,
+        }))
+        const me = normalized.find((m) => m.userId === user.id || m.email === user.email)
+        if (active) setIsOrgAdmin(me?.role === "admin" || me?.role === "owner")
+      } catch {
+        if (active) setIsOrgAdmin(false)
+      }
+    }
+    loadRole()
+    return () => {
+      active = false
+    }
+  }, [currentOrg, user])
 
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
@@ -110,12 +140,19 @@ export function AppSidebar() {
                 <div className="flex flex-1 flex-col items-start truncate">
                   <span className="truncate text-xs font-medium text-sidebar-foreground">{user?.name}</span>
                   <span className="truncate text-[10px] text-muted-foreground">{user?.email}</span>
+                  {isOrgAdmin && <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">Owner</span>}
                 </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => router.push("/user")} className="text-xs">
-                Perfil
+              <DropdownMenuItem onClick={() => router.push("/organization")} className="text-xs flex items-center gap-2">
+                <Cloud className="h-3.5 w-3.5" />
+                Organization
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/user")} className="text-xs flex items-center gap-2">
+                <UserRound className="h-3.5 w-3.5" />
+                Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="flex flex-col">
