@@ -75,9 +75,6 @@ export function ExperimentTabs({
         <ClustersTab
           experimentId={experimentId}
           clusters={clusters}
-          providers={providers}
-          instanceTypes={instanceTypes}
-          templates={templates}
           isLoading={isLoadingClusters}
           onClustersChange={onClustersChange}
           onRefresh={onRefreshClusters}

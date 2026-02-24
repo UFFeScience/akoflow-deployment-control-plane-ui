@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, Loader2, Plus, Sparkles, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +15,7 @@ import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { clustersApi } from "@/lib/api/clusters"
 import type { InstanceType, Provider, Template } from "@/lib/api/types"
+import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import { toast } from "sonner"
 
 const steps = [
@@ -36,14 +37,6 @@ const steps = [
 ] as const
 
 type StepId = (typeof steps)[number]["id"]
-
-interface InstanceGroupForm {
-  id: string
-  instanceTypeId: string
-  role: string
-  quantity: number
-  metadata: string
-}
 
 export function ExperimentCreateFlow() {
   const params = useParams()
@@ -67,7 +60,7 @@ export function ExperimentCreateFlow() {
     executionMode: "manual",
   })
   const [experimentTemplateId, setExperimentTemplateId] = useState<string>("none")
-  const [clusterForm, setClusterForm] = useState({
+  const [clusterForm, setClusterForm] = useState<ClusterFormData>({
     templateId: "none",
     providerId: "",
     region: "",
@@ -79,7 +72,7 @@ export function ExperimentCreateFlow() {
         quantity: 1,
         metadata: "",
       },
-    ] as InstanceGroupForm[],
+    ],
   })
 
   useEffect(() => {
@@ -119,20 +112,6 @@ export function ExperimentCreateFlow() {
       active = false
     }
   }, [])
-
-  const filteredInstanceTypes = useMemo(() => {
-    return instanceTypes.filter((it) => {
-      const providerId = (it as any).providerId || (it as any).provider_id || (it as any).provider?.id
-      return !clusterForm.providerId || providerId === clusterForm.providerId
-    })
-  }, [instanceTypes, clusterForm.providerId])
-
-  const regionOptions = useMemo(() => {
-    const providerRegions = providers.find((p) => p.id === clusterForm.providerId)?.regions || []
-    if (providerRegions.length > 0) return providerRegions
-    const regionsFromTypes = filteredInstanceTypes.map((t) => t.region).filter(Boolean) as string[]
-    return Array.from(new Set(regionsFromTypes))
-  }, [providers, clusterForm.providerId, filteredInstanceTypes])
 
   function nextStep() {
     const idx = steps.findIndex((s) => s.id === activeStep)
@@ -362,202 +341,14 @@ export function ExperimentCreateFlow() {
               <p className="text-xs text-muted-foreground">Define provider, template, region, and instance groups.</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Cluster template (optional)</Label>
-                <Select
-                  value={clusterForm.templateId}
-                  onValueChange={(v) => setClusterForm((prev) => ({ ...prev, templateId: v }))}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="No template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">No template</SelectItem>
-                    {templates.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Provider</Label>
-                <Select
-                  value={clusterForm.providerId}
-                  onValueChange={(v) =>
-                    setClusterForm((prev) => ({
-                      ...prev,
-                      providerId: v,
-                      region: "",
-                      instanceGroups: prev.instanceGroups.map((g) => ({ ...g, instanceTypeId: "" })),
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {providers.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Region</Label>
-                {regionOptions.length > 0 ? (
-                  <Select
-                    value={clusterForm.region}
-                    onValueChange={(v) => setClusterForm((prev) => ({ ...prev, region: v }))}
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Select region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regionOptions.map((region) => (
-                        <SelectItem key={region} value={region} className="text-xs">{region}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    className="h-9 text-sm"
-                    placeholder="e.g. us-east-1"
-                    value={clusterForm.region}
-                    onChange={(e) => setClusterForm((prev) => ({ ...prev, region: e.target.value }))}
-                  />
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Groups</Label>
-                <div className="text-[11px] text-muted-foreground">Define roles, sizes, and metadata per group.</div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {clusterForm.instanceGroups.map((group, idx) => (
-                <div key={group.id} className="rounded-lg border border-border p-3 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs font-semibold text-foreground">Group {idx + 1}</div>
-                    {clusterForm.instanceGroups.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() =>
-                          setClusterForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.filter((g) => g.id !== group.id),
-                          }))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs">Instance type</Label>
-                      <Select
-                        value={group.instanceTypeId}
-                        onValueChange={(v) =>
-                          setClusterForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id ? { ...g, instanceTypeId: v } : g
-                            ),
-                          }))
-                        }
-                        disabled={!clusterForm.providerId}
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredInstanceTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id} className="text-xs">
-                              {type.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs">Quantity</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        className="h-9 text-sm"
-                        value={group.quantity}
-                        onChange={(e) =>
-                          setClusterForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id
-                                ? { ...g, quantity: Math.max(1, parseInt(e.target.value) || 1) }
-                                : g
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs">Role (optional)</Label>
-                      <Input
-                        className="h-9 text-sm"
-                        placeholder="trainer / worker"
-                        value={group.role}
-                        onChange={(e) =>
-                          setClusterForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id ? { ...g, role: e.target.value } : g
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-1.5">
-                    <Label className="text-xs">Metadata (JSON, optional)</Label>
-                    <Textarea
-                      className="text-sm"
-                      rows={3}
-                      placeholder='{"team":"ml","env":"staging"}'
-                      value={group.metadata}
-                      onChange={(e) =>
-                        setClusterForm((prev) => ({
-                          ...prev,
-                          instanceGroups: prev.instanceGroups.map((g) =>
-                            g.id === group.id ? { ...g, metadata: e.target.value } : g
-                          ),
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 text-xs"
-                onClick={() =>
-                  setClusterForm((prev) => ({
-                    ...prev,
-                    instanceGroups: [
-                      ...prev.instanceGroups,
-                      { id: crypto.randomUUID(), instanceTypeId: "", role: "", quantity: 1, metadata: "" },
-                    ],
-                  }))
-                }
-              >
-                <Plus className="mr-1 h-3 w-3" /> Add group
-              </Button>
-            </div>
+            <ClusterFormFields
+              form={clusterForm}
+              onFormChange={setClusterForm}
+              providers={providers}
+              instanceTypes={instanceTypes}
+              templates={templates}
+              isCompact={true}
+            />
           </div>
         )}
       </div>
