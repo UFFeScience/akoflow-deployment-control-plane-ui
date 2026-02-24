@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/status-badge"
 import { RefreshCw, Server } from "lucide-react"
 import type { Cluster, Instance } from "@/lib/api/types"
+import { InstanceRow } from "./instance-row"
 
 function getInstanceLabel(inst?: Partial<Instance> | null): string {
   if (!inst) return "Unknown instance"
@@ -94,17 +95,7 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.id} className="h-9">
-                  <TableCell className="py-1.5 text-xs font-medium text-foreground">{row.instanceLabel}</TableCell>
-                  <TableCell className="py-1.5 text-xs font-medium text-foreground">{row.clusterName}</TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{row.instanceRole || row.clusterRole || "--"}</TableCell>
-                  <TableCell className="py-1.5"><StatusBadge type="provider" value={row.provider || "unknown"} /></TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground">{row.region || "--"}</TableCell>
-                  <TableCell className="py-1.5"><StatusBadge type="status" value={row.status || "pending"} /></TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden lg:table-cell">{row.health || "--"}</TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden lg:table-cell">{row.publicIp || "--"}</TableCell>
-                  <TableCell className="py-1.5 text-[11px] text-muted-foreground hidden xl:table-cell">{row.privateIp || "--"}</TableCell>
-                </TableRow>
+                <InstanceRow key={row.id} row={row} />
               ))}
             </TableBody>
           </Table>

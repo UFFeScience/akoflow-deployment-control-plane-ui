@@ -168,6 +168,108 @@ export function ClustersTab({
     }
   }
 
+  function renderInstanceGroupRow(group: (typeof form.instanceGroups)[number]) {
+    return (
+      <div key={group.id} className="grid grid-cols-8 gap-2 items-end">
+        <div className="col-span-3 flex flex-col gap-1">
+          <Label className="text-[11px] text-muted-foreground">Type</Label>
+          <Select
+            value={group.instanceTypeId}
+            onValueChange={(v) =>
+              setForm((prev) => ({
+                ...prev,
+                instanceGroups: prev.instanceGroups.map((g) =>
+                  g.id === group.id ? { ...g, instanceTypeId: v } : g
+                ),
+              }))
+            }
+            disabled={!form.providerId}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredInstanceTypes.map((t) => (
+                <SelectItem key={t.id} value={t.id} className="text-xs">
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label className="text-[11px] text-muted-foreground">Quantity</Label>
+          <Input
+            type="number"
+            min={1}
+            className="h-8 text-xs"
+            value={group.quantity}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                instanceGroups: prev.instanceGroups.map((g) =>
+                  g.id === group.id
+                    ? { ...g, quantity: Math.max(1, parseInt(e.target.value) || 1) }
+                    : g
+                ),
+              }))
+            }
+          />
+        </div>
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label className="text-[11px] text-muted-foreground">Role</Label>
+          <Input
+            className="h-8 text-xs"
+            placeholder="worker / trainer"
+            value={group.role}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                instanceGroups: prev.instanceGroups.map((g) =>
+                  g.id === group.id ? { ...g, role: e.target.value } : g
+                ),
+              }))
+            }
+          />
+        </div>
+        <div className="col-span-8 flex flex-col gap-1">
+          <Label className="text-[11px] text-muted-foreground">Metadata (JSON, optional)</Label>
+          <Textarea
+            className="text-xs"
+            rows={3}
+            placeholder='{"team":"ml","env":"staging"}'
+            value={group.metadata}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                instanceGroups: prev.instanceGroups.map((g) =>
+                  g.id === group.id ? { ...g, metadata: e.target.value } : g
+                ),
+              }))
+            }
+          />
+        </div>
+        <div className="col-span-1 flex justify-end pb-1">
+          {form.instanceGroups.length > 1 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  instanceGroups: prev.instanceGroups.filter((g) => g.id !== group.id),
+                }))
+              }
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -335,105 +437,7 @@ export function ClustersTab({
                 </Button>
               </div>
               <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-                {form.instanceGroups.map((group, idx) => (
-                  <div key={group.id} className="grid grid-cols-8 gap-2 items-end">
-                    <div className="col-span-3 flex flex-col gap-1">
-                      <Label className="text-[11px] text-muted-foreground">Type</Label>
-                      <Select
-                        value={group.instanceTypeId}
-                        onValueChange={(v) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id ? { ...g, instanceTypeId: v } : g
-                            ),
-                          }))
-                        }
-                        disabled={!form.providerId}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredInstanceTypes.map((t) => (
-                            <SelectItem key={t.id} value={t.id} className="text-xs">
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2 flex flex-col gap-1">
-                      <Label className="text-[11px] text-muted-foreground">Quantity</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        className="h-8 text-xs"
-                        value={group.quantity}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id
-                                ? { ...g, quantity: Math.max(1, parseInt(e.target.value) || 1) }
-                                : g
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="col-span-2 flex flex-col gap-1">
-                      <Label className="text-[11px] text-muted-foreground">Role</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="worker / trainer"
-                        value={group.role}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id ? { ...g, role: e.target.value } : g
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="col-span-8 flex flex-col gap-1">
-                      <Label className="text-[11px] text-muted-foreground">Metadata (JSON, optional)</Label>
-                      <Textarea
-                        className="text-xs"
-                        rows={3}
-                        placeholder='{"team":"ml","env":"staging"}'
-                        value={group.metadata}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            instanceGroups: prev.instanceGroups.map((g) =>
-                              g.id === group.id ? { ...g, metadata: e.target.value } : g
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="col-span-1 flex justify-end pb-1">
-                      {form.instanceGroups.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              instanceGroups: prev.instanceGroups.filter((g) => g.id !== group.id),
-                            }))
-                          }
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {form.instanceGroups.map((group) => renderInstanceGroupRow(group))}
               </div>
             </div>
           </div>

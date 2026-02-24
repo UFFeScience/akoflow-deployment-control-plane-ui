@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { Project } from "@/lib/api/types"
+import { ProjectRow } from "./project-row"
 
 interface ProjectsTableProps {
   projects: Project[]
@@ -30,28 +31,7 @@ export function ProjectsTable({ projects, isLoading = false, resolveOrgName = de
               </TableCell>
             </TableRow>
           ) : (
-            projects.map((project) => (
-              <TableRow key={project.id} className="h-9">
-                <TableCell className="py-1.5">
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className="text-xs font-medium text-foreground hover:text-primary transition-colors"
-                  >
-                    {project.name}
-                  </Link>
-                  {project.description && (
-                    <p className="text-[10px] text-muted-foreground truncate max-w-xs">{project.description}</p>
-                  )}
-                </TableCell>
-                <TableCell className="py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                  {resolveOrgName(project.organizationId)}
-                </TableCell>
-                <TableCell className="py-1.5 text-xs text-muted-foreground">{project.experimentCount}</TableCell>
-                <TableCell className="py-1.5 hidden md:table-cell text-xs text-muted-foreground">
-                  {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : "--"}
-                </TableCell>
-              </TableRow>
-            ))
+            projects.map((project) => <ProjectRow key={project.id} project={project} resolveOrgName={resolveOrgName} />)
           )}
         </TableBody>
       </Table>

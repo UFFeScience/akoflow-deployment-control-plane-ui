@@ -2,18 +2,8 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FormDialog } from "@/components/form/form-dialog"
+import { ExperimentCreateForm } from "./experiment-create-form"
 import type { Template } from "@/lib/api/types"
 
 interface ExperimentCreateDialogProps {
@@ -54,54 +44,13 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="text-sm">Create experiment</DialogTitle>
-          <DialogDescription className="text-xs">Set up a new experiment for this project.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs">Template (optional)</Label>
-            <Select
-              value={form.templateId}
-              onValueChange={(v) => setForm((prev) => ({ ...prev, templateId: v }))}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="No template" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none" className="text-xs">
-                  No template
-                </SelectItem>
-                {templates.map((t) => (
-                  <SelectItem key={t.id} value={t.id} className="text-xs">
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs">Name</Label>
-            <Input
-              className="h-8 text-xs"
-              placeholder="Experiment name"
-              value={form.name}
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs">Description</Label>
-            <Textarea
-              className="text-xs min-h-16"
-              placeholder="Brief description..."
-              value={form.description}
-              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-            />
-          </div>
-        </div>
-        <DialogFooter>
+    <FormDialog
+      open={open}
+      onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}
+      title="Create experiment"
+      description="Set up a new experiment for this project."
+      footer={(
+        <>
           <Button variant="outline" size="sm" className="text-xs" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -113,8 +62,10 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
           >
             {isSubmitting ? "Creating..." : "Create"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      )}
+    >
+      <ExperimentCreateForm form={form} setForm={setForm} templates={templates} />
+    </FormDialog>
   )
 }

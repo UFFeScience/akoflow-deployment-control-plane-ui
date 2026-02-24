@@ -1,13 +1,11 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Download } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { cn } from "@/lib/utils"
+import { cn, formatTimestamp } from "@/lib/utils"
 import type { Instance, LogEntry } from "@/lib/api/types"
 import { logsApi } from "@/lib/api/logs"
+import { LogsFilters } from "./logs-filters"
+import { LogRow } from "./log-row"
 
 function toProviderLabel(value: unknown): string {
   const str = typeof value === "string" ? value : value ? String(value) : "unknown"
@@ -47,10 +45,6 @@ const levelTextColor: Record<string, string> = {
   warning: "text-amber-400",
   error: "text-red-400",
   debug: "text-blue-400",
-}
-
-function formatTime(ts: string) {
-  return new Date(ts).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
 }
 
 export function LogsTab({ instances }: LogsTabProps) {
@@ -116,40 +110,17 @@ export function LogsTab({ instances }: LogsTabProps) {
   return (
     <div className="flex flex-col gap-3">
       {/* Filters row */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={filterLevel} onValueChange={setFilterLevel}>
-          <SelectTrigger className="w-28 h-7 text-[10px]">
-            <SelectValue placeholder="All levels" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">All levels</SelectItem>
-            <SelectItem value="info" className="text-xs">Info</SelectItem>
-            <SelectItem value="warning" className="text-xs">Warning</SelectItem>
-            <SelectItem value="error" className="text-xs">Error</SelectItem>
-            <SelectItem value="debug" className="text-xs">Debug</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={selectedInstance} onValueChange={setSelectedInstance}>
-          <SelectTrigger className="w-48 h-7 text-[10px]">
-            <SelectValue placeholder="Select instance" />
-          </SelectTrigger>
-          <SelectContent>
-            {instances.map((inst) => (
-              <SelectItem key={inst.id} value={inst.id} className="text-xs">
-                {getInstanceLabel(inst)} · {getInstanceRole(inst)} · {toProviderLabel(inst.provider ?? (inst as any).provider_id ?? (inst as any).cloud_provider)} · {inst.region ?? "unknown"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <Switch checked={autoScroll} onCheckedChange={setAutoScroll} className="scale-75" />
-          <span className="text-[10px] text-muted-foreground">Auto-scroll</span>
-        </div>
-        <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={handleDownload} disabled={!selectedInstance}>
-          <Download className="mr-1 h-3 w-3" />
-          Download
-        </Button>
-      </div>
+      <LogsFilters
+        filterLevel={filterLevel}
+        setFilterLevel={setFilterLevel}
+        selectedInstance={selectedInstance}
+        setSelectedInstance={setSelectedInstance}
+        autoScroll={autoScroll}
+        setAutoScroll={setAutoScroll}
+        handleDownload={handleDownload}
+        instances={instances}
+        isLoading={isLoading}
+      />
 
       {/* Section labels */}
       <div className="flex items-center gap-2">
@@ -177,18 +148,7 @@ export function LogsTab({ instances }: LogsTabProps) {
               {isLoading ? "Fetching logs..." : "No log entries"}
             </div>
           ) : (
-            displayLogs.map((log) => (
-              <div key={log.id} className="flex gap-2 py-px hover:bg-[#161b22] rounded px-1 -mx-1 transition-colors">
-                <span className="text-gray-600 shrink-0 select-none">{formatTime(log.timestamp)}</span>
-                <span className={cn("shrink-0 rounded px-1 text-[9px] font-bold uppercase leading-5", levelBadge[log.level])}>
-                  {log.level.slice(0, 4)}
-                </span>
-                {log.source && <span className="shrink-0 text-indigo-400/60">[{log.source}]</span>}
-                  <span className="shrink-0 text-gray-500">{getInstanceLabel(instances.find((i) => i.id === selectedInstance))}</span>
-                  <span className="shrink-0 text-gray-500">{getInstanceRole(instances.find((i) => i.id === selectedInstance))}</span>
-                <span className={cn("break-all", levelTextColor[log.level] || "text-gray-400")}>{log.message}</span>
-              </div>
-            ))
+            displayLogs.map((log) => <LogRow key={log.id} log={log} instances={instances} selectedInstance={selectedInstance} />)
           )}
         </div>
       </div>

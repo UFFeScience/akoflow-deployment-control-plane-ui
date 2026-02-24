@@ -12,7 +12,7 @@ export const clustersApi = {
       instanceTypeId?: string
       role?: string
       nodeCount?: number
-      instances?: { instanceTypeId: string; role?: string; quantity: number }[]
+      instances?: { instanceTypeId: string; role?: string; quantity: number; metadata?: Record<string, unknown> }[]
       instanceGroups?: { instanceTypeId: string; role?: string; quantity: number; metadata?: Record<string, unknown> }[]
     }
   ) => {

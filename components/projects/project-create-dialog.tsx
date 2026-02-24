@@ -5,14 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { FormDialog } from "@/components/form/form-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ProjectCreateDialogProps {
@@ -60,13 +53,27 @@ export function ProjectCreateDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="text-sm">Create project</DialogTitle>
-          <DialogDescription className="text-xs">Add a new project to organize experiments.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
+    <FormDialog
+      open={open}
+      onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}
+      title="Create project"
+      description="Add a new project to organize experiments."
+      footer={(
+        <>
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className="text-xs"
+            onClick={handleSubmit}
+            disabled={!form.name.trim() || !form.organizationId || isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create"}
+          </Button>
+        </>
+      )}
+    >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="proj-org" className="text-xs">
               Organization
@@ -111,21 +118,6 @@ export function ProjectCreateDialog({
               onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
             />
           </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            onClick={handleSubmit}
-            disabled={!form.name.trim() || !form.organizationId || isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "Create"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </FormDialog>
   )
 }
