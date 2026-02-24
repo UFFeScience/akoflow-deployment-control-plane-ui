@@ -9,6 +9,7 @@ import { DashboardStats } from "./dashboard-stats"
 import { DashboardActivity } from "./dashboard-activity"
 import { DashboardResources } from "./dashboard-resources"
 import { DashboardHealth } from "./dashboard-health"
+import { InstancesVisualization } from "./instances-visualization"
 import { RecentExperiments } from "./recent-experiments"
 import { experimentsApi } from "@/lib/api/experiments"
 import { projectsApi } from "@/lib/api/projects"
@@ -111,6 +112,16 @@ export function DashboardScreen() {
   const totalExperiments = experiments.length
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length
+
+  // Group instances by cluster
+  const instancesByCluster = instances.reduce((acc, instance) => {
+    const clusterId = instance.clusterId || "unknown"
+    if (!acc[clusterId]) {
+      acc[clusterId] = []
+    }
+    acc[clusterId].push(instance)
+    return acc
+  }, {} as Record<string, Instance[]>)
 
   return (
     <div className="flex flex-col gap-8">

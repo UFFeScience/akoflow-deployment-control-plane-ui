@@ -76,32 +76,7 @@ export function DashboardStats({
         />
       </div>
 
-      {/* Secondary Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="AWS Instances"
-          value={instanceMetrics.aws}
-          icon={Cloud}
-          description={`${Math.round((instanceMetrics.aws / instanceMetrics.total) * 100 || 0)}% of total`}
-          colorClass="text-orange-500 bg-orange-500/10"
-        />
-        
-        <StatCard
-          title="GCP Instances"
-          value={instanceMetrics.gcp}
-          icon={Cloud}
-          description={`${Math.round((instanceMetrics.gcp / instanceMetrics.total) * 100 || 0)}% of total`}
-          colorClass="text-blue-600 bg-blue-600/10"
-        />
-        
-        <StatCard
-          title="Failures"
-          value={failedInstances + experimentMetrics.failed}
-          icon={AlertCircle}
-          description={`${failedInstances} instances, ${experimentMetrics.failed} experiments`}
-          colorClass="text-red-500 bg-red-500/10"
-        />
-      </div>
+   
     </div>
   )
 }

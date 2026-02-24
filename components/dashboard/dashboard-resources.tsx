@@ -100,7 +100,7 @@ export function DashboardResources({ instances, clusters }: DashboardResourcesPr
         </CardContent>
       </Card>
 
-      {/* Distribuição por Status */}
+      {/* Instance Status */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">

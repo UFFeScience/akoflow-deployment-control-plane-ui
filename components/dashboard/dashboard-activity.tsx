@@ -28,7 +28,7 @@ export function DashboardActivity({ experiments, instances }: DashboardActivityP
       status: inst.status,
       time: inst.createdAt,
       id: inst.id,
-      subtitle: `Instance · ${inst.provider ? inst.provider.toUpperCase() : 'Unknown'}`,
+      subtitle: `Instance · ${inst.provider ? String(inst.provider).toUpperCase() : 'Unknown'}`,
     })),
   ]
     .filter((item) => item.time) // Remove items sem timestamp
