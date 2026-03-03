@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { FormDialog } from "@/components/form/form-dialog"
+import { DialogActions } from "@/components/form/dialog-actions"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ProjectCreateDialogProps {
@@ -58,21 +58,14 @@ export function ProjectCreateDialog({
       onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}
       title="Create project"
       description="Add a new project to organize experiments."
-      footer={(
-        <>
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            onClick={handleSubmit}
-            disabled={!form.name.trim() || !form.organizationId || isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "Create"}
-          </Button>
-        </>
-      )}
+      footer={
+        <DialogActions
+          onCancel={() => onOpenChange(false)}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          isDisabled={!form.name.trim() || !form.organizationId}
+        />
+      }
     >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="proj-org" className="text-xs">

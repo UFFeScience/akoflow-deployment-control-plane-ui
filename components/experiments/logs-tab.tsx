@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { cn, formatTimestamp } from "@/lib/utils"
+import { getInstanceLabel, getInstanceRole } from "@/lib/utils/instance"
 import type { Instance, LogEntry } from "@/lib/api/types"
 import { logsApi } from "@/lib/api/logs"
 import { LogsFilters } from "./logs-filters"
@@ -12,39 +12,8 @@ function toProviderLabel(value: unknown): string {
   return str.toUpperCase()
 }
 
-function getInstanceLabel(inst?: Partial<Instance> | null): string {
-  if (!inst) return "Unknown instance"
-  const name = (inst as any).name as string | undefined
-  if (name && name.trim()) return name.trim()
-  const publicIp = (inst as any).publicIp || (inst as any).public_ip
-  const privateIp = (inst as any).privateIp || (inst as any).private_ip
-  if (publicIp) return String(publicIp)
-  if (privateIp) return String(privateIp)
-  return `instance-${inst.id}`
-}
-
-function getInstanceRole(inst?: Partial<Instance> | null): string {
-  if (!inst) return "--"
-  const role = (inst as any).role ?? (inst as any).instance_role
-  return typeof role === "string" && role.trim().length > 0 ? role.trim() : "--"
-}
-
 interface LogsTabProps {
   instances: Instance[]
-}
-
-const levelBadge: Record<string, string> = {
-  info: "text-emerald-400 bg-emerald-400/10",
-  warning: "text-amber-400 bg-amber-400/10",
-  error: "text-red-400 bg-red-400/10",
-  debug: "text-blue-400 bg-blue-400/10",
-}
-
-const levelTextColor: Record<string, string> = {
-  info: "text-emerald-400",
-  warning: "text-amber-400",
-  error: "text-red-400",
-  debug: "text-blue-400",
 }
 
 export function LogsTab({ instances }: LogsTabProps) {

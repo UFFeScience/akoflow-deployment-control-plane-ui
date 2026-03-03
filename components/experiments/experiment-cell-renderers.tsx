@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { StatusBadge } from "@/components/status-badge"
+import { CloudBadge } from "@/components/ui/cloud-badge"
 import type { Experiment } from "@/lib/api/types"
 
 type Renderers = {
@@ -46,7 +47,7 @@ export const ExperimentCellRenderers: Renderers = {
 
   aws(exp) {
     return (exp.awsInstanceCount ?? 0) > 0 ? (
-      <span className="text-[10px] font-medium text-orange-700 dark:text-orange-400">{exp.awsInstanceCount}</span>
+      <CloudBadge provider="aws" count={exp.awsInstanceCount} />
     ) : (
       <span className="text-[10px] text-muted-foreground">0</span>
     )
@@ -54,7 +55,7 @@ export const ExperimentCellRenderers: Renderers = {
 
   gcp(exp) {
     return (exp.gcpInstanceCount ?? 0) > 0 ? (
-      <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400">{exp.gcpInstanceCount}</span>
+      <CloudBadge provider="gcp" count={exp.gcpInstanceCount} />
     ) : (
       <span className="text-[10px] text-muted-foreground">0</span>
     )

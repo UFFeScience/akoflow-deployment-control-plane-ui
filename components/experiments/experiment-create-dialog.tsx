@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { FormDialog } from "@/components/form/form-dialog"
+import { DialogActions } from "@/components/form/dialog-actions"
 import { ExperimentCreateForm } from "./experiment-create-form"
 import type { Template } from "@/lib/api/types"
 
@@ -49,21 +49,14 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
       onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}
       title="Create experiment"
       description="Set up a new experiment for this project."
-      footer={(
-        <>
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            onClick={handleSubmit}
-            disabled={!form.name.trim() || isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "Create"}
-          </Button>
-        </>
-      )}
+      footer={
+        <DialogActions
+          onCancel={() => onOpenChange(false)}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          isDisabled={!form.name.trim()}
+        />
+      }
     >
       <ExperimentCreateForm form={form} setForm={setForm} templates={templates} />
     </FormDialog>

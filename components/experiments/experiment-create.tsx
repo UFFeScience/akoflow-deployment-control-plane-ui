@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Loader2, Sparkles } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-state"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -626,7 +627,7 @@ export function ExperimentCreateFlow() {
 
             {!definition && experimentTemplateId !== "none" && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <LoadingSpinner />
                 Loading configuration...
               </div>
             )}
@@ -702,7 +703,7 @@ export function ExperimentCreateFlow() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Creating...
                 </>
               ) : (
@@ -715,7 +716,7 @@ export function ExperimentCreateFlow() {
 
       {isLoadingData && (
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <LoadingSpinner size="sm" />
           Loading templates and providers...
         </div>
       )}

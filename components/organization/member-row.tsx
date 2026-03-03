@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Crown } from "lucide-react"
+import { getInitials } from "@/lib/utils/string"
 import type { Member } from "@/lib/api/types"
 
 type MemberRowProps = {
@@ -9,13 +10,7 @@ type MemberRowProps = {
 }
 
 export function MemberRow({ member }: MemberRowProps) {
-  const initials = member.name
-    ? member.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-    : "?"
+  const initials = getInitials(member.name)
 
   return (
     <div className="grid grid-cols-[1.6fr_1.4fr_0.8fr] items-center px-3 py-2 text-sm">

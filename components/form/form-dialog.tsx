@@ -17,12 +17,13 @@ export interface FormDialogProps {
   description?: string
   children: ReactNode
   footer: ReactNode
+  contentClassName?: string
 }
 
-export function FormDialog({ open, onOpenChange, title, description, children, footer }: FormDialogProps) {
+export function FormDialog({ open, onOpenChange, title, description, children, footer, contentClassName }: FormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={contentClassName}>
         <DialogHeader>
           <DialogTitle className="text-sm">{title}</DialogTitle>
           {description ? (

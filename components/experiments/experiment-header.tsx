@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
+import { LoadingSpinner } from "@/components/ui/loading-state"
 import type { Experiment, Project } from "@/lib/api/types"
 
 interface ExperimentHeaderProps {
@@ -49,7 +50,7 @@ export function ExperimentHeader({
           </span>
         )}
         {(experiment?.executionMode || (experiment as any)?.execution_mode) && (
-          <span className="capitalize">{experiment.executionMode || (experiment as any).execution_mode} mode</span>
+          <span className="capitalize">{experiment?.executionMode || (experiment as any)?.execution_mode} mode</span>
         )}
         <span>{instancesCount} instances</span>
       </div>
@@ -59,7 +60,7 @@ export function ExperimentHeader({
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
         <span className="font-semibold uppercase tracking-wide text-[9px] text-emerald-600">Live</span>
-        {isRefreshing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+        {isRefreshing && <LoadingSpinner size="sm" className="text-muted-foreground" />}
         <span>Refreshing every 5s</span>
         {lastUpdatedLabel && <span className="text-[9px]">Last update {lastUpdatedLabel}</span>}
       </div>

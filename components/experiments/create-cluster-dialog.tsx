@@ -1,15 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { FormDialog } from "@/components/form/form-dialog"
+import { DialogActions } from "@/components/form/dialog-actions"
+import { LoadingState } from "@/components/ui/loading-state"
 import { clustersApi } from "@/lib/api/clusters"
 import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
@@ -17,7 +11,6 @@ import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import type { Experiment, Provider, InstanceType } from "@/lib/api/types"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
 
 interface CreateClusterDialogProps {
   open: boolean
@@ -235,64 +228,39 @@ export function CreateClusterDialog({
     Boolean(form.region) &&
     form.instanceGroups.some((g) => g.instanceTypeId && g.quantity > 0)
 
+  const description = experiment?.name
+    ? `Provision a new cluster for this experiment. Experiment: ${experiment.name}`
+    : "Provision a new cluster for this experiment."
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-sm font-semibold">Create Cluster</DialogTitle>
-          <DialogDescription className="text-xs">
-            Provision a new cluster for this experiment.{" "}
-            {experiment?.name && (
-              <span className="text-muted-foreground">
-                Experiment: <strong>{experiment.name}</strong>
-              </span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10 gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading form data...
-          </div>
-        ) : (
-          <ClusterFormFields
-            form={form}
-            onFormChange={setForm}
-            providers={providers}
-            instanceTypes={instanceTypes}
-            instanceGroupTemplates={instanceGroupTemplates}
-            isCompact={false}
-          />
-        )}
-
-        <DialogFooter className="pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            onClick={handleCreate}
-            disabled={isLoading || isSubmitting || !canSubmit}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              "Create Cluster"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Create Cluster"
+      description={description}
+      contentClassName="max-w-2xl max-h-[90vh] overflow-y-auto"
+      footer={
+        <DialogActions
+          onCancel={() => onOpenChange(false)}
+          onSubmit={handleCreate}
+          submitLabel="Create Cluster"
+          isSubmitting={isSubmitting}
+          isDisabled={isLoading || !canSubmit}
+        />
+      }
+    >
+      {isLoading ? (
+        <LoadingState label="Loading form data..." />
+      ) : (
+        <ClusterFormFields
+          form={form}
+          onFormChange={setForm}
+          providers={providers}
+          instanceTypes={instanceTypes}
+          instanceGroupTemplates={instanceGroupTemplates}
+          isCompact={false}
+        />
+      )}
+    </FormDialog>
   )
 }
