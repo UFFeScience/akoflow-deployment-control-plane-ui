@@ -43,12 +43,14 @@ export function ExperimentHeader({
       </div>
       {experiment?.description && <p className="text-xs text-muted-foreground mt-0.5">{experiment.description}</p>}
       <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
-        {experiment?.templateName && (
+        {(experiment?.templateName || experiment?.template_name) && (
           <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
-            {experiment.templateName}
+            {experiment.templateName || experiment.template_name}
           </span>
         )}
-        {experiment?.executionMode && <span className="capitalize">{experiment.executionMode} mode</span>}
+        {(experiment?.executionMode || (experiment as any)?.execution_mode) && (
+          <span className="capitalize">{experiment.executionMode || (experiment as any).execution_mode} mode</span>
+        )}
         <span>{instancesCount} instances</span>
       </div>
       <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">

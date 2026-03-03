@@ -25,10 +25,11 @@ export const ExperimentCellRenderers: Renderers = {
   },
 
   template(exp) {
-    if (exp.templateName) {
+    const name = exp.templateName || exp.template_name
+    if (name) {
       return (
         <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-          {exp.templateName.split(" ").slice(0, 2).join(" ")}
+          {name.split(" ").slice(0, 2).join(" ")}
         </span>
       )
     }

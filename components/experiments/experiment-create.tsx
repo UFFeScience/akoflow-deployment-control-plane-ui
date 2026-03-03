@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,6 +62,8 @@ export function ExperimentCreateFlow() {
   const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [configErrors, setConfigErrors] = useState<Record<string, string>>({})
+  const [showConfigErrors, setShowConfigErrors] = useState(false)
 
   const [basics, setBasics] = useState<{
     name: string
@@ -77,7 +79,7 @@ export function ExperimentCreateFlow() {
   const [instanceVariables, setInstanceVariables] = useState<Record<string, unknown>>({})
   const [lifecycleHooks, setLifecycleHooks] = useState<Record<string, string>>({})
   
-  const { definition, isLoading: isLoadingDefinition } = useTemplateDefinition(
+  const { definition, activeVersionId, isLoading: isLoadingDefinition } = useTemplateDefinition(
     experimentTemplateId === "none" ? null : experimentTemplateId
   )
   
@@ -216,22 +218,89 @@ export function ExperimentCreateFlow() {
     }))
   }, [experimentTemplateId, definition, providers, instanceTypes, instanceTypesByProvider, instanceGroupTemplatesBySlug, experimentVariables, clusterForm.instanceGroups])
 
+  function validateConfigFields(): Record<string, string> {
+    const errors: Record<string, string> = {}
+    if (!definition) return errors
+
+    // Validate experiment_configuration required fields
+    const expConfig = (definition as any).experiment_configuration
+    if (expConfig?.sections) {
+      for (const section of expConfig.sections) {
+        for (const field of section.fields || []) {
+          if (field.required) {
+            const val = experimentVariables[field.name] ?? field.default
+            if (val === undefined || val === null || val === "") {
+              errors[field.name] = `${field.label} is required`
+            }
+          }
+        }
+      }
+    }
+
+    // Validate instance_configurations required fields
+    const instanceConfigs = (definition as any).instance_configurations
+    if (instanceConfigs) {
+      for (const [instanceKey, config] of Object.entries(instanceConfigs) as [string, any][]) {
+        for (const section of config.sections || []) {
+          for (const field of section.fields || []) {
+            if (field.required) {
+              const instanceVals = (instanceVariables[instanceKey] as Record<string, unknown>) || {}
+              const val = instanceVals[field.name] ?? field.default
+              if (val === undefined || val === null || val === "") {
+                errors[`${instanceKey}.${field.name}`] = `${field.label} is required`
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return errors
+  }
+
   function nextStep() {
     const idx = steps.findIndex((s) => s.id === activeStep)
     const next = steps[idx + 1]
-    if (next) {
-      // Se saindo do step de config, salvar as variáveis do experimento
-      if (activeStep === "config" && !experimentId) {
-        handleSaveConfiguration()
+    if (!next) return
+
+    if (activeStep === "config") {
+      const errors = validateConfigFields()
+      if (Object.keys(errors).length > 0) {
+        setConfigErrors(errors)
+        setShowConfigErrors(true)
+        return
       }
-      setActiveStep(next.id)
+      setConfigErrors({})
+      setShowConfigErrors(false)
+      if (!experimentId) handleSaveConfiguration()
     }
+
+    setActiveStep(next.id)
   }
 
   function prevStep() {
     const idx = steps.findIndex((s) => s.id === activeStep)
     const prev = steps[idx - 1]
     if (prev) setActiveStep(prev.id)
+  }
+
+  /**
+   * Merges experiment-level and instance-level variables into a single
+   * `configuration_json` that mirrors the template definition structure.
+   * Stored on the experiment so the filled-in values can be replayed later.
+   */
+  function buildConfigurationJson(): Record<string, unknown> {
+    const config: Record<string, unknown> = {}
+    if (Object.keys(experimentVariables).length > 0) {
+      config.experiment_configuration = experimentVariables
+    }
+    if (Object.keys(instanceVariables).length > 0) {
+      config.instance_configurations = instanceVariables
+    }
+    if (Object.keys(lifecycleHooks).length > 0) {
+      config.lifecycle_hooks = lifecycleHooks
+    }
+    return config
   }
 
   function canProceed(step: StepId) {
@@ -249,14 +318,13 @@ export function ExperimentCreateFlow() {
     // Se o experimento ainda não foi criado, criá-lo com as configurações
     if (!experimentId) {
       try {
+        const configurationJson = buildConfigurationJson()
         const experimentPayload = {
           name: basics.name.trim(),
           description: basics.description.trim() || undefined,
           execution_mode: basics.executionMode,
-          template_version_id: experimentTemplateId === "none" ? undefined : experimentTemplateId,
-          ...(Object.keys(experimentVariables).length > 0 && { experiment_variables: experimentVariables }),
-          ...(Object.keys(instanceVariables).length > 0 && { instance_variables: instanceVariables }),
-          ...(Object.keys(lifecycleHooks).length > 0 && { lifecycle_hooks: lifecycleHooks }),
+          experiment_template_version_id: activeVersionId ?? undefined,
+          ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         }
 
         const experiment = await experimentsApi.create(projectId, experimentPayload)
@@ -278,21 +346,14 @@ export function ExperimentCreateFlow() {
       let finalExperimentId = experimentId
 
       if (!finalExperimentId) {
-        // Merge experiment and instance variables
-        const terraformVariables = {
-          ...experimentVariables,
-          ...instanceVariables,
-        }
+        const configurationJson = buildConfigurationJson()
 
         const experimentPayload = {
           name: basics.name.trim(),
           description: basics.description.trim() || undefined,
           execution_mode: basics.executionMode,
-          template_version_id: experimentTemplateId === "none" ? undefined : experimentTemplateId,
-          ...(Object.keys(experimentVariables).length > 0 && { experiment_variables: experimentVariables }),
-          ...(Object.keys(instanceVariables).length > 0 && { instance_variables: instanceVariables }),
-          ...(Object.keys(terraformVariables).length > 0 && { terraform_variables: terraformVariables }),
-          ...(Object.keys(lifecycleHooks).length > 0 && { lifecycle_hooks: lifecycleHooks }),
+          experiment_template_version_id: activeVersionId ?? undefined,
+          ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         }
 
         const experiment = await experimentsApi.create(projectId, experimentPayload)
@@ -512,7 +573,8 @@ export function ExperimentCreateFlow() {
                   <ExperimentConfigurationForm
                     definition={definition}
                     values={experimentVariables}
-                    onChange={setExperimentVariables}
+                    onChange={(v) => { setExperimentVariables(v); setShowConfigErrors(false) }}
+                    errors={configErrors}
                   />
                 )}
 
@@ -522,7 +584,8 @@ export function ExperimentCreateFlow() {
                     <InstanceConfigurationForm
                       definition={definition}
                       values={instanceVariables}
-                      onChange={setInstanceVariables}
+                      onChange={(v) => { setInstanceVariables(v); setShowConfigErrors(false) }}
+                      errors={configErrors}
                     />
                   )}
 
@@ -571,6 +634,20 @@ export function ExperimentCreateFlow() {
             {experimentTemplateId === "none" && (
               <div className="text-sm text-muted-foreground">
                 No template selected. Proceed to cluster configuration or select a template.
+              </div>
+            )}
+
+            {showConfigErrors && Object.keys(configErrors).length > 0 && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-4 py-3">
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-semibold text-red-700 dark:text-red-300">Please fill in all required fields before continuing:</p>
+                  <ul className="list-disc ml-4">
+                    {Object.values(configErrors).map((msg, i) => (
+                      <li key={i} className="text-xs text-red-600 dark:text-red-400">{msg}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             )}
           </div>

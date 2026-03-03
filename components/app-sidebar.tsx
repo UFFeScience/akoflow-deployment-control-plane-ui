@@ -13,6 +13,7 @@ import {
   ChevronsUpDown,
   Check,
   UserRound,
+  Server,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -29,6 +30,7 @@ import { membersApi } from "@/lib/api/members"
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: FolderKanban },
+  { label: "Providers", href: "/organization/providers", icon: Server },
 ]
 
 export function AppSidebar() {

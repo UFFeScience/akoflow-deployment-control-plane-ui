@@ -2,17 +2,18 @@
 
 import { useState } from "react"
 import { Plus, RefreshCw, Trash2 } from "lucide-react"
-import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
 import { ConfirmationDialog } from "@/components/confirmation-dialog"
-import type { Cluster } from "@/lib/api/types"
+import { CreateClusterDialog } from "./create-cluster-dialog"
+import type { Cluster, Experiment } from "@/lib/api/types"
 import { clustersApi } from "@/lib/api/clusters"
 import { toast } from "sonner"
 
 interface ClustersTabProps {
   experimentId: string
+  experiment?: Experiment | null
   clusters: Cluster[]
   isLoading?: boolean
   onClustersChange: (clusters: Cluster[]) => void
@@ -22,22 +23,16 @@ interface ClustersTabProps {
 
 export function ClustersTab({
   experimentId,
+  experiment = null,
   clusters,
   isLoading = false,
   onClustersChange,
   onRefresh,
   onInstancesRefresh,
 }: ClustersTabProps) {
-  const params = useParams()
-  const router = useRouter()
-  const projectId = params.projectId as string
-  
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [isDestroying, setIsDestroying] = useState(false)
-
-  function handleCreateClick() {
-    router.push(`/projects/${projectId}/experiments/${experimentId}/clusters/create`)
-  }
+  const [createOpen, setCreateOpen] = useState(false)
 
   async function handleDestroy(clusterId: string) {
     setIsDestroying(true)
@@ -71,7 +66,7 @@ export function ClustersTab({
             Refresh
           </Button>
         </div>
-        <Button size="sm" className="h-7 text-xs" onClick={handleCreateClick}>
+        <Button size="sm" className="h-7 text-xs" onClick={() => setCreateOpen(true)}>
           <Plus className="mr-1 h-3 w-3" />
           Create Cluster
         </Button>
@@ -135,6 +130,14 @@ export function ClustersTab({
         title="Destroy cluster?"
         description="This will terminate all instances under this cluster."
         loading={isDestroying}
+      />
+
+      <CreateClusterDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        experimentId={experimentId}
+        experiment={experiment}
+        onSuccess={async () => { await onRefresh?.() }}
       />
     </div>
   )

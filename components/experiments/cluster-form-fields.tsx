@@ -238,32 +238,6 @@ export function ClusterFormFields({
                 </div>
 
                 <div className={`${isCompact ? "col-span-2" : ""} flex flex-col gap-1`}>
-                  <Label className={`${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
-                    Configuration Template
-                  </Label>
-                  <Select
-                    value={group.instanceGroupTemplateId || pickDefaultTemplateId}
-                    onValueChange={(v) => updateInstanceGroup(group.id, { instanceGroupTemplateId: v })}
-                  >
-                    <SelectTrigger className={`${inputHeight} ${textSize}`}>
-                      <SelectValue placeholder="Select template..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {instanceGroupTemplates.map((tpl) => (
-                        <SelectItem key={tpl.id} value={tpl.id} className={textSize}>
-                          {tpl.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {group.instanceGroupTemplateId && (
-                    <p className={`${isCompact ? "text-[10px]" : "text-[11px]"} text-emerald-600 dark:text-emerald-400`}>
-                      ✓ {instanceGroupTemplates.find(t => t.id === group.instanceGroupTemplateId)?.name || "Template selected"}
-                    </p>
-                  )}
-                </div>
-
-                <div className={`${isCompact ? "col-span-2" : ""} flex flex-col gap-1`}>
                   <Label className={`${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>Quantity</Label>
                   <Input
                     type="number"

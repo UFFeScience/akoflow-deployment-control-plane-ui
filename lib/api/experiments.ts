@@ -9,10 +9,10 @@ export const experimentsApi = {
       name: string
       description?: string
       status?: string
-      template_id?: string
-      terraform_variables?: Record<string, unknown>
-      lifecycle_hooks?: Record<string, string>
-      provider_id?: string
+      /** ID of the ExperimentTemplateVersion that drives the form */
+      experiment_template_version_id?: string
+      /** Filled-in values from the template form, keyed by section */
+      configuration_json?: Record<string, unknown>
       instance_groups?: Array<{
         instance_type_id: string
         role?: string

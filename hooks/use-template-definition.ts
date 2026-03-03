@@ -9,12 +9,14 @@ interface UseTemplateDefinitionOptions {
 
 export function useTemplateDefinition(templateId: string | null, options?: UseTemplateDefinitionOptions) {
   const [definition, setDefinition] = useState<TemplateDefinition | null>(null)
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     if (!templateId || templateId === "none" || options?.enabled === false) {
       setDefinition(null)
+      setActiveVersionId(null)
       setError(null)
       return
     }
@@ -28,6 +30,7 @@ export function useTemplateDefinition(templateId: string | null, options?: UseTe
         const data = await templatesApi.getActiveVersion(templateId)
         if (active) {
           setDefinition(data.definition_json || null)
+          setActiveVersionId(String(data.id))
         }
       } catch (err) {
         if (active) {
@@ -47,5 +50,5 @@ export function useTemplateDefinition(templateId: string | null, options?: UseTe
     }
   }, [templateId, options])
 
-  return { definition, isLoading, error }
+  return { definition, activeVersionId, isLoading, error }
 }

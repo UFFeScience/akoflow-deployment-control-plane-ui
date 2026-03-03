@@ -59,14 +59,26 @@ export interface TemplateInstance {
 export interface Experiment {
   id: string
   projectId: string
+  /** Alias for API response which returns project_id */
+  project_id?: string
   templateId?: string
   templateName?: string
+  /** snake_case from API response */
+  template_name?: string
+  /** ID of the ExperimentTemplateVersion used when creating this experiment */
+  experimentTemplateVersionId?: string
+  experiment_template_version_id?: string
+  /** Filled-in template form values (experiment_configuration + instance_configurations) */
+  configurationJson?: Record<string, unknown>
+  configuration_json?: Record<string, unknown>
   name: string
   description?: string
   status: "draft" | "running" | "failed" | "completed" | "pending"
   executionMode: "manual" | "scheduled" | "auto"
   createdAt?: string
+  created_at?: string
   updatedAt?: string
+  updated_at?: string
   instanceCount?: number
   awsInstanceCount?: number
   gcpInstanceCount?: number
@@ -135,10 +147,52 @@ export interface LogEntry {
 export interface Provider {
   id: string
   name: string
-  status: "UP" | "DEGRADED" | "DOWN"
+  slug?: string
+  description?: string
+  type: "CLOUD" | "ON_PREM" | "HPC"
+  status: "ACTIVE" | "DEGRADED" | "DOWN" | "MAINTENANCE"
+  health_status?: "HEALTHY" | "UNHEALTHY"
+  health_message?: string
+  last_health_check_at?: string
+  credentials_count?: number
   regions?: string[]
   createdAt?: string
+  created_at?: string
   updatedAt?: string
+  updated_at?: string
+}
+
+export interface ProviderVariableSchema {
+  id: string
+  provider_slug: string
+  section: string
+  name: string
+  label: string
+  description?: string
+  type: "string" | "select" | "secret" | "boolean" | "textarea" | "number"
+  required: boolean
+  is_sensitive: boolean
+  position: number
+  options?: string[]
+  default_value?: string
+}
+
+export interface ProviderCredentialValue {
+  id: string
+  provider_credential_id: string
+  field_key: string
+  field_value: string | null
+}
+
+export interface ProviderCredential {
+  id: string
+  provider_id: string
+  name: string
+  description?: string
+  is_active: boolean
+  values?: ProviderCredentialValue[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface InstanceType {

@@ -7,6 +7,7 @@ import { ClustersTab } from "@/components/experiments/clusters-tab"
 import { InstancesTab } from "@/components/experiments/instances-tab"
 import { ScalingTab } from "@/components/experiments/scaling-tab"
 import { LogsTab } from "@/components/experiments/logs-tab"
+import { ConfigurationTab } from "@/components/experiments/configuration-tab"
 import type { Cluster, Experiment, Instance, InstanceType, Provider, Template } from "@/lib/api/types"
 
 interface ExperimentTabsProps {
@@ -63,6 +64,11 @@ export function ExperimentTabs({
         <TabsTrigger value="logs" className="text-xs h-6 px-3">
           Logs
         </TabsTrigger>
+        {experiment && ((experiment as any).experiment_template_version_id || (experiment as any).configuration_json) && (
+          <TabsTrigger value="configuration" className="text-xs h-6 px-3">
+            Configuration
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="topology" className="mt-3">
@@ -74,6 +80,7 @@ export function ExperimentTabs({
       <TabsContent value="clusters" className="mt-3">
         <ClustersTab
           experimentId={experimentId}
+          experiment={experiment}
           clusters={clusters}
           isLoading={isLoadingClusters}
           onClustersChange={onClustersChange}
@@ -97,6 +104,10 @@ export function ExperimentTabs({
 
       <TabsContent value="logs" className="mt-3">
         <LogsTab instances={allInstances} />
+      </TabsContent>
+
+      <TabsContent value="configuration" className="mt-3">
+        {experiment && <ConfigurationTab experiment={experiment} />}
       </TabsContent>
     </Tabs>
   )
