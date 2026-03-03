@@ -50,7 +50,7 @@ export function OnboardingFlow() {
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-2xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Welcome to AkoCloud</h1>
+          <h1 className="text-3xl font-semibold mb-2">Welcome to AkôFlow</h1>
           <p className="text-muted-foreground">Get started by creating your organization and first project. You can add more later.</p>
         </div>
 

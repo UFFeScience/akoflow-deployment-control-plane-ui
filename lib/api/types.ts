@@ -184,6 +184,93 @@ export interface TemplateVersion {
   version: number
   createdAt?: string
   metadata?: Record<string, unknown>
+  definition_json?: TemplateDefinition
+}
+
+export interface TemplateDefinition {
+  cluster_defaults?: Record<string, unknown>
+  ui?: {
+    allow_multiple_instance_groups?: boolean
+  }
+  experiment_configuration?: TemplateExperimentConfiguration
+  instance_configurations?: Record<string, TemplateInstanceConfiguration>
+  cluster_topology?: TemplateClusterTopology
+  sections?: FormSection[]
+  lifecycle_hooks?: LifecycleHook[]
+}
+
+export interface TemplateExperimentConfiguration {
+  label?: string
+  description?: string
+  type?: string
+  sections: FormSection[]
+}
+
+export interface TemplateInstanceConfiguration {
+  label: string
+  description?: string
+  type?: string
+  position?: number
+  sections: FormSection[]
+}
+
+export interface TemplateClusterTopology {
+  description?: string
+  instance_groups: TemplateClusterTopologyGroup[]
+}
+
+export interface TemplateClusterTopologyGroup {
+  name: string
+  label: string
+  description?: string
+  instance_group_template_slug?: string
+  instance_group_template_id?: string
+  quantity: number
+  default_terraform_variables?: Record<string, unknown>
+}
+
+export interface FormSection {
+  name: string
+  label: string
+  description?: string
+  fields: FormField[]
+}
+
+export interface FormField {
+  name: string
+  label: string
+  type: "string" | "text" | "number" | "boolean" | "select" | "multiselect" | "array" | "object" | "script" | "key_value"
+  description?: string
+  required?: boolean
+  default?: unknown
+  nullable?: boolean
+  maxLength?: number
+  maxItems?: number
+  minItems?: number
+  min?: number
+  max?: number
+  step?: number
+  options?: { label: string; value: string }[]
+}
+
+export interface LifecycleHook {
+  name: string
+  label: string
+  type: "script"
+  required?: boolean
+  maxLength?: number
+  description?: string
+}
+
+export interface InstanceGroupTemplate {
+  id: string
+  name: string
+  slug: string
+  category?: string
+  description?: string
+  definition: TemplateDefinition
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface AuthResponse {

@@ -5,11 +5,13 @@ import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/auth-context"
 import "./globals.css"
 
+export const dynamic = "force-dynamic"
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" })
 
 export const metadata: Metadata = {
-  title: "AkoCloud - Multi-Cloud Control Plane",
+  title: "AkoFlow - Multi-Cloud Control Plane",
   description: "Cloud-native multi-cloud orchestration platform for scientific experiments, distributed instances, and infrastructure management.",
 }
 

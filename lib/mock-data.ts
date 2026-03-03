@@ -3,7 +3,7 @@ import type { Organization, Project, Experiment, Instance, InstanceConfig, Exper
 export const mockUser: User = {
   id: "usr_1",
   name: "Alex Johnson",
-  email: "alex@akocloud.io",
+  email: "alex@AkôFlow.io",
   avatar: "",
   createdAt: "2025-08-15T10:00:00Z",
 }
@@ -15,7 +15,7 @@ export const mockOrganizations: Organization[] = [
 ]
 
 export const mockMembers: Member[] = [
-  { id: "mem_1", userId: "usr_1", name: "Alex Johnson", email: "alex@akocloud.io", role: "admin", joinedAt: "2025-09-01T08:00:00Z" },
+  { id: "mem_1", userId: "usr_1", name: "Alex Johnson", email: "alex@AkôFlow.io", role: "admin", joinedAt: "2025-09-01T08:00:00Z" },
   { id: "mem_2", userId: "usr_2", name: "Sarah Chen", email: "sarah@neurolab.org", role: "member", joinedAt: "2025-09-05T10:00:00Z" },
   { id: "mem_3", userId: "usr_3", name: "Marcus Williams", email: "marcus@neurolab.org", role: "member", joinedAt: "2025-09-10T12:00:00Z" },
   { id: "mem_4", userId: "usr_4", name: "Priya Patel", email: "priya@neurolab.org", role: "admin", joinedAt: "2025-09-12T09:00:00Z" },

@@ -24,7 +24,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground/20">
             <Cloud className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold text-primary-foreground tracking-tight">AkoCloud</span>
+          <span className="text-xl font-bold text-primary-foreground tracking-tight">AkôFlow</span>
         </div>
         <div>
           <h1 className="text-3xl font-bold text-primary-foreground text-balance">
@@ -34,7 +34,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             Orchestrate experiments across AWS, GCP, and HPC clusters. Scale instances, manage templates, and monitor infrastructure from a single pane.
           </p>
         </div>
-        <p className="text-sm text-primary-foreground/50">AkoCloud</p>
+        <p className="text-sm text-primary-foreground/50">AkôFlow</p>
       </div>
       <div className="flex w-full items-center justify-center p-8 lg:w-1/2">
         <div className="w-full max-w-md">{children}</div>

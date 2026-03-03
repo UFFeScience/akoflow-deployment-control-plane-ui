@@ -37,12 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOrganizations([])
     setCurrentOrg(null)
     setToken(null)
-    localStorage.removeItem("akocloud_token")
-    localStorage.removeItem("akocloud_user")
+    localStorage.removeItem("AkôFlow_token")
+    localStorage.removeItem("AkôFlow_user")
   }, [])
 
   const loadSession = useCallback(async () => {
-    const storedToken = localStorage.getItem("akocloud_token")
+    const storedToken = localStorage.getItem("AkôFlow_token")
     if (!storedToken) {
       setIsLoading(false)
       return
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const [currentUser, orgs] = await Promise.all([userApi.get(), organizationsApi.list()])
       setUser(currentUser)
-      localStorage.setItem("akocloud_user", JSON.stringify(currentUser))
+      localStorage.setItem("AkôFlow_user", JSON.stringify(currentUser))
       setOrganizations(orgs)
       setCurrentOrg((prev) => orgs.find((org) => org.id === prev?.id) || orgs[0] || null)
       if (orgs.length === 0) router.push("/onboarding")
@@ -71,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await authApi.login({ email, password })
     setToken(response.token)
     setUser(response.user)
-    localStorage.setItem("akocloud_token", response.token)
-    localStorage.setItem("akocloud_user", JSON.stringify(response.user))
+    localStorage.setItem("AkôFlow_token", response.token)
+    localStorage.setItem("AkôFlow_user", JSON.stringify(response.user))
 
     const orgs = await organizationsApi.list()
     setOrganizations(orgs)
@@ -84,8 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await authApi.register({ name, email, password, password_confirmation: confirmPassword })
     setToken(response.token)
     setUser(response.user)
-    localStorage.setItem("akocloud_token", response.token)
-    localStorage.setItem("akocloud_user", JSON.stringify(response.user))
+    localStorage.setItem("AkôFlow_token", response.token)
+    localStorage.setItem("AkôFlow_user", JSON.stringify(response.user))
 
     const orgs = await organizationsApi.list()
     setOrganizations(orgs)
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => {
       if (!prev) return prev
       const next = { ...prev, ...data }
-      localStorage.setItem("akocloud_user", JSON.stringify(next))
+      localStorage.setItem("AkôFlow_user", JSON.stringify(next))
       return next
     })
   }, [])

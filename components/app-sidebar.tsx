@@ -76,7 +76,7 @@ export function AppSidebar() {
       {/* Logo */}
       <div className="flex h-12 items-center gap-2.5 border-b border-sidebar-border px-4">
         <Cloud className="h-4 w-4 text-sidebar-primary" />
-        <span className="text-sm font-bold tracking-tight text-sidebar-foreground">AkoCloud</span>
+        <span className="text-sm font-bold tracking-tight text-sidebar-foreground">AkôFlow</span>
       </div>
 
       {/* Org Switcher */}

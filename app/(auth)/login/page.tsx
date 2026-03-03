@@ -10,7 +10,7 @@ export default function LoginPage() {
     <AuthShell
       title="Sign in"
       description="Enter your credentials to access your account"
-      brandName="AkoCloud"
+      brandName="AkôFlow"
       BrandIcon={Cloud}
     >
       <LoginForm />

@@ -9,8 +9,8 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create account"
-      description="Get started with AkoCloud in seconds"
-      brandName="AkoCloud"
+      description="Get started with AkôFlow in seconds"
+      brandName="AkôFlow"
       BrandIcon={Cloud}
     >
       <RegisterForm />

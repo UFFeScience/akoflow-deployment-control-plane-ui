@@ -5,12 +5,15 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import type { Provider, InstanceType, Template } from "@/lib/api/types"
 import { clustersApi } from "@/lib/api/clusters"
 import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { templatesApi } from "@/lib/api/templates"
+import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
+import { ExperimentTemplateSelect } from "./experiment-template-select"
 import { toast } from "sonner"
 
 export function CreateClusterForm() {
@@ -24,6 +27,10 @@ export function CreateClusterForm() {
   const [providers, setProviders] = useState<Provider[]>([])
   const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
+  const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([])
+  
+  const [templateLoaded, setTemplateLoaded] = useState(false)
+  const [experimentTemplateVersionId, setExperimentTemplateVersionId] = useState<string | null>(null)
   
   const [form, setForm] = useState<ClusterFormData>({
     templateId: "none",
@@ -46,10 +53,11 @@ export function CreateClusterForm() {
     async function loadData() {
       setIsLoading(true)
       try {
-        const [templateData, providerData, instanceTypeData] = await Promise.all([
+        const [templateData, providerData, instanceTypeData, groupTemplateData] = await Promise.all([
           templatesApi.list().catch(() => []),
           providersApi.list().catch(() => []),
           instanceTypesApi.list().catch(() => []),
+          instanceGroupTemplatesApi.list().catch(() => []),
         ])
         
         if (!active) return
@@ -57,6 +65,7 @@ export function CreateClusterForm() {
         setTemplates(templateData)
         setProviders(providerData)
         setInstanceTypes(instanceTypeData)
+        setInstanceGroupTemplates(groupTemplateData)
         
         // Set default provider
         const healthy = providerData.filter((p) => p.status !== "DOWN")
@@ -120,12 +129,17 @@ export function CreateClusterForm() {
     setIsSaving(true)
     
     try {
-      const payload = {
+      const payload: any = {
         templateId: form.templateId === "none" ? undefined : form.templateId,
         providerId: form.providerId,
         region: form.region,
         instanceGroups: instancesPayload,
         nodeCount,
+      }
+
+      // Include experiment template version if loaded from template
+      if (experimentTemplateVersionId) {
+        payload.experiment_template_version_id = experimentTemplateVersionId
       }
       
       await clustersApi.create(experimentId, payload)
@@ -180,12 +194,30 @@ export function CreateClusterForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <ExperimentTemplateSelect
+            onTemplateSelected={(data) => {
+              setTemplateLoaded(true)
+              setExperimentTemplateVersionId(data.experimentTemplateVersionId)
+              setForm((prev) => ({
+                ...prev,
+                instanceGroups: (data.instanceGroups || []).map((g) => ({
+                  ...g,
+                  instanceGroupTemplateId: g.instanceGroupTemplateId || "",
+                })),
+              }))
+            }}
+            instanceTypes={instanceTypes}
+          />
+
+          {templateLoaded && <Separator className="my-4" />}
+
           <ClusterFormFields
             form={form}
             onFormChange={setForm}
             providers={providers}
             instanceTypes={instanceTypes}
             templates={templates}
+            instanceGroupTemplates={instanceGroupTemplates}
             isCompact={false}
           />
 

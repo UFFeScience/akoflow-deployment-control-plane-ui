@@ -9,7 +9,7 @@ export interface RequestOptions {
 export async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, headers = {} } = options
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("akocloud_token") : null
+  const token = typeof window !== "undefined" ? localStorage.getItem("AkôFlow_token") : null
 
   const config: RequestInit = {
     method,
@@ -28,8 +28,8 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
 
   if (res.status === 401) {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("akocloud_token")
-      localStorage.removeItem("akocloud_user")
+      localStorage.removeItem("AkôFlow_token")
+      localStorage.removeItem("AkôFlow_user")
       window.location.href = "/login"
     }
     throw new Error("Unauthorized")

@@ -12,8 +12,8 @@ export const clustersApi = {
       instanceTypeId?: string
       role?: string
       nodeCount?: number
-      instances?: { instanceTypeId: string; role?: string; quantity: number; metadata?: Record<string, unknown> }[]
-      instanceGroups?: { instanceTypeId: string; role?: string; quantity: number; metadata?: Record<string, unknown> }[]
+      instances?: { instanceTypeId: string; instanceGroupTemplateId?: string; role?: string; quantity: number; metadata?: Record<string, unknown>; terraformVariables?: Record<string, unknown>; lifecycleHooks?: Record<string, string> }[]
+      instanceGroups?: { instanceTypeId: string; instanceGroupTemplateId?: string; role?: string; quantity: number; metadata?: Record<string, unknown>; terraformVariables?: Record<string, unknown>; lifecycleHooks?: Record<string, string> }[]
     }
   ) => {
     const payload: Record<string, unknown> = {
@@ -28,9 +28,12 @@ export const clustersApi = {
     const groups = data.instanceGroups || data.instances
     if (groups) payload['instance_groups'] = groups.map((i) => ({
       instance_type_id: i.instanceTypeId,
+      instance_group_template_id: i.instanceGroupTemplateId,
       role: i.role,
       quantity: i.quantity,
       metadata: i.metadata,
+      terraform_variables: i.terraformVariables,
+      lifecycle_hooks: i.lifecycleHooks,
     }))
 
     return request<Cluster>(`/experiments/${experimentId}/clusters`, { method: "POST", body: payload })

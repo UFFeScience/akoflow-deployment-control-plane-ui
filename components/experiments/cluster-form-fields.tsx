@@ -1,24 +1,28 @@
 "use client"
 
-import { useMemo } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { useEffect, useMemo } from "react"
+import { Plus, Trash2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import type { Provider, InstanceType, Template } from "@/lib/api/types"
+import type { Provider, InstanceType } from "@/lib/api/types"
+import { InstanceGroupSchemaForm } from "./instance-group-schema-form"
 
 export interface ClusterFormData {
-  templateId: string
   providerId: string
   region: string
   instanceGroups: {
     id: string
     instanceTypeId: string
+    instanceGroupTemplateId?: string
     role: string
     quantity: number
     metadata: string
+    terraformVariables?: Record<string, unknown>
+    lifecycleHooks?: Record<string, string>
   }[]
 }
 
@@ -27,7 +31,7 @@ interface ClusterFormFieldsProps {
   onFormChange: (form: ClusterFormData) => void
   providers: Provider[]
   instanceTypes: InstanceType[]
-  templates: Template[]
+  instanceGroupTemplates?: Array<{ id: string; name: string; slug: string }>
   isCompact?: boolean
 }
 
@@ -36,10 +40,23 @@ export function ClusterFormFields({
   onFormChange,
   providers,
   instanceTypes,
-  templates,
+  instanceGroupTemplates = [],
   isCompact = false,
 }: ClusterFormFieldsProps) {
   const healthyProviders = useMemo(() => providers.filter((p) => p.status !== "DOWN"), [providers])
+
+  const templateIdBySlug = useMemo(() => {
+    const map: Record<string, string> = {}
+    instanceGroupTemplates.forEach((t) => (map[t.slug] = t.id))
+    return map
+  }, [instanceGroupTemplates])
+
+  const pickDefaultTemplateId = useMemo(() => {
+    const akoflowId = templateIdBySlug["akoflow-compute"]
+    const gkeId = templateIdBySlug["gke-compute"]
+    const firstId = instanceGroupTemplates[0]?.id || ""
+    return akoflowId || gkeId || firstId || ""
+  }, [templateIdBySlug, instanceGroupTemplates])
 
   const filteredInstanceTypes = useMemo(
     () =>
@@ -62,7 +79,14 @@ export function ClusterFormFields({
       ...form,
       instanceGroups: [
         ...form.instanceGroups,
-        { id: crypto.randomUUID(), instanceTypeId: "", role: "", quantity: 1, metadata: "" },
+        {
+          id: crypto.randomUUID(),
+          instanceTypeId: "",
+          role: "",
+          quantity: 1,
+          metadata: "",
+          instanceGroupTemplateId: pickDefaultTemplateId,
+        },
       ],
     })
   }
@@ -85,28 +109,28 @@ export function ClusterFormFields({
   const inputHeight = isCompact ? "h-8" : "h-9"
   const textSize = isCompact ? "text-xs" : "text-sm"
 
+  // Ensure any group without a configuration template gets a default one (akoflow-compute, then gke-compute, then first)
+  useEffect(() => {
+    if (!pickDefaultTemplateId) return
+
+    const needsUpdate = form.instanceGroups.some((g) => !g.instanceGroupTemplateId)
+    if (!needsUpdate) return
+
+    onFormChange({
+      ...form,
+      instanceGroups: form.instanceGroups.map((g) =>
+        g.instanceGroupTemplateId
+          ? g
+          : {
+              ...g,
+              instanceGroupTemplateId: pickDefaultTemplateId,
+            }
+      ),
+    })
+  }, [pickDefaultTemplateId, form, onFormChange])
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Template Selection */}
-      <div className="flex flex-col gap-1.5">
-        <Label className={labelSize}>Cluster Template (optional)</Label>
-        <Select value={form.templateId} onValueChange={(v) => onFormChange({ ...form, templateId: v })}>
-          <SelectTrigger className={`${inputHeight} ${textSize}`}>
-            <SelectValue placeholder="No template" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none" className={textSize}>
-              No template
-            </SelectItem>
-            {templates.map((t) => (
-              <SelectItem key={t.id} value={t.id} className={textSize}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Provider and Region */}
       <div className={`grid gap-${isCompact ? "3" : "4"} ${isCompact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
         <div className="flex flex-col gap-1.5">
@@ -214,6 +238,32 @@ export function ClusterFormFields({
                 </div>
 
                 <div className={`${isCompact ? "col-span-2" : ""} flex flex-col gap-1`}>
+                  <Label className={`${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
+                    Configuration Template
+                  </Label>
+                  <Select
+                    value={group.instanceGroupTemplateId || pickDefaultTemplateId}
+                    onValueChange={(v) => updateInstanceGroup(group.id, { instanceGroupTemplateId: v })}
+                  >
+                    <SelectTrigger className={`${inputHeight} ${textSize}`}>
+                      <SelectValue placeholder="Select template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instanceGroupTemplates.map((tpl) => (
+                        <SelectItem key={tpl.id} value={tpl.id} className={textSize}>
+                          {tpl.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {group.instanceGroupTemplateId && (
+                    <p className={`${isCompact ? "text-[10px]" : "text-[11px]"} text-emerald-600 dark:text-emerald-400`}>
+                      ✓ {instanceGroupTemplates.find(t => t.id === group.instanceGroupTemplateId)?.name || "Template selected"}
+                    </p>
+                  )}
+                </div>
+
+                <div className={`${isCompact ? "col-span-2" : ""} flex flex-col gap-1`}>
                   <Label className={`${isCompact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>Quantity</Label>
                   <Input
                     type="number"
@@ -267,6 +317,35 @@ export function ClusterFormFields({
                   onChange={(e) => updateInstanceGroup(group.id, { metadata: e.target.value })}
                 />
               </div>
+
+              {/* Instance Group Template Configuration */}
+              {group.instanceGroupTemplateId && (
+                <>
+                  <div className={`${isCompact ? "col-span-8" : ""} mt-4`}>
+                    <Separator className="my-2" />
+                  </div>
+                  <div className={`${isCompact ? "col-span-8" : ""} flex flex-col gap-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3`}>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <Label className={`${isCompact ? "text-[11px]" : "text-xs"} font-semibold text-blue-900 dark:text-blue-100`}>
+                        Instance Group Configuration
+                      </Label>
+                    </div>
+                    <InstanceGroupSchemaForm
+                      templateId={group.instanceGroupTemplateId}
+                      terraformVariables={group.terraformVariables}
+                      lifecycleHooks={group.lifecycleHooks}
+                      onDataChange={(data) =>
+                        updateInstanceGroup(group.id, {
+                          terraformVariables: data.terraform_variables,
+                          lifecycleHooks: data.lifecycle_hooks,
+                        })
+                      }
+                      isCompact={true}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

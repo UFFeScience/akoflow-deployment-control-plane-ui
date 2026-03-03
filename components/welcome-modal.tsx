@@ -42,7 +42,7 @@ function runConfetti() {
 
 const steps = [
     {
-        title: "Welcome to AkoCloud!",
+        title: "Welcome to AkôFlow!",
         description: "Your organization and project have been created. Let's take a quick tour.",
         icon: "👋"
     },

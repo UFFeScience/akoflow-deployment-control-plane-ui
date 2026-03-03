@@ -9,7 +9,7 @@ export interface AuthShellProps {
   title: string
   description?: ReactNode
   children: ReactNode
-  /** Texto da marca mostrado no topo em mobile (ex: "AkoCloud") */
+  /** Texto da marca mostrado no topo em mobile (ex: "AkôFlow") */
   brandName?: string
   /** Ícone da marca mostrado no topo em mobile */
   BrandIcon?: LucideIcon
@@ -19,7 +19,7 @@ export function AuthShell({
   title,
   description,
   children,
-  brandName = "AkoCloud",
+  brandName = "AkôFlow",
   BrandIcon = Cloud,
 }: AuthShellProps) {
   return (
