@@ -9,6 +9,7 @@ import { Server, Activity, Package, TrendingUp, ChevronDown, LayoutGrid } from "
 import { cn } from "@/lib/utils"
 import { getStatusColor } from "@/lib/utils/dashboard"
 import { InstanceGraph } from "./instance-graph"
+import { AllInstancesTab } from "./all-instances-tab"
 import {
   Select,
   SelectContent,
@@ -34,7 +35,7 @@ export function InstancesVisualization({
   instancesByCluster, 
   isLoading = false 
 }: InstancesVisualizationProps) {
-  const [selectedCluster, setSelectedCluster] = useState<string>("all")
+  const [selectedCluster, setSelectedCluster] = useState<string>("instances")
 
   useEffect(() => {
     if (clusters.length > 0 && !selectedCluster) {
@@ -77,6 +78,15 @@ export function InstancesVisualization({
               <SelectValue placeholder="Select cluster" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="instances">
+                <div className="flex items-center gap-2">
+                  <Server className="h-4 w-4" />
+                  <span>All Instances</span>
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {allInstances.length}
+                  </Badge>
+                </div>
+              </SelectItem>
               <SelectItem value="all">
                 <div className="flex items-center gap-2">
                   <LayoutGrid className="h-4 w-4" />
@@ -106,6 +116,13 @@ export function InstancesVisualization({
       ) : (
         <Tabs value={selectedCluster} onValueChange={setSelectedCluster} className="w-full">
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+            <TabsTrigger value="instances" className="flex items-center gap-2 flex-shrink-0">
+              <Server className="h-3.5 w-3.5" />
+              <span>All Instances</span>
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {allInstances.length}
+              </Badge>
+            </TabsTrigger>
             <TabsTrigger value="all" className="flex items-center gap-2 flex-shrink-0">
               <LayoutGrid className="h-3.5 w-3.5" />
               <span>All Clusters</span>
@@ -136,7 +153,9 @@ export function InstancesVisualization({
 
       {/* Content */}
       <div className="space-y-6">
-        {selectedCluster === "all" ? (
+        {selectedCluster === "instances" ? (
+          <AllInstancesTab instances={allInstances} />
+        ) : selectedCluster === "all" ? (
           <>
             <OverviewStats clusters={clusters} instancesByCluster={instancesByCluster} />
             <InstanceGraph 

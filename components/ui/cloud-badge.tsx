@@ -23,9 +23,9 @@ interface CloudBadgeProps {
 }
 
 export function CloudBadge({ provider, count, className }: CloudBadgeProps) {
-  const key = provider.toLowerCase()
+  const key = (typeof provider === "string" ? provider : String(provider ?? "")).toLowerCase()
   const styles = providerStyles[key] || "bg-muted text-muted-foreground"
-  const label = providerLabel[key] || provider.toUpperCase()
+  const label = providerLabel[key] || key.toUpperCase() || "?"
 
   return (
     <span
