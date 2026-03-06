@@ -37,12 +37,20 @@ export interface Project {
 export interface Template {
   id: string
   name: string
+  slug?: string
+  runtime_type?: string
   description?: string
+  is_public?: boolean
+  owner_organization_id?: string
   executionMode?: "manual" | "scheduled" | "auto"
   latestVersion?: number
+  versions_count?: number
+  active_version?: TemplateVersion | null
   versions?: TemplateVersion[]
   createdAt?: string
+  created_at?: string
   updatedAt?: string
+  updated_at?: string
   experimentCount?: number
 }
 
@@ -234,11 +242,39 @@ export interface Cluster {
 
 export interface TemplateVersion {
   id: string
-  templateId: string
-  version: number
+  templateId?: string
+  template_id?: string
+  version: string | number
+  is_active?: boolean
   createdAt?: string
+  created_at?: string
   metadata?: Record<string, unknown>
   definition_json?: TemplateDefinition
+  terraform_module?: TerraformModule | null
+}
+
+export type TerraformProviderType = "aws" | "gcp" | "azure" | "custom"
+
+export interface TerraformModule {
+  id: string
+  template_version_id: string
+  module_slug?: string | null
+  provider_type?: TerraformProviderType | null
+  is_built_in?: boolean
+  has_custom_hcl?: boolean
+  // HCL files (only returned by the single-resource show endpoint)
+  main_tf?: string | null
+  variables_tf?: string | null
+  outputs_tf?: string | null
+  // Mapping definition fields → terraform variable names
+  // { experiment_configuration: { fieldName: tfVarName }, instance_configurations: { instanceKey: { fieldName: tfVarName } } }
+  tfvars_mapping_json?: {
+    experiment_configuration?: Record<string, string>
+    instance_configurations?: Record<string, Record<string, string>>
+  } | null
+  credential_env_keys?: string[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface TemplateDefinition {
@@ -293,7 +329,7 @@ export interface FormSection {
 export interface FormField {
   name: string
   label: string
-  type: "string" | "text" | "number" | "boolean" | "select" | "multiselect" | "array" | "object" | "script" | "key_value"
+  type: "string" | "text" | "textarea" | "number" | "boolean" | "select" | "multiselect" | "array" | "object" | "script" | "key_value"
   description?: string
   required?: boolean
   default?: unknown

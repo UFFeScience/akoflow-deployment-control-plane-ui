@@ -1,0 +1,595 @@
+"use client"
+
+import { useEffect, useState, useCallback } from "react"
+import {
+  Loader2, Save, Plus, Trash2, ChevronDown, ChevronRight,
+  AlertTriangle, CheckCircle2, Code2, Eye, EyeOff,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
+import { templatesApi } from "@/lib/api/templates"
+import type { TemplateVersion, TerraformModule, TerraformProviderType } from "@/lib/api/types"
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const BUILT_IN_SLUGS = ["aws_nvflare", "gcp_gke"] as const
+
+const PROVIDER_TYPES: { value: TerraformProviderType; label: string }[] = [
+  { value: "aws",    label: "AWS" },
+  { value: "gcp",    label: "GCP" },
+  { value: "azure",  label: "Azure" },
+  { value: "custom", label: "Custom" },
+]
+
+const HCL_TABS = [
+  { id: "main",      label: "main.tf",      key: "main_tf" as const },
+  { id: "variables", label: "variables.tf", key: "variables_tf" as const },
+  { id: "outputs",   label: "outputs.tf",   key: "outputs_tf" as const },
+]
+
+// ─── Form state ───────────────────────────────────────────────────────────────
+
+interface TfForm {
+  source: "builtin" | "custom"
+  module_slug: string
+  provider_type: string
+  main_tf: string
+  variables_tf: string
+  outputs_tf: string
+  credential_env_keys: string[]
+  // mapping stored as raw JSON string (editable) plus parsed state
+  tfvars_mapping_json: string
+  mapping_mode: "visual" | "raw"
+}
+
+function defaultForm(mod?: TerraformModule | null): TfForm {
+  return {
+    source: mod?.module_slug && !mod.has_custom_hcl ? "builtin" : "custom",
+    module_slug: mod?.module_slug ?? "",
+    provider_type: mod?.provider_type ?? "gcp",
+    main_tf: mod?.main_tf ?? "",
+    variables_tf: mod?.variables_tf ?? "",
+    outputs_tf: mod?.outputs_tf ?? "",
+    credential_env_keys: mod?.credential_env_keys ?? [],
+    tfvars_mapping_json: mod?.tfvars_mapping_json
+      ? JSON.stringify(mod.tfvars_mapping_json, null, 2)
+      : JSON.stringify({ experiment_configuration: {}, instance_configurations: {} }, null, 2),
+    mapping_mode: "visual",
+  }
+}
+
+// ─── TfvarsMapping types ──────────────────────────────────────────────────────
+
+interface MappingState {
+  experiment_configuration: Record<string, string>
+  instance_configurations: Record<string, Record<string, string>>
+}
+
+function toStringRecord(obj: unknown): Record<string, string> {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {}
+  return Object.fromEntries(
+    Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+      k,
+      typeof v === "string" ? v : "",
+    ])
+  )
+}
+
+function parseMappingJson(raw: string): MappingState | null {
+  try {
+    const parsed = JSON.parse(raw)
+    const instCfg = parsed.instance_configurations ?? {}
+    return {
+      experiment_configuration: toStringRecord(parsed.experiment_configuration),
+      instance_configurations: Object.fromEntries(
+        Object.entries(instCfg as Record<string, unknown>).map(([k, v]) => [k, toStringRecord(v)])
+      ),
+    }
+  } catch {
+    return null
+  }
+}
+
+function mappingToJson(m: MappingState): string {
+  return JSON.stringify(m, null, 2)
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface Props {
+  templateId: string
+  versionId: string
+  version: TemplateVersion
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function TerraformModuleTab({ templateId, versionId, version }: Props) {
+  const [module, setModule] = useState<TerraformModule | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [hclTab, setHclTab] = useState<"main" | "variables" | "outputs">("main")
+  const [form, setForm] = useState<TfForm>(defaultForm())
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const mod = await templatesApi.getTerraformModule(templateId, versionId)
+      setModule(mod)
+      setForm(defaultForm(mod))
+    } catch (e: any) {
+      if (e?.status === 404 || e?.message?.includes("404")) {
+        // No module yet — start with empty form
+        setModule(null)
+        setForm(defaultForm(null))
+      } else {
+        setError(e?.message ?? "Failed to load Terraform configuration")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [templateId, versionId])
+
+  useEffect(() => { load() }, [load])
+
+  const patch = (partial: Partial<TfForm>) => setForm((f) => ({ ...f, ...partial }))
+
+  const handleSave = async () => {
+    setSaveError(null)
+    setSaving(true)
+    setSaved(false)
+
+    // Parse tfvars mapping
+    let parsedMapping = null
+    if (form.tfvars_mapping_json.trim()) {
+      parsedMapping = parseMappingJson(form.tfvars_mapping_json)
+      if (!parsedMapping) {
+        setSaveError("Invalid JSON in variables mapping")
+        setSaving(false)
+        return
+      }
+    }
+
+    try {
+      const payload: Partial<TerraformModule> = {
+        provider_type: form.provider_type as TerraformProviderType,
+        credential_env_keys: form.credential_env_keys.filter(Boolean),
+        tfvars_mapping_json: parsedMapping ?? undefined,
+      }
+
+      if (form.source === "builtin") {
+        payload.module_slug = form.module_slug || undefined
+        // Clear HCL if switching to built-in
+        payload.main_tf = ""
+        payload.variables_tf = ""
+        payload.outputs_tf = ""
+      } else {
+        payload.module_slug = undefined
+        payload.main_tf = form.main_tf || undefined
+        payload.variables_tf = form.variables_tf || undefined
+        payload.outputs_tf = form.outputs_tf || undefined
+      }
+
+      const updated = await templatesApi.upsertTerraformModule(templateId, versionId, payload)
+      setModule(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (e: any) {
+      setSaveError(e?.message ?? "Failed to save")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" />Loading Terraform configuration…
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+        <AlertTriangle className="h-4 w-4 shrink-0" />{error}
+      </div>
+    )
+  }
+
+  // Extract definition fields for visual mapping
+  const def = version.definition_json
+  const expFields = def?.experiment_configuration?.sections?.flatMap((s) =>
+    s.fields.map((f) => ({ sectionLabel: s.label, ...f }))
+  ) ?? []
+  const instanceEntries = Object.entries(def?.instance_configurations ?? {})
+
+  // Parse current mapping for visual editor
+  const mappingParsed = parseMappingJson(form.tfvars_mapping_json)
+
+  const updateExpMapping = (fieldName: string, tfVar: string) => {
+    const m = parseMappingJson(form.tfvars_mapping_json) ?? { experiment_configuration: {}, instance_configurations: {} }
+    m.experiment_configuration[fieldName] = tfVar
+    patch({ tfvars_mapping_json: mappingToJson(m) })
+  }
+
+  const updateInstMapping = (instanceKey: string, fieldName: string, tfVar: string) => {
+    const m = parseMappingJson(form.tfvars_mapping_json) ?? { experiment_configuration: {}, instance_configurations: {} }
+    if (!m.instance_configurations[instanceKey]) m.instance_configurations[instanceKey] = {}
+    m.instance_configurations[instanceKey][fieldName] = tfVar
+    patch({ tfvars_mapping_json: mappingToJson(m) })
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Status bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {module ? (
+            <Badge variant="outline" className="text-[11px] gap-1 text-green-600 border-green-500/30 bg-green-500/5">
+              <CheckCircle2 className="h-3 w-3" />Module configured
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[11px] gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5">
+              <AlertTriangle className="h-3 w-3" />Not configured
+            </Badge>
+          )}
+          {module?.provider_type && (
+            <Badge variant="secondary" className="text-[11px]">{module.provider_type.toUpperCase()}</Badge>
+          )}
+          {module?.is_built_in && (
+            <Badge variant="secondary" className="text-[11px]">Built-in: {module.module_slug}</Badge>
+          )}
+          {module?.has_custom_hcl && (
+            <Badge variant="secondary" className="text-[11px] gap-1"><Code2 className="h-3 w-3" />Custom HCL</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {saved && (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <CheckCircle2 className="h-3.5 w-3.5" />Saved
+            </span>
+          )}
+          {saveError && (
+            <span className="text-xs text-destructive">{saveError}</span>
+          )}
+          <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Save
+          </Button>
+        </div>
+      </div>
+
+      {/* 1. MODULE SOURCE ──────────────────────────────────────────────────── */}
+      <Section title="Module Source" description="Choose a built-in provisioning module or provide custom Terraform HCL.">
+        {/* Source toggle */}
+        <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs w-fit">
+          {(["builtin", "custom"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => patch({ source: s })}
+              className={cn(
+                "px-4 py-1.5 font-medium transition-colors",
+                form.source === s
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-muted/50",
+              )}
+            >
+              {s === "builtin" ? "Built-in Module" : "Custom HCL"}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-3">
+          {form.source === "builtin" && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs">Module Slug</Label>
+              <Select value={form.module_slug} onValueChange={(v) => patch({ module_slug: v })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select a built-in module…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUILT_IN_SLUGS.map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs font-mono">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                The platform will use the built-in Terraform module at <code className="font-mono">infra/terraform/modules/{"{slug}"}</code>.
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs">Provider Type</Label>
+            <Select value={form.provider_type} onValueChange={(v) => patch({ provider_type: v })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PROVIDER_TYPES.map((p) => (
+                  <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Determines which credentials are injected into the Terraform workspace container.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <Separator />
+
+      {/* 2. HCL FILES ─────────────────────────────────────────────────────── */}
+      <Section
+        title="HCL Files"
+        description={
+          form.source === "builtin"
+            ? "When using a built-in module these files are optional and override the built-in defaults."
+            : "Provide the Terraform configuration files for this template version."
+        }
+      >
+        {/* File tabs */}
+        <div className="flex gap-0 rounded-t-lg border border-border overflow-hidden text-xs">
+          {HCL_TABS.map((t) => {
+            const hasContent = !!form[t.key]?.trim()
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setHclTab(t.id as any)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 font-medium transition-colors font-mono",
+                  hclTab === t.id
+                    ? "bg-muted/70 text-foreground border-b-2 border-primary"
+                    : "bg-background text-muted-foreground hover:bg-muted/30",
+                )}
+              >
+                {t.label}
+                {hasContent && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" title="Has content" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {HCL_TABS.map((t) => (
+          <div key={t.id} className={hclTab === t.id ? "block" : "hidden"}>
+            <Textarea
+              value={form[t.key]}
+              onChange={(e) => patch({ [t.key]: e.target.value } as any)}
+              placeholder={`# ${t.label} content…`}
+              className="font-mono text-xs leading-relaxed rounded-t-none border-t-0 min-h-[260px] resize-y bg-muted/20"
+              spellCheck={false}
+            />
+          </div>
+        ))}
+      </Section>
+
+      <Separator />
+
+      {/* 3. VARIABLES MAPPING ─────────────────────────────────────────────── */}
+      <Section
+        title="Variables Mapping"
+        description="Map definition form fields to Terraform variable names. When empty, the built-in mapping for the selected provider is used."
+        action={
+          <button
+            type="button"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => patch({ mapping_mode: form.mapping_mode === "visual" ? "raw" : "visual" })}
+          >
+            {form.mapping_mode === "visual" ? <Code2 className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {form.mapping_mode === "visual" ? "Raw JSON" : "Visual editor"}
+          </button>
+        }
+      >
+        {form.mapping_mode === "raw" ? (
+          <div className="flex flex-col gap-1">
+            <Textarea
+              value={form.tfvars_mapping_json}
+              onChange={(e) => patch({ tfvars_mapping_json: e.target.value })}
+              className="font-mono text-xs leading-relaxed min-h-[200px] resize-y bg-muted/20"
+              spellCheck={false}
+              placeholder='{ "experiment_configuration": {}, "instance_configurations": {} }'
+            />
+            {parseMappingJson(form.tfvars_mapping_json) === null && form.tfvars_mapping_json.trim() && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />Invalid JSON
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Experiment configuration mapping */}
+            {expFields.length > 0 ? (
+              <MappingGroup
+                title="Experiment Configuration"
+                fields={expFields.map((f) => ({ name: f.name, label: f.label, sectionLabel: f.sectionLabel }))}
+                mapping={mappingParsed?.experiment_configuration ?? {}}
+                onUpdate={(fieldName, tfVar) => updateExpMapping(fieldName, tfVar)}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground italic">
+                No experiment configuration fields defined in this version's definition.
+              </p>
+            )}
+
+            {/* Instance configurations mapping */}
+            {instanceEntries.map(([key, cfg]) => {
+              const instFields = cfg.sections?.flatMap((s: any) =>
+                s.fields?.map((f: any) => ({ name: f.name, label: f.label, sectionLabel: s.label })) ?? []
+              ) ?? []
+              return (
+                <MappingGroup
+                  key={key}
+                  title={`Instance: ${cfg.label ?? key}`}
+                  subtitle={key}
+                  fields={instFields}
+                  mapping={mappingParsed?.instance_configurations?.[key] ?? {}}
+                  onUpdate={(fieldName, tfVar) => updateInstMapping(key, fieldName, tfVar)}
+                />
+              )
+            })}
+
+            {expFields.length === 0 && instanceEntries.length === 0 && (
+              <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                <p className="text-xs text-muted-foreground">
+                  No fields from definition available. Define the experiment configuration first, or use Raw JSON mode.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Section>
+
+      <Separator />
+
+      {/* 4. CREDENTIAL ENV KEYS ───────────────────────────────────────────── */}
+      <Section
+        title="Credential ENV Keys"
+        description="Environment variable names that will be injected from the provider credentials into the Terraform workspace container."
+      >
+        <div className="flex flex-col gap-2">
+          {form.credential_env_keys.map((key, i) => (
+            <div key={i} className="flex gap-2">
+              <Input
+                className="h-8 text-xs font-mono flex-1"
+                value={key}
+                onChange={(e) => {
+                  const keys = [...form.credential_env_keys]
+                  keys[i] = e.target.value.toUpperCase().replace(/\s+/g, "_")
+                  patch({ credential_env_keys: keys })
+                }}
+                placeholder="e.g. AWS_ACCESS_KEY_ID"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() => {
+                  const keys = form.credential_env_keys.filter((_, idx) => idx !== i)
+                  patch({ credential_env_keys: keys })
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5 w-fit"
+            onClick={() => patch({ credential_env_keys: [...form.credential_env_keys, ""] })}
+          >
+            <Plus className="h-3.5 w-3.5" />Add env key
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            Common examples: <code className="font-mono">AWS_ACCESS_KEY_ID</code>, <code className="font-mono">GOOGLE_APPLICATION_CREDENTIALS</code>
+          </p>
+        </div>
+      </Section>
+    </div>
+  )
+}
+
+// ─── Section wrapper ──────────────────────────────────────────────────────────
+
+function Section({
+  title, description, action, children,
+}: {
+  title: string
+  description?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ─── Mapping group ────────────────────────────────────────────────────────────
+
+interface MappingField {
+  name: string
+  label: string
+  sectionLabel?: string
+}
+
+function MappingGroup({
+  title, subtitle, fields, mapping, onUpdate,
+}: {
+  title: string
+  subtitle?: string
+  fields: MappingField[]
+  mapping: Record<string, string>
+  onUpdate: (fieldName: string, tfVar: string) => void
+}) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 bg-muted/30 text-left hover:bg-muted/50 transition-colors"
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+        <span className="text-xs font-medium">{title}</span>
+        {subtitle && <code className="text-[11px] text-muted-foreground font-mono">{subtitle}</code>}
+        <span className="ml-auto text-[11px] text-muted-foreground">
+          {Object.values(mapping).filter(Boolean).length}/{fields.length} mapped
+        </span>
+      </button>
+
+      {open && (
+        <div className="p-3 flex flex-col gap-0 divide-y divide-border/50">
+          {fields.length === 0 && (
+            <p className="text-xs text-muted-foreground italic py-1">No fields in this configuration.</p>
+          )}
+          {fields.map((field) => (
+            <div key={field.name} className="flex items-center gap-3 py-1.5">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium truncate">{field.label}</span>
+                  <code className="text-[11px] text-muted-foreground font-mono truncate">{field.name}</code>
+                </div>
+                {field.sectionLabel && (
+                  <p className="text-[11px] text-muted-foreground/70">{field.sectionLabel}</p>
+                )}
+              </div>
+              <span className="text-muted-foreground text-xs shrink-0">→</span>
+              <Input
+                className="h-7 text-xs font-mono w-48 shrink-0"
+                value={typeof mapping[field.name] === "string" ? mapping[field.name] : ""}
+                onChange={(e) => onUpdate(field.name, e.target.value)}
+                placeholder="tf_var_name"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -14,6 +14,7 @@ import {
   Check,
   UserRound,
   Server,
+  FileCode2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import { membersApi } from "@/lib/api/members"
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: FolderKanban },
+  { label: "Templates", href: "/organization/templates", icon: FileCode2 },
   { label: "Providers", href: "/organization/providers", icon: Server },
 ]
 

@@ -16,7 +16,7 @@ import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { clustersApi } from "@/lib/api/clusters"
-import type { InstanceType, Provider, Template } from "@/lib/api/types"
+import type { InstanceType, Provider, Template, TemplateVersion } from "@/lib/api/types"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
@@ -76,12 +76,36 @@ export function ExperimentCreateFlow() {
     executionMode: "manual",
   })
   const [experimentTemplateId, setExperimentTemplateId] = useState<string>("none")
+  const [templateVersions, setTemplateVersions] = useState<TemplateVersion[]>([])
+  const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState<string | null>(null)
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false)
   const [experimentVariables, setExperimentVariables] = useState<Record<string, unknown>>({})
   const [instanceVariables, setInstanceVariables] = useState<Record<string, unknown>>({})
   const [lifecycleHooks, setLifecycleHooks] = useState<Record<string, string>>({})
-  
+
+  useEffect(() => {
+    if (experimentTemplateId === "none") {
+      setTemplateVersions([])
+      setSelectedTemplateVersionId(null)
+      return
+    }
+    let active = true
+    setIsLoadingVersions(true)
+    templatesApi.listVersions(experimentTemplateId)
+      .then((vers) => {
+        if (!active) return
+        setTemplateVersions(vers)
+        const activeVer = vers.find((v) => v.is_active) ?? vers[0]
+        setSelectedTemplateVersionId(activeVer?.id ? String(activeVer.id) : null)
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setIsLoadingVersions(false) })
+    return () => { active = false }
+  }, [experimentTemplateId])
+
   const { definition, activeVersionId, isLoading: isLoadingDefinition } = useTemplateDefinition(
-    experimentTemplateId === "none" ? null : experimentTemplateId
+    experimentTemplateId === "none" ? null : experimentTemplateId,
+    selectedTemplateVersionId,
   )
   
   const [clusterForm, setClusterForm] = useState<ClusterFormData>({
@@ -324,7 +348,7 @@ export function ExperimentCreateFlow() {
           name: basics.name.trim(),
           description: basics.description.trim() || undefined,
           execution_mode: basics.executionMode,
-          experiment_template_version_id: activeVersionId ?? undefined,
+          experiment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
           ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         }
 
@@ -353,7 +377,7 @@ export function ExperimentCreateFlow() {
           name: basics.name.trim(),
           description: basics.description.trim() || undefined,
           execution_mode: basics.executionMode,
-          experiment_template_version_id: activeVersionId ?? undefined,
+          experiment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
           ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         }
 
@@ -553,6 +577,45 @@ export function ExperimentCreateFlow() {
                 </button>
               ))}
             </div>
+
+            {/* Version selector */}
+            {experimentTemplateId !== "none" && (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs">
+                  Version
+                  {isLoadingVersions && <span className="ml-2 text-[10px] text-muted-foreground">Loading…</span>}
+                </Label>
+                {!isLoadingVersions && templateVersions.length > 0 && (
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {templateVersions.map((ver) => (
+                      <button
+                        key={ver.id}
+                        type="button"
+                        onClick={() => setSelectedTemplateVersionId(String(ver.id))}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                          selectedTemplateVersionId === String(ver.id)
+                            ? "border-primary/60 bg-primary/5"
+                            : "border-border bg-background hover:bg-muted/40"
+                        }`}
+                      >
+                        <span className="font-mono font-medium">v{ver.version}</span>
+                        <span className="flex items-center gap-1.5">
+                          {ver.is_active && (
+                            <span className="text-[10px] rounded bg-green-500/10 text-green-600 px-1">active</span>
+                          )}
+                          {selectedTemplateVersionId === String(ver.id) && (
+                            <Check className="h-3.5 w-3.5 text-primary" />
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!isLoadingVersions && templateVersions.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No versions found for this template.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

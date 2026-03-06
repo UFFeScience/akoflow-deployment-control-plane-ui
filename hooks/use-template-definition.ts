@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react"
 import { templatesApi } from "@/lib/api/templates"
-import type { TemplateDefinition } from "@/lib/api/types"
+import type { TemplateDefinition, TemplateVersion } from "@/lib/api/types"
 
 interface UseTemplateDefinitionOptions {
   enabled?: boolean
   onError?: (error: Error) => void
 }
 
-export function useTemplateDefinition(templateId: string | null, options?: UseTemplateDefinitionOptions) {
+export function useTemplateDefinition(
+  templateId: string | null,
+  versionId?: string | null,
+  options?: UseTemplateDefinitionOptions,
+) {
   const [definition, setDefinition] = useState<TemplateDefinition | null>(null)
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -27,7 +31,16 @@ export function useTemplateDefinition(templateId: string | null, options?: UseTe
       setIsLoading(true)
       setError(null)
       try {
-        const data = await templatesApi.getActiveVersion(templateId)
+        let data: TemplateVersion
+
+        if (versionId) {
+          // Fetch the specific requested version
+          data = await templatesApi.getVersion(templateId!, versionId)
+        } else {
+          // Default: fetch the active version
+          data = await templatesApi.getActiveVersion(templateId!)
+        }
+
         if (active) {
           setDefinition(data.definition_json || null)
           setActiveVersionId(String(data.id))
@@ -48,7 +61,7 @@ export function useTemplateDefinition(templateId: string | null, options?: UseTe
     return () => {
       active = false
     }
-  }, [templateId, options])
+  }, [templateId, versionId, options?.enabled])
 
   return { definition, activeVersionId, isLoading, error }
 }
