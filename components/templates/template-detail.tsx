@@ -284,9 +284,9 @@ function VersionRow({ version, isSelected, activating, onClick, onActivate }: Ve
             <Sparkles className="h-2.5 w-2.5" />active
           </span>
         )}
-        {version.terraform_module && (
+        {version.terraform_modules && version.terraform_modules.length > 0 && (
           <span className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium bg-orange-500/10 text-orange-600 border-orange-500/20">
-            TF: {version.terraform_module.module_slug ?? version.terraform_module.provider_type ?? "custom"}
+            TF: {version.terraform_modules.map((m) => m.provider_type.toUpperCase()).join(", ")}
           </span>
         )}
       </div>

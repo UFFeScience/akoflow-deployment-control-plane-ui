@@ -5,7 +5,7 @@ export const providersApi = {
   list: () => request<Provider[]>("/providers"),
   show: (id: string) => request<Provider>(`/providers/${id}`),
   create: (data: Partial<Provider>) => request<Provider>("/providers", { method: "POST", body: data }),
-  checkHealth: (id: string) => request<Provider>(`/providers/${id}/health`, { method: "PATCH" }),
+  checkHealth: (id: string) => request<Provider>(`/providers/${id}/health/check`, { method: "POST" }),
 
   // Credentials
   listCredentials: (providerId: string) =>

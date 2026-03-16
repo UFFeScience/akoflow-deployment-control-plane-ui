@@ -71,14 +71,13 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
         definition_json: draftToDefinition(draft),
       })
 
-      // Copy Terraform module from the active version, if any
+      // Copy all Terraform modules from the active version, if any
       if (activeVersion?.id && newVersion?.id) {
         try {
-          const tfModule = await templatesApi.getTerraformModule(templateId, String(activeVersion.id))
-          if (tfModule) {
-            await templatesApi.upsertTerraformModule(templateId, String(newVersion.id), {
+          const tfModules = await templatesApi.listTerraformModules(templateId, String(activeVersion.id))
+          for (const tfModule of tfModules) {
+            await templatesApi.upsertTerraformModule(templateId, String(newVersion.id), tfModule.provider_type, {
               module_slug: tfModule.module_slug ?? undefined,
-              provider_type: tfModule.provider_type ?? undefined,
               main_tf: tfModule.main_tf ?? undefined,
               variables_tf: tfModule.variables_tf ?? undefined,
               outputs_tf: tfModule.outputs_tf ?? undefined,
@@ -87,7 +86,7 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
             })
           }
         } catch {
-          // Terraform module may not exist yet — ignore silently
+          // Terraform modules may not exist yet — ignore silently
         }
       }
 

@@ -1,5 +1,5 @@
 import { request } from "./client"
-import type { Template, TemplateVersion, TemplateDefinition, TerraformModule } from "./types"
+import type { Template, TemplateVersion, TemplateDefinition, TerraformModule, TerraformProviderType } from "./types"
 
 export const templatesApi = {
   list: () => request<Template[]>("/experiment-templates"),
@@ -22,10 +22,12 @@ export const templatesApi = {
       method: "PATCH",
     }),
 
-  getTerraformModule: (id: string, versionId: string) =>
-    request<TerraformModule>(`/experiment-templates/${id}/versions/${versionId}/terraform-module`),
-  upsertTerraformModule: (id: string, versionId: string, data: Partial<TerraformModule>) =>
-    request<TerraformModule>(`/experiment-templates/${id}/versions/${versionId}/terraform-module`, {
+  listTerraformModules: (id: string, versionId: string) =>
+    request<TerraformModule[]>(`/experiment-templates/${id}/versions/${versionId}/terraform-modules`),
+  getTerraformModule: (id: string, versionId: string, providerType: TerraformProviderType) =>
+    request<TerraformModule>(`/experiment-templates/${id}/versions/${versionId}/terraform-modules/${providerType}`),
+  upsertTerraformModule: (id: string, versionId: string, providerType: TerraformProviderType, data: Omit<Partial<TerraformModule>, "provider_type">) =>
+    request<TerraformModule>(`/experiment-templates/${id}/versions/${versionId}/terraform-modules/${providerType}`, {
       method: "PUT",
       body: data,
     }),

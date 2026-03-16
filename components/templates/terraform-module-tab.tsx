@@ -9,23 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
-import type { TemplateVersion, TerraformModule, TerraformProviderType } from "@/lib/api/types"
+import { providersApi } from "@/lib/api/providers"
+import type { TemplateVersion, TerraformModule, TerraformProviderType, Provider } from "@/lib/api/types"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const BUILT_IN_SLUGS = ["aws_nvflare", "gcp_gke"] as const
-
-const PROVIDER_TYPES: { value: TerraformProviderType; label: string }[] = [
-  { value: "aws",    label: "AWS" },
-  { value: "gcp",    label: "GCP" },
-  { value: "azure",  label: "Azure" },
-  { value: "custom", label: "Custom" },
-]
 
 const HCL_TABS = [
   { id: "main",      label: "main.tf",      key: "main_tf" as const },
@@ -36,7 +27,6 @@ const HCL_TABS = [
 // ─── Form state ───────────────────────────────────────────────────────────────
 
 interface TfForm {
-  source: "builtin" | "custom"
   module_slug: string
   provider_type: string
   main_tf: string
@@ -49,14 +39,19 @@ interface TfForm {
 }
 
 function defaultForm(mod?: TerraformModule | null): TfForm {
+  const credKeys = Array.isArray(mod?.credential_env_keys)
+    ? mod?.credential_env_keys
+    : mod?.credential_env_keys
+      ? [String(mod.credential_env_keys)]
+      : []
+
   return {
-    source: mod?.module_slug && !mod.has_custom_hcl ? "builtin" : "custom",
     module_slug: mod?.module_slug ?? "",
-    provider_type: mod?.provider_type ?? "gcp",
+    provider_type: mod?.provider_type ?? "",
     main_tf: mod?.main_tf ?? "",
     variables_tf: mod?.variables_tf ?? "",
     outputs_tf: mod?.outputs_tf ?? "",
-    credential_env_keys: mod?.credential_env_keys ?? [],
+    credential_env_keys: credKeys,
     tfvars_mapping_json: mod?.tfvars_mapping_json
       ? JSON.stringify(mod.tfvars_mapping_json, null, 2)
       : JSON.stringify({ experiment_configuration: {}, instance_configurations: {} }, null, 2),
@@ -111,27 +106,66 @@ interface Props {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TerraformModuleTab({ templateId, versionId, version }: Props) {
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [configuredProviders, setConfiguredProviders] = useState<TerraformProviderType[]>([])
+  const [activeProvider, setActiveProvider] = useState<TerraformProviderType>("")
   const [module, setModule] = useState<TerraformModule | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [missingModule, setMissingModule] = useState(false)
+  const [loadingList, setLoadingList] = useState(true)
+  const [loadingProviders, setLoadingProviders] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [hclTab, setHclTab] = useState<"main" | "variables" | "outputs">("main")
   const [form, setForm] = useState<TfForm>(defaultForm())
 
-  const load = useCallback(async () => {
+  // Load provider catalog from backend (cloud-only)
+  const loadProviders = useCallback(async () => {
+    setLoadingProviders(true)
+    try {
+      const list = await providersApi.list()
+      const cloudProviders = (list as Provider[]).filter((p) => p.type === "CLOUD")
+      setProviders(cloudProviders)
+      if (!activeProvider && cloudProviders.length) {
+        setActiveProvider(cloudProviders[0].slug as TerraformProviderType)
+      }
+    } finally {
+      setLoadingProviders(false)
+    }
+  }, [activeProvider])
+
+  // Load the list of configured providers
+  const loadList = useCallback(async () => {
+    setLoadingList(true)
+    try {
+      const mods = await templatesApi.listTerraformModules(templateId, versionId)
+      const providers = (mods as TerraformModule[]).map((m) => m.provider_type)
+      setConfiguredProviders(providers)
+    } catch {
+      setConfiguredProviders([])
+    } finally {
+      setLoadingList(false)
+    }
+  }, [templateId, versionId])
+
+  // Load module for the active provider tab
+  const loadModule = useCallback(async (providerType: TerraformProviderType) => {
+    if (!providerType) return
     setLoading(true)
     setError(null)
     try {
-      const mod = await templatesApi.getTerraformModule(templateId, versionId)
+      const mod = await templatesApi.getTerraformModule(templateId, versionId, providerType)
       setModule(mod)
       setForm(defaultForm(mod))
+      setMissingModule(false)
     } catch (e: any) {
       if (e?.status === 404 || e?.message?.includes("404")) {
-        // No module yet — start with empty form
         setModule(null)
         setForm(defaultForm(null))
+        setMissingModule(true)
       } else {
         setError(e?.message ?? "Failed to load Terraform configuration")
       }
@@ -140,16 +174,39 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
     }
   }, [templateId, versionId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { loadProviders() }, [loadProviders])
+  useEffect(() => { loadList() }, [loadList])
+  useEffect(() => { if (activeProvider) loadModule(activeProvider) }, [loadModule, activeProvider])
 
   const patch = (partial: Partial<TfForm>) => setForm((f) => ({ ...f, ...partial }))
+
+  const createMissingModule = async () => {
+    const provider = providers.find((p) => p.slug === activeProvider)
+    const moduleSlug = provider?.default_module_slug ?? undefined
+    setCreating(true)
+    setSaveError(null)
+    try {
+      const created = await templatesApi.upsertTerraformModule(
+        templateId,
+        versionId,
+        activeProvider,
+        moduleSlug ? { module_slug: moduleSlug } : {},
+      )
+      setModule(created)
+      setForm(defaultForm(created))
+      setMissingModule(false)
+    } catch (e: any) {
+      setSaveError(e?.message ?? "Falha ao criar o template HCL")
+    } finally {
+      setCreating(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaveError(null)
     setSaving(true)
     setSaved(false)
 
-    // Parse tfvars mapping
     let parsedMapping = null
     if (form.tfvars_mapping_json.trim()) {
       parsedMapping = parseMappingJson(form.tfvars_mapping_json)
@@ -161,29 +218,23 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
     }
 
     try {
-      const payload: Partial<TerraformModule> = {
-        provider_type: form.provider_type as TerraformProviderType,
+      const payload: Omit<Partial<TerraformModule>, "provider_type"> = {
         credential_env_keys: form.credential_env_keys.filter(Boolean),
         tfvars_mapping_json: parsedMapping ?? undefined,
       }
 
-      if (form.source === "builtin") {
-        payload.module_slug = form.module_slug || undefined
-        // Clear HCL if switching to built-in
-        payload.main_tf = ""
-        payload.variables_tf = ""
-        payload.outputs_tf = ""
-      } else {
-        payload.module_slug = undefined
-        payload.main_tf = form.main_tf || undefined
-        payload.variables_tf = form.variables_tf || undefined
-        payload.outputs_tf = form.outputs_tf || undefined
-      }
+      payload.main_tf = form.main_tf || undefined
+      payload.variables_tf = form.variables_tf || undefined
+      payload.outputs_tf = form.outputs_tf || undefined
 
-      const updated = await templatesApi.upsertTerraformModule(templateId, versionId, payload)
+      const updated = await templatesApi.upsertTerraformModule(templateId, versionId, activeProvider, payload)
       setModule(updated)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+      // refresh the list of configured providers
+      if (!configuredProviders.includes(activeProvider)) {
+        setConfiguredProviders((prev) => [...prev, activeProvider])
+      }
     } catch (e: any) {
       setSaveError(e?.message ?? "Failed to save")
     } finally {
@@ -191,13 +242,24 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
     }
   }
 
-  if (loading) {
+  const handleProviderSwitch = (p: TerraformProviderType) => {
+    setActiveProvider(p)
+    setError(null)
+    setSaveError(null)
+    setSaved(false)
+    setMissingModule(false)
+    setForm(defaultForm(null))
+  }
+
+  if (loadingList || loadingProviders) {
     return (
       <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" />Loading Terraform configuration…
+        <Loader2 className="h-4 w-4 animate-spin" />Loading Terraform configurations…
       </div>
     )
   }
+
+  const providerTabs = providers
 
   if (error) {
     return (
@@ -232,20 +294,50 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Provider tabs */}
+      {providerTabs.length === 0 ? (
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+          Nenhum provedor cloud cadastrado. Cadastre um provedor para configurar Terraform modules.
+        </div>
+      ) : (
+        <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs w-fit">
+          {providerTabs.map((p) => {
+            const isConfigured = configuredProviders.includes(p.slug as TerraformProviderType)
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleProviderSwitch(p.slug as TerraformProviderType)}
+                className={cn(
+                  "relative px-4 py-1.5 font-medium transition-colors flex items-center gap-1.5",
+                  activeProvider === p.slug
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted/50",
+                )}
+              >
+                {p.name}
+                {isConfigured && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" title="Configured" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Status bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {module ? (
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          ) : module ? (
             <Badge variant="outline" className="text-[11px] gap-1 text-green-600 border-green-500/30 bg-green-500/5">
-              <CheckCircle2 className="h-3 w-3" />Module configured
+              <CheckCircle2 className="h-3 w-3" />{activeProvider.toUpperCase()} configured
             </Badge>
           ) : (
             <Badge variant="outline" className="text-[11px] gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5">
-              <AlertTriangle className="h-3 w-3" />Not configured
+              <AlertTriangle className="h-3 w-3" />{activeProvider.toUpperCase()} not configured
             </Badge>
-          )}
-          {module?.provider_type && (
-            <Badge variant="secondary" className="text-[11px]">{module.provider_type.toUpperCase()}</Badge>
           )}
           {module?.is_built_in && (
             <Badge variant="secondary" className="text-[11px]">Built-in: {module.module_slug}</Badge>
@@ -263,81 +355,36 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
           {saveError && (
             <span className="text-xs text-destructive">{saveError}</span>
           )}
-          <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave} disabled={saving}>
+          <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave} disabled={saving || loading}>
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             Save
           </Button>
         </div>
       </div>
 
-      {/* 1. MODULE SOURCE ──────────────────────────────────────────────────── */}
-      <Section title="Module Source" description="Choose a built-in provisioning module or provide custom Terraform HCL.">
-        {/* Source toggle */}
-        <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs w-fit">
-          {(["builtin", "custom"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => patch({ source: s })}
-              className={cn(
-                "px-4 py-1.5 font-medium transition-colors",
-                form.source === s
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground hover:bg-muted/50",
-              )}
-            >
-              {s === "builtin" ? "Built-in Module" : "Custom HCL"}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-3">
-          {form.source === "builtin" && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Module Slug</Label>
-              <Select value={form.module_slug} onValueChange={(v) => patch({ module_slug: v })}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select a built-in module…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUILT_IN_SLUGS.map((s) => (
-                    <SelectItem key={s} value={s} className="text-xs font-mono">{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                The platform will use the built-in Terraform module at <code className="font-mono">infra/terraform/modules/{"{slug}"}</code>.
-              </p>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs">Provider Type</Label>
-            <Select value={form.provider_type} onValueChange={(v) => patch({ provider_type: v })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PROVIDER_TYPES.map((p) => (
-                  <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              Determines which credentials are injected into the Terraform workspace container.
-            </p>
+      {missingModule && !loading && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Template HCL para {activeProvider.toUpperCase()} não encontrado. Crie para habilitar o provisionamento.</span>
           </div>
+          <Button size="sm" variant="outline" className="gap-1" onClick={createMissingModule} disabled={creating}>
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            Criar Template HCL
+          </Button>
         </div>
-      </Section>
+      )}
 
-      <Separator />
+      {loading ? (
+        <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />Loading {activeProvider.toUpperCase()} configuration…
+        </div>
+      ) : (<>
 
-      {/* 2. HCL FILES ─────────────────────────────────────────────────────── */}
+      {/* 1. HCL FILES ─────────────────────────────────────────────────────── */}
       <Section
         title="HCL Files"
-        description={
-          form.source === "builtin"
-            ? "When using a built-in module these files are optional and override the built-in defaults."
-            : "Provide the Terraform configuration files for this template version."
-        }
+        description="Provide the Terraform configuration files for this template version."
       >
         {/* File tabs */}
         <div className="flex gap-0 rounded-t-lg border border-border overflow-hidden text-xs">
@@ -501,6 +548,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
           </p>
         </div>
       </Section>
+      </>)}
     </div>
   )
 }

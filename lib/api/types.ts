@@ -156,10 +156,11 @@ export interface Provider {
   id: string
   name: string
   slug?: string
+  default_module_slug?: string | null
   description?: string
-  type: "CLOUD" | "ON_PREM" | "HPC"
-  status: "ACTIVE" | "DEGRADED" | "DOWN" | "MAINTENANCE"
-  health_status?: "HEALTHY" | "UNHEALTHY"
+  type: string
+  status: string
+  health_status?: string
   health_message?: string
   last_health_check_at?: string
   credentials_count?: number
@@ -250,16 +251,16 @@ export interface TemplateVersion {
   created_at?: string
   metadata?: Record<string, unknown>
   definition_json?: TemplateDefinition
-  terraform_module?: TerraformModule | null
+  terraform_modules?: TerraformModule[]
 }
 
-export type TerraformProviderType = "aws" | "gcp" | "azure" | "custom"
+export type TerraformProviderType = string
 
 export interface TerraformModule {
   id: string
   template_version_id: string
   module_slug?: string | null
-  provider_type?: TerraformProviderType | null
+  provider_type: TerraformProviderType
   is_built_in?: boolean
   has_custom_hcl?: boolean
   // HCL files (only returned by the single-resource show endpoint)
@@ -267,7 +268,6 @@ export interface TerraformModule {
   variables_tf?: string | null
   outputs_tf?: string | null
   // Mapping definition fields → terraform variable names
-  // { experiment_configuration: { fieldName: tfVarName }, instance_configurations: { instanceKey: { fieldName: tfVarName } } }
   tfvars_mapping_json?: {
     experiment_configuration?: Record<string, string>
     instance_configurations?: Record<string, Record<string, string>>

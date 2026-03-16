@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronRight, ChevronLeft, Loader2, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,20 +12,21 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
 import { DefinitionBuilder, emptyDraftDefinition, draftToDefinition, type DraftDefinition } from "./definition-builder"
+import { TerraformModuleStep, defaultTfDraft, tfDraftToPayload, tfDraftIsConfigured, type TfDraft } from "./terraform-module-step"
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
 const STEPS = [
   { id: 1, label: "Basic Info" },
   { id: 2, label: "Definition" },
-  { id: 3, label: "Review" },
+  { id: 3, label: "Terraform" },
+  { id: 4, label: "Review" },
 ]
 
 interface BasicInfo {
   name: string
   slug: string
   description: string
-  runtime_type: string
   is_public: boolean
   first_version: string
 }
@@ -46,12 +47,12 @@ export function TemplateCreate() {
     name: "",
     slug: "",
     description: "",
-    runtime_type: "AKOFLOW",
     is_public: false,
     first_version: "1.0.0",
   })
 
   const [draft, setDraft] = useState<DraftDefinition>(emptyDraftDefinition)
+  const [tfDraft, setTfDraft] = useState<TfDraft>(defaultTfDraft)
 
   // ── Step 1 helpers
   const setName = (name: string) =>
@@ -69,14 +70,18 @@ export function TemplateCreate() {
         name: info.name.trim(),
         slug: info.slug.trim(),
         description: info.description.trim() || undefined,
-        runtime_type: info.runtime_type,
         is_public: info.is_public,
       })
-      await templatesApi.createVersion(template.id, {
+      const version = await templatesApi.createVersion(template.id, {
         version: info.first_version.trim(),
         is_active: true,
         definition_json: definitionJson,
       })
+      const payload = tfDraftToPayload(tfDraft)
+      const providerType = (tfDraft.provider_type || "aws") as import("@/lib/api/types").TerraformProviderType
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { provider_type: _pt, ...bodyPayload } = payload as any
+      await templatesApi.upsertTerraformModule(template.id, version.id, providerType, bodyPayload)
       router.push(`/organization/templates/${template.id}`)
     } catch (err: any) {
       setError(err?.message ?? "Something went wrong")
@@ -129,7 +134,14 @@ export function TemplateCreate() {
             <Step2 draft={draft} setDraft={setDraft} />
           )}
           {step === 3 && (
-            <Step3 info={info} draft={draft} />
+            <Step3Terraform
+              draft={draft}
+              tfDraft={tfDraft}
+              setTfDraft={setTfDraft}
+            />
+          )}
+          {step === 4 && (
+            <Step4Review info={info} draft={draft} tfDraft={tfDraft} />
           )}
         </div>
 
@@ -173,13 +185,6 @@ export function TemplateCreate() {
 
 // ─── Step 1: Basic Info ───────────────────────────────────────────────────────
 
-const RUNTIME_TYPES = [
-  { value: "AKOFLOW",  label: "AkoFlow" },
-  { value: "NVFLARE",  label: "NVFlare" },
-  { value: "HPC",      label: "HPC" },
-  { value: "CUSTOM",   label: "Custom" },
-]
-
 function Step1({ info, setInfo, setName }: {
   info: BasicInfo
   setInfo: React.Dispatch<React.SetStateAction<BasicInfo>>
@@ -205,15 +210,6 @@ function Step1({ info, setInfo, setName }: {
         <div className="col-span-2 flex flex-col gap-2">
           <Label>Description</Label>
           <Textarea value={info.description} onChange={(e) => setInfo((p) => ({ ...p, description: e.target.value }))} placeholder="What does this template do?" rows={3} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label>Runtime Type <span className="text-destructive">*</span></Label>
-          <Select value={info.runtime_type} onValueChange={(v) => setInfo((p) => ({ ...p, runtime_type: v }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {RUNTIME_TYPES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
         <div className="flex flex-col gap-2">
           <Label>First Version <span className="text-destructive">*</span></Label>
@@ -248,9 +244,37 @@ function Step2({ draft, setDraft }: { draft: DraftDefinition; setDraft: (d: Draf
   )
 }
 
-// ─── Step 3: Review ───────────────────────────────────────────────────────────
+// ─── Step 3: Terraform Module ─────────────────────────────────────────────────
 
-function Step3({ info, draft }: { info: BasicInfo; draft: DraftDefinition }) {
+function Step3Terraform({
+  draft,
+  tfDraft,
+  setTfDraft,
+}: {
+  draft: DraftDefinition
+  tfDraft: TfDraft
+  setTfDraft: (v: TfDraft) => void
+}) {
+  // useMemo so the object reference only changes when draft actually changes,
+  // preventing the useEffect in TerraformModuleStep from triggering an infinite loop.
+  const definition = useMemo(() => draftToDefinition(draft), [draft])
+  return (
+    <div className="p-6 flex flex-col gap-6">
+      <div>
+        <h2 className="text-lg font-semibold">Terraform Module</h2>
+        <p className="text-sm text-muted-foreground">
+          Optional — configure the Terraform module that will provision cloud infrastructure for experiments based on
+          this template. You can also configure this later from the template detail page.
+        </p>
+      </div>
+      <TerraformModuleStep definition={definition} value={tfDraft} onChange={setTfDraft} />
+    </div>
+  )
+}
+
+// ─── Step 4: Review ───────────────────────────────────────────────────────────
+
+function Step4Review({ info, draft, tfDraft }: { info: BasicInfo; draft: DraftDefinition; tfDraft: TfDraft }) {
   const definition = draftToDefinition(draft)
   const sectionsCount = definition.experiment_configuration?.sections?.length ?? 0
   const instancesCount = Object.keys(definition.instance_configurations ?? {}).length
@@ -269,7 +293,6 @@ function Step3({ info, draft }: { info: BasicInfo; draft: DraftDefinition }) {
       <div className="grid grid-cols-2 gap-4">
         <ReviewRow label="Name" value={info.name} />
         <ReviewRow label="Slug" value={info.slug} mono />
-        <ReviewRow label="Runtime" value={info.runtime_type} />
         <ReviewRow label="First Version" value={info.first_version} mono />
         <ReviewRow label="Visibility" value={info.is_public ? "Public" : "Private"} />
         {info.description && <div className="col-span-2"><ReviewRow label="Description" value={info.description} /></div>}
@@ -279,6 +302,34 @@ function Step3({ info, draft }: { info: BasicInfo; draft: DraftDefinition }) {
         <Stat label="Exp. Sections" value={sectionsCount} />
         <Stat label="Instances" value={instancesCount} />
         <Stat label="Total Fields" value={totalFields} />
+      </div>
+
+      {/* Terraform summary */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Terraform Module</p>
+        {tfDraftIsConfigured(tfDraft) ? (
+          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3">
+            <ReviewRow label="Source" value={tfDraft.source === "builtin" ? "Built-in Module" : "Custom HCL"} />
+            {tfDraft.source === "builtin" && tfDraft.module_slug && (
+              <ReviewRow label="Module Slug" value={tfDraft.module_slug} mono />
+            )}
+            {tfDraft.provider_type && (
+              <ReviewRow label="Provider Type" value={tfDraft.provider_type.toUpperCase()} />
+            )}
+            {tfDraft.credential_env_keys.filter(Boolean).length > 0 && (
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground">Credential ENV Keys</p>
+                <p className="text-xs font-mono font-medium mt-0.5">
+                  {tfDraft.credential_env_keys.filter(Boolean).join(", ")}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic">
+            Not configured — you can set it up after creation from the template detail page.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
