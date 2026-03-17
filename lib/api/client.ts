@@ -37,7 +37,9 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: "Request failed" }))
-    throw new Error(error.message || `HTTP ${res.status}`)
+    const err = new Error(error.message || `HTTP ${res.status}`) as Error & { status: number }
+    err.status = res.status
+    throw err
   }
 
   if (res.status === 204) return {} as T

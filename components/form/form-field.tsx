@@ -39,7 +39,7 @@ export function FormFieldComponent({ field, value, onChange, error }: FormFieldC
           </Label>
           <Input
             className={`h-9 text-sm ${error ? "border-red-500" : ""}`}
-            placeholder={field.default ? String(field.default) : `Enter ${field.label.toLowerCase()}`}
+            placeholder={field.default ? String(field.default) : `Enter ${field.label?.toLowerCase() ?? ""}`}
             value={stringValue}
             onChange={(e) => handleChange(e.target.value)}
             maxLength={field.maxLength}
@@ -96,7 +96,7 @@ export function FormFieldComponent({ field, value, onChange, error }: FormFieldC
           </Label>
           <Select value={stringValue} onValueChange={handleChange}>
             <SelectTrigger className={`h-9 text-sm ${error ? "border-red-500" : ""}`}>
-              <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+              <SelectValue placeholder={`Select ${field.label?.toLowerCase() ?? ""}`} />
             </SelectTrigger>
             <SelectContent>
               {field.options?.map((option) => (

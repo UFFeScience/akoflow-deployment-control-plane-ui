@@ -616,8 +616,8 @@ function MappingGroup({
           {fields.length === 0 && (
             <p className="text-xs text-muted-foreground italic py-1">No fields in this configuration.</p>
           )}
-          {fields.map((field) => (
-            <div key={field.name} className="flex items-center gap-3 py-1.5">
+          {fields.map((field, i) => (
+            <div key={`${field.name}-${field.sectionLabel ?? i}`} className="flex items-center gap-3 py-1.5">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-medium truncate">{field.label}</span>

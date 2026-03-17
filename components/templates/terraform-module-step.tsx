@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Plus, Trash2, ChevronDown, ChevronRight, Code2, Eye, AlertTriangle } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Plus, Trash2, ChevronDown, ChevronRight, Code2, Eye, AlertTriangle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,8 +12,6 @@ import { cn } from "@/lib/utils"
 import type { TerraformProviderType, TemplateDefinition } from "@/lib/api/types"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const BUILT_IN_SLUGS = ["aws_nvflare", "gcp_gke"] as const
 
 export const PROVIDER_TYPES: { value: TerraformProviderType; label: string }[] = [
   { value: "aws",    label: "AWS" },
@@ -31,8 +29,6 @@ const HCL_TABS = [
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface TfDraft {
-  source: "builtin" | "custom"
-  module_slug: string
   provider_type: TerraformProviderType | string
   main_tf: string
   variables_tf: string
@@ -43,8 +39,6 @@ export interface TfDraft {
 
 export function defaultTfDraft(): TfDraft {
   return {
-    source: "builtin",
-    module_slug: "",
     provider_type: "aws",
     main_tf: "",
     variables_tf: "",
@@ -69,32 +63,19 @@ export function tfDraftToPayload(draft: TfDraft): Record<string, unknown> {
     }
   }
 
-  const payload: Record<string, unknown> = {
+  return {
     provider_type: draft.provider_type || undefined,
     credential_env_keys: draft.credential_env_keys.filter(Boolean),
     tfvars_mapping_json: parsedMapping ?? undefined,
+    main_tf: draft.main_tf || undefined,
+    variables_tf: draft.variables_tf || undefined,
+    outputs_tf: draft.outputs_tf || undefined,
   }
-
-  if (draft.source === "builtin") {
-    payload.module_slug = draft.module_slug || undefined
-    payload.main_tf = ""
-    payload.variables_tf = ""
-    payload.outputs_tf = ""
-  } else {
-    payload.module_slug = undefined
-    payload.main_tf = draft.main_tf || undefined
-    payload.variables_tf = draft.variables_tf || undefined
-    payload.outputs_tf = draft.outputs_tf || undefined
-  }
-
-  return payload
 }
 
 /** Returns true when the draft has enough data to be worth persisting */
 export function tfDraftIsConfigured(draft: TfDraft): boolean {
-  const hasBuiltin = draft.source === "builtin" && !!draft.module_slug
-  const hasCustom  = draft.source === "custom" && !!draft.main_tf.trim()
-  return hasBuiltin || hasCustom
+  return !!draft.main_tf.trim()
 }
 
 // ─── Mapping helpers ──────────────────────────────────────────────────────────
@@ -134,63 +115,84 @@ function mappingToJson(m: MappingState): string {
 interface Props {
   /** Current TemplateDefinition (from the definition builder step) used to populate mapping fields */
   definition?: TemplateDefinition | null
-  value: TfDraft
-  onChange: (v: TfDraft) => void
+  value: TfDraft[]
+  onChange: (v: TfDraft[]) => void
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TerraformModuleStep({ definition, value, onChange }: Props) {
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [hclTab, setHclTab] = useState<"main" | "variables" | "outputs">("main")
   const [mappingMode, setMappingMode] = useState<"visual" | "raw">("visual")
 
-  const patch = (partial: Partial<TfDraft>) => onChange({ ...value, ...partial })
+  const valueRef = useRef(value)
+  useEffect(() => { valueRef.current = value }, [value])
+
+  const current = value[selectedIndex] ?? defaultTfDraft()
+
+  const patchCurrent = (partial: Partial<TfDraft>) => {
+    const updated = [...value]
+    updated[selectedIndex] = { ...current, ...partial }
+    onChange(updated)
+  }
+
+  const addProvider = () => {
+    onChange([...value, defaultTfDraft()])
+    setSelectedIndex(value.length)
+    setHclTab("main")
+  }
+
+  const removeProvider = (index: number) => {
+    if (value.length <= 1) return
+    const updated = value.filter((_, i) => i !== index)
+    onChange(updated)
+    setSelectedIndex(Math.max(0, index <= selectedIndex ? selectedIndex - 1 : selectedIndex))
+  }
 
   // ── Auto-populate mapping from definition fields ──────────────────────────
-  // Whenever the definition changes, seed any unmapped field with its own name
-  // (field_name → field_name) so the user only needs to edit values that differ.
   useEffect(() => {
     if (!definition) return
 
-    const current: MappingState = parseMappingJson(value.tfvars_mapping_json) ?? {
-      experiment_configuration: {},
-      instance_configurations: {},
-    }
+    const currentValue = valueRef.current
+    let anyChanged = false
 
-    let changed = false
-
-    // Experiment configuration fields
-    const expFieldNames =
-      definition.experiment_configuration?.sections?.flatMap((s) => s.fields.map((f) => f.name)) ?? []
-
-    for (const name of expFieldNames) {
-      if (!current.experiment_configuration[name]) {
-        current.experiment_configuration[name] = name
-        changed = true
+    const updated = currentValue.map((draft) => {
+      const m: MappingState = parseMappingJson(draft.tfvars_mapping_json) ?? {
+        experiment_configuration: {},
+        instance_configurations: {},
       }
-    }
+      let changed = false
 
-    // Instance configuration fields
-    for (const [instanceKey, cfg] of Object.entries(definition.instance_configurations ?? {})) {
-      if (!current.instance_configurations[instanceKey]) {
-        current.instance_configurations[instanceKey] = {}
-      }
-      const instFieldNames =
-        (cfg as any).sections?.flatMap((s: any) => s.fields?.map((f: any) => f.name) ?? []) ?? []
+      const expFieldNames =
+        definition.experiment_configuration?.sections?.flatMap((s) => s.fields.map((f) => f.name)) ?? []
 
-      for (const name of instFieldNames) {
-        if (!current.instance_configurations[instanceKey][name]) {
-          current.instance_configurations[instanceKey][name] = name
+      for (const name of expFieldNames) {
+        if (!m.experiment_configuration[name]) {
+          m.experiment_configuration[name] = name
           changed = true
         }
       }
-    }
 
-    if (changed) {
-      onChange({ ...value, tfvars_mapping_json: mappingToJson(current) })
-    }
-    // We intentionally exclude `value` from deps to avoid an update loop —
-    // only re-run when the definition itself changes.
+      for (const [instanceKey, cfg] of Object.entries(definition.instance_configurations ?? {})) {
+        if (!m.instance_configurations[instanceKey]) {
+          m.instance_configurations[instanceKey] = {}
+        }
+        const instFieldNames =
+          (cfg as any).sections?.flatMap((s: any) => s.fields?.map((f: any) => f.name) ?? []) ?? []
+        for (const name of instFieldNames) {
+          if (!m.instance_configurations[instanceKey][name]) {
+            m.instance_configurations[instanceKey][name] = name
+            changed = true
+          }
+        }
+      }
+
+      if (changed) anyChanged = true
+      return changed ? { ...draft, tfvars_mapping_json: mappingToJson(m) } : draft
+    })
+
+    if (anyChanged) onChange(updated)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [definition])
 
@@ -201,110 +203,115 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
     ) ?? []
   const instanceEntries = Object.entries(definition?.instance_configurations ?? {})
 
-  const mappingParsed = parseMappingJson(value.tfvars_mapping_json)
+  const mappingParsed = parseMappingJson(current.tfvars_mapping_json)
 
   const updateExpMapping = (fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(value.tfvars_mapping_json) ?? {
+    const m = parseMappingJson(current.tfvars_mapping_json) ?? {
       experiment_configuration: {},
       instance_configurations: {},
     }
     m.experiment_configuration[fieldName] = tfVar
-    patch({ tfvars_mapping_json: mappingToJson(m) })
+    patchCurrent({ tfvars_mapping_json: mappingToJson(m) })
   }
 
   const updateInstMapping = (instanceKey: string, fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(value.tfvars_mapping_json) ?? {
+    const m = parseMappingJson(current.tfvars_mapping_json) ?? {
       experiment_configuration: {},
       instance_configurations: {},
     }
     if (!m.instance_configurations[instanceKey]) m.instance_configurations[instanceKey] = {}
     m.instance_configurations[instanceKey][fieldName] = tfVar
-    patch({ tfvars_mapping_json: mappingToJson(m) })
+    patchCurrent({ tfvars_mapping_json: mappingToJson(m) })
   }
+
+  const providerLabel = (draft: TfDraft) =>
+    PROVIDER_TYPES.find((p) => p.value === draft.provider_type)?.label ?? String(draft.provider_type).toUpperCase()
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 1. MODULE SOURCE ────────────────────────────────────────────────── */}
+      {/* PROVIDER TABS ──────────────────────────────────────────────────── */}
       <Section
-        title="Module Source"
-        description="Choose a built-in provisioning module or provide custom Terraform HCL."
+        title="Provider Configurations"
+        description="Providers configured for this template version. Each provider can have its own HCL files."
       >
-        <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs w-fit">
-          {(["builtin", "custom"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => patch({ source: s })}
-              className={cn(
-                "px-4 py-1.5 font-medium transition-colors",
-                value.source === s
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground hover:bg-muted/50",
-              )}
-            >
-              {s === "builtin" ? "Built-in Module" : "Custom HCL"}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-3">
-          {value.source === "builtin" && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Module Slug</Label>
-              <Select value={value.module_slug} onValueChange={(v) => patch({ module_slug: v })}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select a built-in module…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUILT_IN_SLUGS.map((s) => (
-                    <SelectItem key={s} value={s} className="text-xs font-mono">
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                The platform will use the built-in Terraform module at{" "}
-                <code className="font-mono">infra/terraform/modules/{"{slug}"}</code>.
-              </p>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs">Provider Type</Label>
-            <Select value={value.provider_type} onValueChange={(v) => patch({ provider_type: v as TerraformProviderType })}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDER_TYPES.map((p) => (
-                  <SelectItem key={p.value} value={p.value} className="text-xs">
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              Determines which credentials are injected into the Terraform workspace.
-            </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs">
+            {value.map((draft, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 font-medium transition-colors border-r border-border last:border-r-0",
+                  selectedIndex === i
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted/50",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setSelectedIndex(i); setHclTab("main") }}
+                >
+                  {providerLabel(draft)}
+                </button>
+                {value.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeProvider(i) }}
+                    className={cn(
+                      "rounded-full hover:opacity-80",
+                      selectedIndex === i ? "text-primary-foreground/70" : "text-muted-foreground",
+                    )}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={addProvider}
+          >
+            <Plus className="h-3 w-3" />Add Provider
+          </Button>
         </div>
       </Section>
 
       <Separator />
 
-      {/* 2. HCL FILES ────────────────────────────────────────────────────── */}
+      {/* PROVIDER TYPE ──────────────────────────────────────────────────── */}
+      <Section
+        title="Provider Type"
+        description="Determines which credentials are injected into the Terraform workspace."
+      >
+        <div className="w-48">
+          <Select value={current.provider_type} onValueChange={(v) => patchCurrent({ provider_type: v as TerraformProviderType })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROVIDER_TYPES.map((p) => (
+                <SelectItem key={p.value} value={p.value} className="text-xs">
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </Section>
+
+      <Separator />
+
+      {/* HCL FILES ──────────────────────────────────────────────────────── */}
       <Section
         title="HCL Files"
-        description={
-          value.source === "builtin"
-            ? "Optional — these files override the built-in module defaults."
-            : "Provide the Terraform configuration files for this template version."
-        }
+        description="Provide the Terraform configuration files for this template version."
       >
         <div className="flex gap-0 rounded-t-lg border border-border overflow-hidden text-xs">
           {HCL_TABS.map((t) => {
-            const hasContent = !!value[t.key]?.trim()
+            const hasContent = !!current[t.key]?.trim()
             return (
               <button
                 key={t.id}
@@ -329,8 +336,8 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
         {HCL_TABS.map((t) => (
           <div key={t.id} className={hclTab === t.id ? "block" : "hidden"}>
             <Textarea
-              value={value[t.key]}
-              onChange={(e) => patch({ [t.key]: e.target.value } as Partial<TfDraft>)}
+              value={current[t.key]}
+              onChange={(e) => patchCurrent({ [t.key]: e.target.value } as Partial<TfDraft>)}
               placeholder={`# ${t.label} content…`}
               className="font-mono text-xs leading-relaxed rounded-t-none border-t-0 min-h-[220px] resize-y bg-muted/20"
               spellCheck={false}
@@ -341,7 +348,7 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
 
       <Separator />
 
-      {/* 3. VARIABLES MAPPING ────────────────────────────────────────────── */}
+      {/* VARIABLES MAPPING ──────────────────────────────────────────────── */}
       <Section
         title="Variables Mapping"
         description="Map definition form fields to Terraform variable names."
@@ -363,13 +370,13 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
         {mappingMode === "raw" ? (
           <div className="flex flex-col gap-1">
             <Textarea
-              value={value.tfvars_mapping_json}
-              onChange={(e) => patch({ tfvars_mapping_json: e.target.value })}
+              value={current.tfvars_mapping_json}
+              onChange={(e) => patchCurrent({ tfvars_mapping_json: e.target.value })}
               className="font-mono text-xs leading-relaxed min-h-[180px] resize-y bg-muted/20"
               spellCheck={false}
               placeholder='{ "experiment_configuration": {}, "instance_configurations": {} }'
             />
-            {parseMappingJson(value.tfvars_mapping_json) === null && value.tfvars_mapping_json.trim() && (
+            {parseMappingJson(current.tfvars_mapping_json) === null && current.tfvars_mapping_json.trim() && (
               <p className="text-xs text-destructive flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />Invalid JSON
               </p>
@@ -420,21 +427,21 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
 
       <Separator />
 
-      {/* 4. CREDENTIAL ENV KEYS ─────────────────────────────────────────── */}
+      {/* CREDENTIAL ENV KEYS ────────────────────────────────────────────── */}
       <Section
         title="Credential ENV Keys"
         description="Environment variable names injected from the provider credentials into the Terraform workspace."
       >
         <div className="flex flex-col gap-2">
-          {value.credential_env_keys.map((key, i) => (
+          {current.credential_env_keys.map((key, i) => (
             <div key={i} className="flex gap-2">
               <Input
                 className="h-8 text-xs font-mono flex-1"
                 value={key}
                 onChange={(e) => {
-                  const keys = [...value.credential_env_keys]
+                  const keys = [...current.credential_env_keys]
                   keys[i] = e.target.value.toUpperCase().replace(/\s+/g, "_")
-                  patch({ credential_env_keys: keys })
+                  patchCurrent({ credential_env_keys: keys })
                 }}
                 placeholder="e.g. AWS_ACCESS_KEY_ID"
               />
@@ -444,7 +451,7 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                 onClick={() => {
-                  patch({ credential_env_keys: value.credential_env_keys.filter((_, idx) => idx !== i) })
+                  patchCurrent({ credential_env_keys: current.credential_env_keys.filter((_, idx) => idx !== i) })
                 }}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -456,7 +463,7 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
             variant="outline"
             size="sm"
             className="h-8 text-xs gap-1.5 w-fit"
-            onClick={() => patch({ credential_env_keys: [...value.credential_env_keys, ""] })}
+            onClick={() => patchCurrent({ credential_env_keys: [...current.credential_env_keys, ""] })}
           >
             <Plus className="h-3.5 w-3.5" />Add env key
           </Button>
@@ -547,8 +554,8 @@ function MappingGroup({
           {fields.length === 0 && (
             <p className="text-xs text-muted-foreground italic py-1">No fields in this configuration.</p>
           )}
-          {fields.map((field) => (
-            <div key={field.name} className="flex items-center gap-3 py-1.5">
+          {fields.map((field, i) => (
+            <div key={`${field.name}-${field.sectionLabel ?? i}`} className="flex items-center gap-3 py-1.5">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-medium truncate">{field.label}</span>

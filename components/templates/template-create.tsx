@@ -52,7 +52,7 @@ export function TemplateCreate() {
   })
 
   const [draft, setDraft] = useState<DraftDefinition>(emptyDraftDefinition)
-  const [tfDraft, setTfDraft] = useState<TfDraft>(defaultTfDraft)
+  const [tfDrafts, setTfDrafts] = useState<TfDraft[]>([defaultTfDraft()])
 
   // ── Step 1 helpers
   const setName = (name: string) =>
@@ -77,11 +77,13 @@ export function TemplateCreate() {
         is_active: true,
         definition_json: definitionJson,
       })
-      const payload = tfDraftToPayload(tfDraft)
-      const providerType = (tfDraft.provider_type || "aws") as import("@/lib/api/types").TerraformProviderType
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { provider_type: _pt, ...bodyPayload } = payload as any
-      await templatesApi.upsertTerraformModule(template.id, version.id, providerType, bodyPayload)
+      for (const draft of tfDrafts) {
+        if (!draft.provider_type) continue
+        const payload = tfDraftToPayload(draft)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { provider_type: _pt, ...bodyPayload } = payload as any
+        await templatesApi.upsertTerraformModule(template.id, version.id, draft.provider_type as import("@/lib/api/types").TerraformProviderType, bodyPayload)
+      }
       router.push(`/organization/templates/${template.id}`)
     } catch (err: any) {
       setError(err?.message ?? "Something went wrong")
@@ -136,12 +138,12 @@ export function TemplateCreate() {
           {step === 3 && (
             <Step3Terraform
               draft={draft}
-              tfDraft={tfDraft}
-              setTfDraft={setTfDraft}
+              tfDrafts={tfDrafts}
+              setTfDrafts={setTfDrafts}
             />
           )}
           {step === 4 && (
-            <Step4Review info={info} draft={draft} tfDraft={tfDraft} />
+            <Step4Review info={info} draft={draft} tfDrafts={tfDrafts} />
           )}
         </div>
 
@@ -248,15 +250,13 @@ function Step2({ draft, setDraft }: { draft: DraftDefinition; setDraft: (d: Draf
 
 function Step3Terraform({
   draft,
-  tfDraft,
-  setTfDraft,
+  tfDrafts,
+  setTfDrafts,
 }: {
   draft: DraftDefinition
-  tfDraft: TfDraft
-  setTfDraft: (v: TfDraft) => void
+  tfDrafts: TfDraft[]
+  setTfDrafts: (v: TfDraft[]) => void
 }) {
-  // useMemo so the object reference only changes when draft actually changes,
-  // preventing the useEffect in TerraformModuleStep from triggering an infinite loop.
   const definition = useMemo(() => draftToDefinition(draft), [draft])
   return (
     <div className="p-6 flex flex-col gap-6">
@@ -267,14 +267,14 @@ function Step3Terraform({
           this template. You can also configure this later from the template detail page.
         </p>
       </div>
-      <TerraformModuleStep definition={definition} value={tfDraft} onChange={setTfDraft} />
+      <TerraformModuleStep definition={definition} value={tfDrafts} onChange={setTfDrafts} />
     </div>
   )
 }
 
 // ─── Step 4: Review ───────────────────────────────────────────────────────────
 
-function Step4Review({ info, draft, tfDraft }: { info: BasicInfo; draft: DraftDefinition; tfDraft: TfDraft }) {
+function Step4Review({ info, draft, tfDrafts }: { info: BasicInfo; draft: DraftDefinition; tfDrafts: TfDraft[] }) {
   const definition = draftToDefinition(draft)
   const sectionsCount = definition.experiment_configuration?.sections?.length ?? 0
   const instancesCount = Object.keys(definition.instance_configurations ?? {}).length
@@ -307,23 +307,23 @@ function Step4Review({ info, draft, tfDraft }: { info: BasicInfo; draft: DraftDe
       {/* Terraform summary */}
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Terraform Module</p>
-        {tfDraftIsConfigured(tfDraft) ? (
-          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3">
-            <ReviewRow label="Source" value={tfDraft.source === "builtin" ? "Built-in Module" : "Custom HCL"} />
-            {tfDraft.source === "builtin" && tfDraft.module_slug && (
-              <ReviewRow label="Module Slug" value={tfDraft.module_slug} mono />
-            )}
-            {tfDraft.provider_type && (
-              <ReviewRow label="Provider Type" value={tfDraft.provider_type.toUpperCase()} />
-            )}
-            {tfDraft.credential_env_keys.filter(Boolean).length > 0 && (
-              <div className="col-span-2">
-                <p className="text-xs text-muted-foreground">Credential ENV Keys</p>
-                <p className="text-xs font-mono font-medium mt-0.5">
-                  {tfDraft.credential_env_keys.filter(Boolean).join(", ")}
-                </p>
+        {tfDrafts.some(tfDraftIsConfigured) ? (
+          <div className="flex flex-col gap-2">
+            {tfDrafts.filter(tfDraftIsConfigured).map((draft, i) => (
+              <div key={i} className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3">
+                {draft.provider_type && (
+                  <ReviewRow label="Provider" value={draft.provider_type.toUpperCase()} />
+                )}
+                {draft.credential_env_keys.filter(Boolean).length > 0 && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground">Credential ENV Keys</p>
+                    <p className="text-xs font-mono font-medium mt-0.5">
+                      {draft.credential_env_keys.filter(Boolean).join(", ")}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic">
