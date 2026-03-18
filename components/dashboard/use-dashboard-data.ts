@@ -1,21 +1,21 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { experimentsApi } from "@/lib/api/experiments"
+import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
 import { clustersApi } from "@/lib/api/clusters"
-import type { Cluster, Experiment, Instance, Project } from "@/lib/api/types"
+import type { Cluster, Environment, Instance, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 interface DashboardData {
   projects: Project[]
-  experiments: Experiment[]
+  environments: Environment[]
   clusters: Cluster[]
   instances: Instance[]
   isLoading: boolean
-  recentExperiments: Experiment[]
+  recentEnvironments: Environment[]
   totalProjects: number
-  totalExperiments: number
+  totalEnvironments: number
   runningInstances: number
   failedInstances: number
 }
@@ -23,7 +23,7 @@ interface DashboardData {
 export function useDashboardData(): DashboardData {
   const { currentOrg } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
-  const [experiments, setExperiments] = useState<Experiment[]>([])
+  const [environments, setEnvironments] = useState<Environment[]>([])
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [instances, setInstances] = useState<Instance[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -35,7 +35,7 @@ export function useDashboardData(): DashboardData {
       if (!currentOrg) {
         if (active) {
           setProjects([])
-          setExperiments([])
+          setEnvironments([])
           setClusters([])
           setInstances([])
           setIsLoading(false)
@@ -49,20 +49,20 @@ export function useDashboardData(): DashboardData {
         if (!active) return
         setProjects(projectData)
 
-        const experimentLists = await Promise.all(
+        const environmentLists = await Promise.all(
           projectData.map((project) =>
-            experimentsApi
+            environmentsApi
               .list(project.id)
               .then((items) => items.map((exp) => ({ ...exp, projectId: exp.projectId || project.id })))
               .catch(() => [])
           )
         )
-        const experimentData = experimentLists.flat()
+        const environmentData = environmentLists.flat()
         if (!active) return
-        setExperiments(experimentData)
+        setEnvironments(environmentData)
 
         const clusterLists = await Promise.all(
-          experimentData.map((exp) => clustersApi.list(exp.id).catch(() => []))
+          environmentData.map((exp) => clustersApi.list(exp.id).catch(() => []))
         )
         const clusterData = clusterLists.flat()
         if (!active) return
@@ -76,7 +76,7 @@ export function useDashboardData(): DashboardData {
       } catch {
         if (active) {
           setProjects([])
-          setExperiments([])
+          setEnvironments([])
           setClusters([])
           setInstances([])
         }
@@ -92,26 +92,26 @@ export function useDashboardData(): DashboardData {
     }
   }, [currentOrg])
 
-  const recentExperiments = useMemo(() => {
-    return [...experiments].sort(
+  const recentEnvironments = useMemo(() => {
+    return [...environments].sort(
       (a, b) => new Date(b.updatedAt || "").getTime() - new Date(a.updatedAt || "").getTime()
     )
-  }, [experiments])
+  }, [environments])
 
   const totalProjects = projects.length
-  const totalExperiments = experiments.length
+  const totalEnvironments = environments.length
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length
 
   return {
     projects,
-    experiments,
+    environments,
     clusters,
     instances,
     isLoading,
-    recentExperiments,
+    recentEnvironments,
     totalProjects,
-    totalExperiments,
+    totalEnvironments,
     runningInstances,
     failedInstances,
   }

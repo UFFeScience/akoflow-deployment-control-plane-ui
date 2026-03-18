@@ -16,7 +16,7 @@ interface AppHeaderProps {
 const labelMap: Record<string, string> = {
   dashboard: "Dashboard",
   projects: "Projects",
-  experiments: "Experiments",
+  environments: "Environments",
 }
 
 function getBreadcrumbs(

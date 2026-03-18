@@ -1,6 +1,6 @@
 "use client"
 
-import { ExperimentInstancesTable } from "@/components/experiments/experiment-instances-table"
+import { EnvironmentInstancesTable } from "@/components/environments/environment-instances-table"
 import type { Instance } from "@/lib/api/types"
 
 interface AllInstancesTabProps {
@@ -17,7 +17,7 @@ export function AllInstancesTab({ instances, isLoading }: AllInstancesTabProps) 
           {instances.length} instance{instances.length !== 1 ? "s" : ""} across all clusters
         </p>
       </div>
-      <ExperimentInstancesTable instances={instances} isLoading={isLoading} />
+      <EnvironmentInstancesTable instances={instances} isLoading={isLoading} />
     </div>
   )
 }

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { experimentsApi } from "@/lib/api/experiments"
+import { environmentsApi } from "@/lib/api/environments"
 import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
@@ -20,7 +20,7 @@ import type { InstanceType, Provider, Template, TemplateVersion } from "@/lib/ap
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
-import { ExperimentConfigurationForm } from "@/components/form/experiment-configuration-form"
+import { EnvironmentConfigurationForm } from "@/components/form/environment-configuration-form"
 import { InstanceConfigurationForm } from "@/components/form/instance-configuration-form"
 import { LifecycleHooksForm } from "@/components/form/lifecycle-hooks-form"
 import { toast } from "sonner"
@@ -33,7 +33,7 @@ const steps = [
   },
   {
     id: "template",
-    title: "Experiment template",
+    title: "Environment template",
     description: "Pick a template and version",
   },
   {
@@ -50,12 +50,12 @@ const steps = [
 
 type StepId = (typeof steps)[number]["id"]
 
-export function ExperimentCreateFlow() {
+export function EnvironmentCreateFlow() {
   const params = useParams()
   const projectId = params.projectId as string
   const router = useRouter()
 
-  const [experimentId, setExperimentId] = useState<string | null>(null)
+  const [environmentId, setEnvironmentId] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState<StepId>("basics")
   const [templates, setTemplates] = useState<Template[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
@@ -75,23 +75,23 @@ export function ExperimentCreateFlow() {
     description: "",
     executionMode: "manual",
   })
-  const [experimentTemplateId, setExperimentTemplateId] = useState<string>("none")
+  const [environmentTemplateId, setEnvironmentTemplateId] = useState<string>("none")
   const [templateVersions, setTemplateVersions] = useState<TemplateVersion[]>([])
   const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState<string | null>(null)
   const [isLoadingVersions, setIsLoadingVersions] = useState(false)
-  const [experimentVariables, setExperimentVariables] = useState<Record<string, unknown>>({})
+  const [environmentVariables, setEnvironmentVariables] = useState<Record<string, unknown>>({})
   const [instanceVariables, setInstanceVariables] = useState<Record<string, unknown>>({})
   const [lifecycleHooks, setLifecycleHooks] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (experimentTemplateId === "none") {
+    if (environmentTemplateId === "none") {
       setTemplateVersions([])
       setSelectedTemplateVersionId(null)
       return
     }
     let active = true
     setIsLoadingVersions(true)
-    templatesApi.listVersions(experimentTemplateId)
+    templatesApi.listVersions(environmentTemplateId)
       .then((vers) => {
         if (!active) return
         setTemplateVersions(vers)
@@ -101,10 +101,10 @@ export function ExperimentCreateFlow() {
       .catch(() => {})
       .finally(() => { if (active) setIsLoadingVersions(false) })
     return () => { active = false }
-  }, [experimentTemplateId])
+  }, [environmentTemplateId])
 
   const { definition, activeVersionId, isLoading: isLoadingDefinition } = useTemplateDefinition(
-    experimentTemplateId === "none" ? null : experimentTemplateId,
+    environmentTemplateId === "none" ? null : environmentTemplateId,
     selectedTemplateVersionId,
   )
   
@@ -194,9 +194,9 @@ export function ExperimentCreateFlow() {
     }
   }, [])
 
-  // Prefill cluster form from experiment template topology (e.g., AkoFlow + GKE)
+  // Prefill cluster form from environment template topology (e.g., AkoFlow + GKE)
   useEffect(() => {
-    if (experimentTemplateId === "none") return
+    if (environmentTemplateId === "none") return
     if (!definition?.cluster_topology?.instance_groups) return
 
     // Avoid overriding if user already configured groups with templates
@@ -210,7 +210,7 @@ export function ExperimentCreateFlow() {
     const provider = gcpProvider || providers[0]
     if (!provider) return
 
-    const regionFromVars = (experimentVariables as any)?.gcp_region || "us-central1"
+    const regionFromVars = (environmentVariables as any)?.gcp_region || "us-central1"
     const providerTypes = instanceTypesByProvider[provider.id] || instanceTypes
 
     const groups = definition.cluster_topology.instance_groups.map((group: any) => {
@@ -241,19 +241,19 @@ export function ExperimentCreateFlow() {
       region: regionFromVars,
       instanceGroups: groups,
     }))
-  }, [experimentTemplateId, definition, providers, instanceTypes, instanceTypesByProvider, instanceGroupTemplatesBySlug, experimentVariables, clusterForm.instanceGroups])
+  }, [environmentTemplateId, definition, providers, instanceTypes, instanceTypesByProvider, instanceGroupTemplatesBySlug, environmentVariables, clusterForm.instanceGroups])
 
   function validateConfigFields(): Record<string, string> {
     const errors: Record<string, string> = {}
     if (!definition) return errors
 
-    // Validate experiment_configuration required fields
-    const expConfig = (definition as any).experiment_configuration
+    // Validate environment_configuration required fields
+    const expConfig = (definition as any).environment_configuration
     if (expConfig?.sections) {
       for (const section of expConfig.sections) {
         for (const field of section.fields || []) {
           if (field.required) {
-            const val = experimentVariables[field.name] ?? field.default
+            const val = environmentVariables[field.name] ?? field.default
             if (val === undefined || val === null || val === "") {
               errors[field.name] = `${field.label} is required`
             }
@@ -297,7 +297,7 @@ export function ExperimentCreateFlow() {
       }
       setConfigErrors({})
       setShowConfigErrors(false)
-      if (!experimentId) handleSaveConfiguration()
+      if (!environmentId) handleSaveConfiguration()
     }
 
     setActiveStep(next.id)
@@ -310,14 +310,14 @@ export function ExperimentCreateFlow() {
   }
 
   /**
-   * Merges experiment-level and instance-level variables into a single
+   * Merges environment-level and instance-level variables into a single
    * `configuration_json` that mirrors the template definition structure.
-   * Stored on the experiment so the filled-in values can be replayed later.
+   * Stored on the environment so the filled-in values can be replayed later.
    */
   function buildConfigurationJson(): Record<string, unknown> {
     const config: Record<string, unknown> = {}
-    if (Object.keys(experimentVariables).length > 0) {
-      config.experiment_configuration = experimentVariables
+    if (Object.keys(environmentVariables).length > 0) {
+      config.environment_configuration = environmentVariables
     }
     if (Object.keys(instanceVariables).length > 0) {
       config.instance_configurations = instanceVariables
@@ -340,20 +340,20 @@ export function ExperimentCreateFlow() {
   }
 
   async function handleSaveConfiguration() {
-    // Se o experimento ainda não foi criado, criá-lo com as configurações
-    if (!experimentId) {
+    // Se o environmento ainda não foi criado, criá-lo com as configurações
+    if (!environmentId) {
       try {
         const configurationJson = buildConfigurationJson()
-        const experimentPayload = {
+        const environmentPayload = {
           name: basics.name.trim(),
           description: basics.description.trim() || undefined,
           execution_mode: basics.executionMode,
-          experiment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
+          environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
           ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         }
 
-        const experiment = await experimentsApi.create(projectId, experimentPayload)
-        setExperimentId(experiment.id)
+        const environment = await environmentsApi.create(projectId, environmentPayload)
+        setEnvironmentId(environment.id)
         toast.success("Configuration saved successfully")
       } catch (error) {
         toast.error("Failed to save configuration")
@@ -367,22 +367,22 @@ export function ExperimentCreateFlow() {
     setIsSubmitting(true)
 
     try {
-      // Usar experimentId se já foi criado, senão criar agora
-      let finalExperimentId = experimentId
+      // Usar environmentId se já foi criado, senão criar agora
+      let finalEnvironmentId = environmentId
 
-      if (!finalExperimentId) {
+      if (!finalEnvironmentId) {
         const configurationJson = buildConfigurationJson()
 
-        const experimentPayload = {
+        const environmentPayload = {
           name: basics.name.trim(),
           description: basics.description.trim() || undefined,
           execution_mode: basics.executionMode,
-          experiment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
+          environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
           ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         }
 
-        const experiment = await experimentsApi.create(projectId, experimentPayload)
-        finalExperimentId = experiment.id
+        const environment = await environmentsApi.create(projectId, environmentPayload)
+        finalEnvironmentId = environment.id
       }
 
       const instanceGroupsPayload = [] as {
@@ -421,7 +421,7 @@ export function ExperimentCreateFlow() {
 
       if (instanceGroupsPayload.length > 0 && clusterForm.providerId && clusterForm.region) {
         const nodeCount = instanceGroupsPayload.reduce((sum, g) => sum + g.quantity, 0)
-        await clustersApi.create(finalExperimentId, {
+        await clustersApi.create(finalEnvironmentId, {
           providerId: clusterForm.providerId,
           region: clusterForm.region,
           instanceGroups: instanceGroupsPayload,
@@ -429,10 +429,10 @@ export function ExperimentCreateFlow() {
         })
       }
 
-      toast.success("Experiment created")
-      router.push(`/projects/${projectId}/experiments/${finalExperimentId}`)
+      toast.success("Environment created")
+      router.push(`/projects/${projectId}/environments/${finalEnvironmentId}`)
     } catch {
-      toast.error("Failed to create experiment")
+      toast.error("Failed to create environment")
       setIsSubmitting(false)
     }
   }
@@ -450,7 +450,7 @@ export function ExperimentCreateFlow() {
         </Button>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Guided experiment setup
+          Guided environment setup
         </div>
       </div>
 
@@ -491,7 +491,7 @@ export function ExperimentCreateFlow() {
         {activeStep === "basics" && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Experiment basics</h2>
+              <h2 className="text-sm font-semibold text-foreground">Environment basics</h2>
               <p className="text-xs text-muted-foreground">Name, description, and execution mode.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -536,20 +536,20 @@ export function ExperimentCreateFlow() {
         {activeStep === "template" && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Experiment template</h2>
+              <h2 className="text-sm font-semibold text-foreground">Environment template</h2>
               <p className="text-xs text-muted-foreground">Pick a template to prefill defaults and metadata.</p>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setExperimentTemplateId("none")}
+                onClick={() => setEnvironmentTemplateId("none")}
                 className={`flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors ${
-                  experimentTemplateId === "none" ? "border-primary/60 bg-primary/5" : "border-border bg-background"
+                  environmentTemplateId === "none" ? "border-primary/60 bg-primary/5" : "border-border bg-background"
                 }`}
               >
                 <div className="flex items-center justify-between text-sm font-semibold text-foreground">
                   No template
-                  {experimentTemplateId === "none" && <Check className="h-4 w-4 text-primary" />}
+                  {environmentTemplateId === "none" && <Check className="h-4 w-4 text-primary" />}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Start from scratch and configure clusters manually.
@@ -559,14 +559,14 @@ export function ExperimentCreateFlow() {
                 <button
                   key={template.id}
                   type="button"
-                  onClick={() => setExperimentTemplateId(template.id)}
+                  onClick={() => setEnvironmentTemplateId(template.id)}
                   className={`flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors ${
-                    experimentTemplateId === template.id ? "border-primary/60 bg-primary/5" : "border-border bg-background"
+                    environmentTemplateId === template.id ? "border-primary/60 bg-primary/5" : "border-border bg-background"
                   }`}
                 >
                   <div className="flex items-center justify-between text-sm font-semibold text-foreground">
                     {template.name}
-                    {experimentTemplateId === template.id && <Check className="h-4 w-4 text-primary" />}
+                    {environmentTemplateId === template.id && <Check className="h-4 w-4 text-primary" />}
                   </div>
                   {template.description && (
                     <p className="text-xs text-muted-foreground line-clamp-3">{template.description}</p>
@@ -579,7 +579,7 @@ export function ExperimentCreateFlow() {
             </div>
 
             {/* Version selector */}
-            {experimentTemplateId !== "none" && (
+            {environmentTemplateId !== "none" && (
               <div className="flex flex-col gap-2">
                 <Label className="text-xs">
                   Version
@@ -625,19 +625,19 @@ export function ExperimentCreateFlow() {
               <h2 className="text-sm font-semibold text-foreground">Template configuration</h2>
               <p className="text-xs text-muted-foreground">
                 {definition
-                  ? "Configure experiment and instance settings."
+                  ? "Configure environment and instance settings."
                   : "Select a template in the previous step to configure variables."}
               </p>
             </div>
 
             {definition && (
               <div className="flex flex-col gap-6">
-                {/* Experiment Configuration Section */}
-                {(definition as any).experiment_configuration && (
-                  <ExperimentConfigurationForm
+                {/* Environment Configuration Section */}
+                {(definition as any).environment_configuration && (
+                  <EnvironmentConfigurationForm
                     definition={definition}
-                    values={experimentVariables}
-                    onChange={(v) => { setExperimentVariables(v); setShowConfigErrors(false) }}
+                    values={environmentVariables}
+                    onChange={(v) => { setEnvironmentVariables(v); setShowConfigErrors(false) }}
                     errors={configErrors}
                   />
                 )}
@@ -654,15 +654,15 @@ export function ExperimentCreateFlow() {
                   )}
 
                 {/* Fallback to original DynamicForm for backward compatibility */}
-                {!(definition as any).experiment_configuration &&
+                {!(definition as any).environment_configuration &&
                   !(definition as any).instance_configurations &&
                   definition.sections &&
                   definition.sections.length > 0 && (
                     <div>
                       <DynamicForm
                         definition={definition}
-                        values={experimentVariables}
-                        onChange={setExperimentVariables}
+                        values={environmentVariables}
+                        onChange={setEnvironmentVariables}
                       />
                     </div>
                   )}
@@ -677,7 +677,7 @@ export function ExperimentCreateFlow() {
                   </div>
                 )}
 
-                {!(definition as any).experiment_configuration &&
+                {!(definition as any).environment_configuration &&
                   !(definition as any).instance_configurations &&
                   (!definition.sections || definition.sections.length === 0) &&
                   (!definition.lifecycle_hooks || definition.lifecycle_hooks.length === 0) && (
@@ -688,14 +688,14 @@ export function ExperimentCreateFlow() {
               </div>
             )}
 
-            {!definition && experimentTemplateId !== "none" && (
+            {!definition && environmentTemplateId !== "none" && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <LoadingSpinner />
                 Loading configuration...
               </div>
             )}
 
-            {experimentTemplateId === "none" && (
+            {environmentTemplateId === "none" && (
               <div className="text-sm text-muted-foreground">
                 No template selected. Proceed to cluster configuration or select a template.
               </div>
@@ -770,7 +770,7 @@ export function ExperimentCreateFlow() {
                   Creating...
                 </>
               ) : (
-                "Create experiment"
+                "Create environment"
               )}
             </Button>
           )}

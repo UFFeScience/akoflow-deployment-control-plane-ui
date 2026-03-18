@@ -2,10 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Experiment } from "@/lib/api/types"
+import type { Environment } from "@/lib/api/types"
 
 interface ConfigurationTabProps {
-  experiment: Experiment
+  environment: Environment
 }
 
 function ValueDisplay({ value }: { value: unknown }) {
@@ -45,23 +45,23 @@ function SectionFields({
   )
 }
 
-export function ConfigurationTab({ experiment }: ConfigurationTabProps) {
+export function ConfigurationTab({ environment }: ConfigurationTabProps) {
   const configJson: Record<string, unknown> =
-    (experiment as any).configuration_json || {}
+    (environment as any).configuration_json || {}
 
-  const experimentConfig = configJson.experiment_configuration as Record<string, unknown> | undefined
+  const environmentConfig = configJson.environment_configuration as Record<string, unknown> | undefined
   const instanceConfigs = configJson.instance_configurations as Record<string, Record<string, unknown>> | undefined
   const lifecycleHooks = configJson.lifecycle_hooks as Record<string, string> | undefined
 
-  const templateName = (experiment as any).template_name || experiment.templateName
+  const templateName = (environment as any).template_name || environment.templateName
   const hasConfig =
-    (experimentConfig && Object.keys(experimentConfig).length > 0) ||
+    (environmentConfig && Object.keys(environmentConfig).length > 0) ||
     (instanceConfigs && Object.keys(instanceConfigs).length > 0)
 
   if (!templateName && !hasConfig) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed border-border py-12 text-xs text-muted-foreground">
-        This experiment has no template configuration. It was created without a template.
+        This environment has no template configuration. It was created without a template.
       </div>
     )
   }
@@ -77,18 +77,18 @@ export function ConfigurationTab({ experiment }: ConfigurationTabProps) {
         </div>
       )}
 
-      {/* Experiment-level configuration */}
-      {experimentConfig && Object.keys(experimentConfig).length > 0 && (
+      {/* Environment-level configuration */}
+      {environmentConfig && Object.keys(environmentConfig).length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Experiment Configuration</CardTitle>
+            <CardTitle className="text-sm font-semibold">Environment Configuration</CardTitle>
             <CardDescription className="text-xs">
-              High-level settings applied across the entire experiment
+              High-level settings applied across the entire environment
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {Object.entries(experimentConfig).map(([key, value]) => (
+              {Object.entries(environmentConfig).map(([key, value]) => (
                 <div key={key} className="flex flex-col gap-0.5">
                   <span className="text-[11px] font-medium text-muted-foreground capitalize">
                     {key.replace(/_/g, " ")}
@@ -154,7 +154,7 @@ export function ConfigurationTab({ experiment }: ConfigurationTabProps) {
 
       {!hasConfig && templateName && (
         <div className="text-xs text-muted-foreground">
-          This experiment uses the <span className="font-medium text-foreground">{templateName}</span> template
+          This environment uses the <span className="font-medium text-foreground">{templateName}</span> template
           but no configuration values were saved at creation time.
         </div>
       )}

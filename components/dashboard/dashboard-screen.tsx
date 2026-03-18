@@ -10,17 +10,17 @@ import { DashboardActivity } from "./dashboard-activity"
 import { DashboardResources } from "./dashboard-resources"
 import { DashboardHealth } from "./dashboard-health"
 import { InstancesVisualization } from "./instances-visualization"
-import { RecentExperiments } from "./recent-experiments"
-import { experimentsApi } from "@/lib/api/experiments"
+import { RecentEnvironments } from "./recent-environments"
+import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
 import { clustersApi } from "@/lib/api/clusters"
-import type { Cluster, Experiment, Instance, Project } from "@/lib/api/types"
+import type { Cluster, Environment, Instance, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export function DashboardScreen() {
   const { currentOrg } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
-  const [experiments, setExperiments] = useState<Experiment[]>([])
+  const [environments, setEnvironments] = useState<Environment[]>([])
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [instances, setInstances] = useState<Instance[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -43,7 +43,7 @@ export function DashboardScreen() {
       if (!currentOrg) {
         if (active) {
           setProjects([])
-          setExperiments([])
+          setEnvironments([])
           setClusters([])
           setInstances([])
           setIsLoading(false)
@@ -57,20 +57,20 @@ export function DashboardScreen() {
         if (!active) return
         setProjects(projectData)
 
-        const experimentLists = await Promise.all(
+        const environmentLists = await Promise.all(
           projectData.map((project) =>
-            experimentsApi
+            environmentsApi
               .list(project.id)
               .then((items) => items.map((exp) => ({ ...exp, projectId: exp.projectId || project.id })))
               .catch(() => [])
           )
         )
-        const experimentData = experimentLists.flat()
+        const environmentData = environmentLists.flat()
         if (!active) return
-        setExperiments(experimentData)
+        setEnvironments(environmentData)
 
         const clusterLists = await Promise.all(
-          experimentData.map((exp) => clustersApi.list(exp.id).catch(() => []))
+          environmentData.map((exp) => clustersApi.list(exp.id).catch(() => []))
         )
         const clusterData = clusterLists.flat()
         if (!active) return
@@ -84,7 +84,7 @@ export function DashboardScreen() {
       } catch {
         if (active) {
           setProjects([])
-          setExperiments([])
+          setEnvironments([])
           setClusters([])
           setInstances([])
         }
@@ -100,16 +100,16 @@ export function DashboardScreen() {
     }
   }, [currentOrg, search, router])
 
-  const recentExperiments = useMemo(() => {
-    return [...experiments].sort((a, b) => new Date(b.updatedAt || "").getTime() - new Date(a.updatedAt || "").getTime())
-  }, [experiments])
+  const recentEnvironments = useMemo(() => {
+    return [...environments].sort((a, b) => new Date(b.updatedAt || "").getTime() - new Date(a.updatedAt || "").getTime())
+  }, [environments])
 
   function getProjectName(projectId: string) {
     return projects.find((p) => p.id === projectId)?.name || projectId
   }
 
   const totalProjects = projects.length
-  const totalExperiments = experiments.length
+  const totalEnvironments = environments.length
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length
 
@@ -127,7 +127,7 @@ export function DashboardScreen() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitor your experiments and instances</p>
+        <p className="text-sm text-muted-foreground mt-1">Monitor your environments and instances</p>
       </div>
 
       <WelcomeModal visible={showWelcome} onClose={() => setShowWelcome(false)} />
@@ -135,28 +135,28 @@ export function DashboardScreen() {
       {/* Main Statistics */}
       <DashboardStats
         totalProjects={totalProjects}
-        totalExperiments={totalExperiments}
+        totalEnvironments={totalEnvironments}
         runningInstances={runningInstances}
         failedInstances={failedInstances}
         clusters={clusters}
         instances={instances}
-        experiments={experiments}
+        environments={environments}
       />
 
       {/* System Health */}
-      <DashboardHealth experiments={experiments} clusters={clusters} />
+      <DashboardHealth environments={environments} clusters={clusters} />
 
       {/* Activity and Resources */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <DashboardActivity experiments={experiments} instances={instances} />
+        <DashboardActivity environments={environments} instances={instances} />
         
         <div className="space-y-6">
           <DashboardResources instances={instances} clusters={clusters} />
         </div>
       </div>
 
-      {/* Recent Experiments */}
-      <RecentExperiments recentExperiments={recentExperiments} isLoading={isLoading} getProjectName={getProjectName} />
+      {/* Recent Environments */}
+      <RecentEnvironments recentEnvironments={recentEnvironments} isLoading={isLoading} getProjectName={getProjectName} />
     </div>
   )
 }

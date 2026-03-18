@@ -35,9 +35,9 @@ interface TemplateHierarchyFormProps {
 }
 
 const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, clusterTopology, values = {}, onChange }) => {
-  const experimentSections = useMemo(() => {
+  const environmentSections = useMemo(() => {
     if (!definition) return []
-    if (definition.experiment_configuration?.sections?.length) return definition.experiment_configuration.sections
+    if (definition.environment_configuration?.sections?.length) return definition.environment_configuration.sections
     return definition.sections || []
   }, [definition])
 
@@ -137,14 +137,14 @@ const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, clu
 
   return (
     <div className="flex flex-col gap-6">
-      {experimentSections.length > 0 && (
+      {environmentSections.length > 0 && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 bg-blue-600 rounded-full" />
-            <h3 className="font-semibold text-base">Experiment Configuration</h3>
+            <h3 className="font-semibold text-base">Environment Configuration</h3>
           </div>
           <div className="flex flex-col gap-4">
-            {experimentSections.map((section) => (
+            {environmentSections.map((section) => (
               <Card key={section.name} className="border-blue-200 bg-blue-50/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">{section.label}</CardTitle>
@@ -160,8 +160,8 @@ const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, clu
                         </Label>
                         {renderField(
                           field,
-                          (values.experiment || {})[field.name],
-                          (v) => handleChange(`experiment.${field.name}`, v)
+                          (values.environment || {})[field.name],
+                          (v) => handleChange(`environment.${field.name}`, v)
                         )}
                         {field.description && field.type !== "boolean" && (
                           <p className="text-xs text-muted-foreground">{field.description}</p>

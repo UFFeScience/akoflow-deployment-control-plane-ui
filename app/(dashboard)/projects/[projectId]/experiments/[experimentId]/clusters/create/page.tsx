@@ -1,4 +1,4 @@
-import { CreateClusterForm } from "@/components/experiments/create-cluster-form"
+import { CreateClusterForm } from "@/components/environments/create-cluster-form"
 
 export default function CreateClusterPage() {
   return <CreateClusterForm />

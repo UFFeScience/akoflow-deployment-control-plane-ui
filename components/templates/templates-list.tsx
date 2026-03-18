@@ -39,9 +39,9 @@ export function TemplatesList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Experiment Templates</h1>
+          <h1 className="text-lg font-semibold">Environment Templates</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Reusable templates that define the infrastructure and configuration for experiments.
+            Reusable templates that define the infrastructure and configuration for environments.
           </p>
         </div>
         <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => router.push("/organization/templates/new")}>
@@ -70,7 +70,7 @@ export function TemplatesList() {
           <FileCode2 className="h-8 w-8 text-muted-foreground/50 mb-3" />
           <p className="text-sm font-medium">No templates yet</p>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
-            Create a template to standardize experiment configurations.
+            Create a template to standardize environment configurations.
           </p>
           <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => router.push("/organization/templates/new")}>
             <Plus className="h-3.5 w-3.5" />

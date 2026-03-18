@@ -327,7 +327,7 @@ function countFields(def?: TemplateDefinition | null): number {
   const countSections = (sections: any[]) => {
     sections?.forEach((s) => { count += s.fields?.length ?? 0 })
   }
-  if (def.experiment_configuration?.sections) countSections(def.experiment_configuration.sections)
+  if (def.environment_configuration?.sections) countSections(def.environment_configuration.sections)
   Object.values(def.instance_configurations ?? {}).forEach((cfg: any) => countSections(cfg.sections ?? []))
   return count
 }

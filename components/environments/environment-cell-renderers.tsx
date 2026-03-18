@@ -1,23 +1,23 @@
 import Link from "next/link"
 import { StatusBadge } from "@/components/status-badge"
 import { CloudBadge } from "@/components/ui/cloud-badge"
-import type { Experiment } from "@/lib/api/types"
+import type { Environment } from "@/lib/api/types"
 
 type Renderers = {
-  name: (exp: Experiment, projectId: string) => React.ReactNode
-  template: (exp: Experiment) => React.ReactNode
-  status: (exp: Experiment) => React.ReactNode
-  instances: (exp: Experiment) => React.ReactNode
-  aws: (exp: Experiment) => React.ReactNode
-  gcp: (exp: Experiment) => React.ReactNode
-  updated: (exp: Experiment) => React.ReactNode
+  name: (exp: Environment, projectId: string) => React.ReactNode
+  template: (exp: Environment) => React.ReactNode
+  status: (exp: Environment) => React.ReactNode
+  instances: (exp: Environment) => React.ReactNode
+  aws: (exp: Environment) => React.ReactNode
+  gcp: (exp: Environment) => React.ReactNode
+  updated: (exp: Environment) => React.ReactNode
 }
 
-export const ExperimentCellRenderers: Renderers = {
+export const EnvironmentCellRenderers: Renderers = {
   name(exp, projectId) {
     return (
       <Link
-        href={`/projects/${projectId}/experiments/${exp.id}`}
+        href={`/projects/${projectId}/environments/${exp.id}`}
         className="text-xs font-medium text-foreground hover:text-primary transition-colors"
       >
         {exp.name}

@@ -27,7 +27,7 @@ function normalizeClusterPayload(data: any): Cluster {
   return {
     ...data,
     id: data?.id?.toString?.() ?? data?.id,
-    experimentId: data?.experiment_id ?? data?.experimentId,
+    environmentId: data?.environment_id ?? data?.environmentId,
     providerId: data?.provider_id ?? data?.providerId,
     providerName: data?.provider_name ?? data?.providerName,
     region: data?.region,

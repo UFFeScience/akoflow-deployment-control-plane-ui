@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-import { experimentTemplatesApi, type ExperimentTemplate, type ExperimentTemplateVersion } from "@/lib/api/experiment-templates"
+import { environmentTemplatesApi, type EnvironmentTemplate, type EnvironmentTemplateVersion } from "@/lib/api/environment-templates"
 
-export function useExperimentTemplates() {
-  const [templates, setTemplates] = useState<ExperimentTemplate[]>([])
+export function useEnvironmentTemplates() {
+  const [templates, setTemplates] = useState<EnvironmentTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -11,7 +11,7 @@ export function useExperimentTemplates() {
       try {
         setIsLoading(true)
         setError(null)
-        const data = await experimentTemplatesApi.list()
+        const data = await environmentTemplatesApi.list()
         setTemplates(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load templates")
@@ -26,8 +26,8 @@ export function useExperimentTemplates() {
   return { templates, isLoading, error }
 }
 
-export function useExperimentTemplateActive(templateId: string | null) {
-  const [template, setTemplate] = useState<ExperimentTemplateVersion | null>(null)
+export function useEnvironmentTemplateActive(templateId: string | null) {
+  const [template, setTemplate] = useState<EnvironmentTemplateVersion | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,7 +41,7 @@ export function useExperimentTemplateActive(templateId: string | null) {
       try {
         setIsLoading(true)
         setError(null)
-        const data = await experimentTemplatesApi.getActive(templateId)
+        const data = await environmentTemplatesApi.getActive(templateId)
         setTemplate(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load template")

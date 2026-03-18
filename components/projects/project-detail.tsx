@@ -5,10 +5,10 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ExperimentsTable } from "@/components/experiments/experiments-table"
-import { experimentsApi } from "@/lib/api/experiments"
+import { EnvironmentsTable } from "@/components/environments/environments-table"
+import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
-import type { Experiment, Project } from "@/lib/api/types"
+import type { Environment, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export function ProjectDetailView() {
@@ -16,7 +16,7 @@ export function ProjectDetailView() {
   const projectId = params.projectId as string
   const { currentOrg } = useAuth()
   const [project, setProject] = useState<Project | null>(null)
-  const [experiments, setExperiments] = useState<Experiment[]>([])
+  const [environments, setEnvironments] = useState<Environment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function ProjectDetailView() {
       if (!currentOrg) {
         if (active) {
           setProject(null)
-          setExperiments([])
+          setEnvironments([])
           setIsLoading(false)
         }
         return
@@ -34,17 +34,17 @@ export function ProjectDetailView() {
 
       setIsLoading(true)
       try {
-        const [projectData, experimentData] = await Promise.all([
+        const [projectData, environmentData] = await Promise.all([
           projectsApi.get(currentOrg.id, projectId),
-          experimentsApi.list(projectId).catch(() => []),
+          environmentsApi.list(projectId).catch(() => []),
         ])
         if (!active) return
         setProject(projectData)
-        setExperiments(experimentData)
+        setEnvironments(environmentData)
       } catch {
         if (active) {
           setProject(null)
-          setExperiments([])
+          setEnvironments([])
         }
       } finally {
         if (active) setIsLoading(false)
@@ -82,15 +82,15 @@ export function ProjectDetailView() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium text-muted-foreground">Experiments</h2>
+        <h2 className="text-xs font-medium text-muted-foreground">Environments</h2>
         <Button size="sm" className="h-7 text-xs" asChild>
-          <Link href={`/projects/${projectId}/experiments/new`}>
+          <Link href={`/projects/${projectId}/environments/new`}>
             <Plus className="mr-1 h-3 w-3" />
-            Create Experiment
+            Create Environment
           </Link>
         </Button>
       </div>
-      <ExperimentsTable projectId={projectId} experiments={experiments} isLoading={isLoading} />
+      <EnvironmentsTable projectId={projectId} environments={environments} isLoading={isLoading} />
     </div>
   )
 }

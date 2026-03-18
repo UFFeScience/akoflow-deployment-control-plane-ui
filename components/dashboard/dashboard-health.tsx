@@ -2,16 +2,16 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Zap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
-import { calculateExperimentMetrics } from "@/lib/utils/dashboard"
-import type { Experiment, Cluster } from "@/lib/api/types"
+import { calculateEnvironmentMetrics } from "@/lib/utils/dashboard"
+import type { Environment, Cluster } from "@/lib/api/types"
 
 interface DashboardHealthProps {
-  experiments: Experiment[]
+  environments: Environment[]
   clusters: Cluster[]
 }
 
-export function DashboardHealth({ experiments, clusters }: DashboardHealthProps) {
-  const metrics = calculateExperimentMetrics(experiments)
+export function DashboardHealth({ environments, clusters }: DashboardHealthProps) {
+  const metrics = calculateEnvironmentMetrics(environments)
   const totalClusters = clusters.length
   
   // Calcular taxas
@@ -30,10 +30,10 @@ export function DashboardHealth({ experiments, clusters }: DashboardHealthProps)
       icon: CheckCircle2,
       color: successRate >= 80 ? "text-green-500" : successRate >= 50 ? "text-yellow-500" : "text-red-500",
       bgColor: successRate >= 80 ? "bg-green-500/10" : successRate >= 50 ? "bg-yellow-500/10" : "bg-red-500/10",
-      description: `${metrics.completed} of ${metrics.total} experiments completed`,
+      description: `${metrics.completed} of ${metrics.total} environments completed`,
     },
     {
-      label: "Active Experiments",
+      label: "Active Environments",
       value: metrics.running,
       icon: Zap,
       color: "text-blue-500",
@@ -54,7 +54,7 @@ export function DashboardHealth({ experiments, clusters }: DashboardHealthProps)
       icon: failureRate > 20 ? XCircle : failureRate > 10 ? AlertTriangle : CheckCircle2,
       color: failureRate > 20 ? "text-red-500" : failureRate > 10 ? "text-yellow-500" : "text-green-500",
       bgColor: failureRate > 20 ? "bg-red-500/10" : failureRate > 10 ? "bg-yellow-500/10" : "bg-green-500/10",
-      description: `${metrics.failed} experiments failed`,
+      description: `${metrics.failed} environments failed`,
     },
   ]
 

@@ -235,9 +235,9 @@ function Step2({ draft, setDraft }: { draft: DraftDefinition; setDraft: (d: Draf
   return (
     <div className="p-6 flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-semibold">Experiment Definition</h2>
+        <h2 className="text-lg font-semibold">Environment Definition</h2>
         <p className="text-sm text-muted-foreground">
-          Configure the form that users will fill when creating an experiment from this template.
+          Configure the form that users will fill when creating an environment from this template.
           Add sections, fields and instance configurations.
         </p>
       </div>
@@ -263,7 +263,7 @@ function Step3Terraform({
       <div>
         <h2 className="text-lg font-semibold">Terraform Module</h2>
         <p className="text-sm text-muted-foreground">
-          Optional — configure the Terraform module that will provision cloud infrastructure for experiments based on
+          Optional — configure the Terraform module that will provision cloud infrastructure for environments based on
           this template. You can also configure this later from the template detail page.
         </p>
       </div>
@@ -276,10 +276,10 @@ function Step3Terraform({
 
 function Step4Review({ info, draft, tfDrafts }: { info: BasicInfo; draft: DraftDefinition; tfDrafts: TfDraft[] }) {
   const definition = draftToDefinition(draft)
-  const sectionsCount = definition.experiment_configuration?.sections?.length ?? 0
+  const sectionsCount = definition.environment_configuration?.sections?.length ?? 0
   const instancesCount = Object.keys(definition.instance_configurations ?? {}).length
   const totalFields = [
-    ...(definition.experiment_configuration?.sections ?? []).flatMap((s) => s.fields),
+    ...(definition.environment_configuration?.sections ?? []).flatMap((s) => s.fields),
     ...Object.values(definition.instance_configurations ?? {}).flatMap((i: any) => (i.sections ?? []).flatMap((s: any) => s.fields)),
   ].length
 

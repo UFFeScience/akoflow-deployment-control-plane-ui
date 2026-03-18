@@ -13,7 +13,7 @@ const defaultResolveOrgName = (orgId: string) => orgId
 const COLUMNS = [
   { key: "name", label: "Name" },
   { key: "org", label: "Organization", className: "hidden sm:table-cell" },
-  { key: "experiments", label: "Experiments" },
+  { key: "environments", label: "Environments" },
   { key: "created", label: "Created", className: "hidden md:table-cell" },
 ]
 

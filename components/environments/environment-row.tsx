@@ -1,15 +1,15 @@
 import React from "react"
 import { TableCell, TableRow } from "@/components/ui/table"
-import type { Experiment } from "@/lib/api/types"
-import { ExperimentCellRenderers } from "./experiment-cell-renderers"
+import type { Environment } from "@/lib/api/types"
+import { EnvironmentCellRenderers } from "./environment-cell-renderers"
 
-type ExperimentRowProps = {
+type EnvironmentRowProps = {
   projectId: string
-  exp: Experiment
+  exp: Environment
 }
 
-export function ExperimentRow({ projectId, exp }: ExperimentRowProps) {
-  const r = ExperimentCellRenderers
+export function EnvironmentRow({ projectId, exp }: EnvironmentRowProps) {
+  const r = EnvironmentCellRenderers
 
   return (
     <TableRow key={exp.id} className="h-9">

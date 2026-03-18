@@ -3,25 +3,25 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import { LoadingSpinner } from "@/components/ui/loading-state"
-import type { Experiment, Project } from "@/lib/api/types"
+import type { Environment, Project } from "@/lib/api/types"
 
-interface ExperimentHeaderProps {
+interface EnvironmentHeaderProps {
   projectId: string
   project: Project | null
-  experiment: Experiment | null
+  environment: Environment | null
   instancesCount: number
   isRefreshing?: boolean
   lastUpdatedAt?: Date | null
 }
 
-export function ExperimentHeader({
+export function EnvironmentHeader({
   projectId,
   project,
-  experiment,
+  environment,
   instancesCount,
   isRefreshing = false,
   lastUpdatedAt,
-}: ExperimentHeaderProps) {
+}: EnvironmentHeaderProps) {
   const lastUpdatedLabel = lastUpdatedAt
     ? new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
@@ -39,18 +39,18 @@ export function ExperimentHeader({
         </Link>
       </Button>
       <div className="flex items-center gap-2.5">
-        <h1 className="text-sm font-semibold text-foreground">{experiment?.name || "Experiment"}</h1>
-        {experiment?.status && <StatusBadge type="status" value={experiment.status} />}
+        <h1 className="text-sm font-semibold text-foreground">{environment?.name || "Environment"}</h1>
+        {environment?.status && <StatusBadge type="status" value={environment.status} />}
       </div>
-      {experiment?.description && <p className="text-xs text-muted-foreground mt-0.5">{experiment.description}</p>}
+      {environment?.description && <p className="text-xs text-muted-foreground mt-0.5">{environment.description}</p>}
       <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
-        {(experiment?.templateName || experiment?.template_name) && (
+        {(environment?.templateName || environment?.template_name) && (
           <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
-            {experiment.templateName || experiment.template_name}
+            {environment.templateName || environment.template_name}
           </span>
         )}
-        {(experiment?.executionMode || (experiment as any)?.execution_mode) && (
-          <span className="capitalize">{experiment?.executionMode || (experiment as any)?.execution_mode} mode</span>
+        {(environment?.executionMode || (environment as any)?.execution_mode) && (
+          <span className="capitalize">{environment?.executionMode || (environment as any)?.execution_mode} mode</span>
         )}
         <span>{instancesCount} instances</span>
       </div>

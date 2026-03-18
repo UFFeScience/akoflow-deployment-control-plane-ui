@@ -57,7 +57,7 @@ export function ProjectCreateDialog({
       open={open}
       onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}
       title="Create project"
-      description="Add a new project to organize experiments."
+      description="Add a new project to organize environments."
       footer={
         <DialogActions
           onCancel={() => onOpenChange(false)}

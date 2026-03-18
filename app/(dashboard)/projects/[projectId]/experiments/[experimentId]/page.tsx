@@ -1,5 +1,5 @@
-import { ExperimentDetailView } from "@/components/experiments/experiment-detail"
+import { EnvironmentDetailView } from "@/components/environments/environment-detail"
 
-export default function ExperimentDetailPage() {
-  return <ExperimentDetailView />
+export default function EnvironmentDetailPage() {
+  return <EnvironmentDetailView />
 }

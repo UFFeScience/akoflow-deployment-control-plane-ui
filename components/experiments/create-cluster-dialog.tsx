@@ -9,27 +9,27 @@ import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
-import type { Experiment, Provider, InstanceType } from "@/lib/api/types"
+import type { Environment, Provider, InstanceType } from "@/lib/api/types"
 import { toast } from "sonner"
 
 interface CreateClusterDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  experimentId: string
-  experiment: Experiment | null
+  environmentId: string
+  environment: Environment | null
   onSuccess?: () => Promise<void>
 }
 
 function buildInitialForm(
-  experiment: Experiment | null,
+  environment: Environment | null,
   providers: Provider[],
   instanceTypes: InstanceType[],
   instanceGroupTemplates: Array<{ id: string; name: string; slug: string }>,
   pickDefaultTemplateId: string
 ): ClusterFormData {
-  // Try to extract region and provider from the experiment's configuration_json
-  const configJson = (experiment as any)?.configuration_json as Record<string, unknown> | undefined
-  const expConfig = configJson?.experiment_configuration as Record<string, unknown> | undefined
+  // Try to extract region and provider from the environment's configuration_json
+  const configJson = (environment as any)?.configuration_json as Record<string, unknown> | undefined
+  const expConfig = configJson?.environment_configuration as Record<string, unknown> | undefined
 
   // Look for common region keys
   const regionFromConfig =
@@ -38,7 +38,7 @@ function buildInitialForm(
     (expConfig?.aws_region as string) ||
     ""
 
-  // Pick provider: prefer GCP if experiment references GCP keys, else first healthy
+  // Pick provider: prefer GCP if environment references GCP keys, else first healthy
   const gcpProvider = providers.find(
     (p) => p.name?.toUpperCase().includes("GCP") || p.name?.toUpperCase().includes("GOOGLE")
   )
@@ -67,8 +67,8 @@ function buildInitialForm(
 export function CreateClusterDialog({
   open,
   onOpenChange,
-  experimentId,
-  experiment,
+  environmentId,
+  environment,
   onSuccess,
 }: CreateClusterDialogProps) {
   const [isLoading, setIsLoading] = useState(true)
@@ -78,9 +78,9 @@ export function CreateClusterDialog({
   const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<
     Array<{ id: string; name: string; slug: string }>
   >([])
-  // Snapshot of experiment captured the moment the dialog opens — prevents
+  // Snapshot of environment captured the moment the dialog opens — prevents
   // the 5-second auto-refresh from re-triggering the load and resetting the form.
-  const experimentSnapshot = useRef<Experiment | null>(null)
+  const environmentSnapshot = useRef<Environment | null>(null)
   const [form, setForm] = useState<ClusterFormData>({
     providerId: "",
     region: "",
@@ -102,7 +102,7 @@ export function CreateClusterDialog({
   }, [instanceGroupTemplates])
 
   // Load data only once when the dialog transitions to open.
-  // We deliberately exclude `experiment` from deps — the parent refreshes it every 5s
+  // We deliberately exclude `environment` from deps — the parent refreshes it every 5s
   // and we don't want that to reset the form while the user is filling it in.
   const prevOpen = useRef(false)
   useEffect(() => {
@@ -111,8 +111,8 @@ export function CreateClusterDialog({
 
     if (!justOpened) return
 
-    // Snapshot the experiment at open-time
-    experimentSnapshot.current = experiment
+    // Snapshot the environment at open-time
+    environmentSnapshot.current = environment
 
     let active = true
 
@@ -143,7 +143,7 @@ export function CreateClusterDialog({
           ""
 
         setForm(
-          buildInitialForm(experimentSnapshot.current, providerData, normalizedInstanceTypes, groupTemplateData, defaultTemplate)
+          buildInitialForm(environmentSnapshot.current, providerData, normalizedInstanceTypes, groupTemplateData, defaultTemplate)
         )
       } catch {
         toast.error("Failed to load form data")
@@ -207,7 +207,7 @@ export function CreateClusterDialog({
     const nodeCount = instanceGroupsPayload.reduce((sum, g) => sum + g.quantity, 0)
     setIsSubmitting(true)
     try {
-      await clustersApi.create(experimentId, {
+      await clustersApi.create(environmentId, {
         providerId: form.providerId,
         region: form.region,
         instanceGroups: instanceGroupsPayload,
@@ -228,9 +228,9 @@ export function CreateClusterDialog({
     Boolean(form.region) &&
     form.instanceGroups.some((g) => g.instanceTypeId && g.quantity > 0)
 
-  const description = experiment?.name
-    ? `Provision a new cluster for this experiment. Experiment: ${experiment.name}`
-    : "Provision a new cluster for this experiment."
+  const description = environment?.name
+    ? `Provision a new cluster for this environment. Environment: ${environment.name}`
+    : "Provision a new cluster for this environment."
 
   return (
     <FormDialog

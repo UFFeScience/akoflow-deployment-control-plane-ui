@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import WelcomeModal from "@/components/welcome-modal"
 import { DashboardMetrics } from "./dashboard-metrics"
-import { RecentExperimentsTable } from "./recent-experiments-table"
+import { RecentEnvironmentsTable } from "./recent-environments-table"
 import { useDashboardData } from "./use-dashboard-data"
 
 export function DashboardView() {
@@ -12,10 +12,10 @@ export function DashboardView() {
   const [showWelcome, setShowWelcome] = useState(false)
   const {
     projects,
-    recentExperiments,
+    recentEnvironments,
     isLoading,
     totalProjects,
-    totalExperiments,
+    totalEnvironments,
     runningInstances,
     failedInstances,
   } = useDashboardData()
@@ -38,12 +38,12 @@ export function DashboardView() {
 
       <DashboardMetrics
         totalProjects={totalProjects}
-        totalExperiments={totalExperiments}
+        totalEnvironments={totalEnvironments}
         runningInstances={runningInstances}
         failedInstances={failedInstances}
       />
 
-      <RecentExperimentsTable experiments={recentExperiments} projects={projects} isLoading={isLoading} />
+      <RecentEnvironmentsTable environments={recentEnvironments} projects={projects} isLoading={isLoading} />
     </div>
   )
 }

@@ -4,25 +4,25 @@ import { Separator } from "@/components/ui/separator"
 import { FormFieldComponent } from "./form-field"
 import type { TemplateDefinition } from "@/lib/api/types"
 
-interface ExperimentConfigurationFormProps {
+interface EnvironmentConfigurationFormProps {
   definition: TemplateDefinition
   values: Record<string, unknown>
   onChange: (values: Record<string, unknown>) => void
   errors?: Record<string, string>
 }
 
-export function ExperimentConfigurationForm({
+export function EnvironmentConfigurationForm({
   definition,
   values,
   onChange,
   errors = {},
-}: ExperimentConfigurationFormProps) {
-  const experimentConfig = (definition as any).experiment_configuration
+}: EnvironmentConfigurationFormProps) {
+  const environmentConfig = (definition as any).environment_configuration
 
-  if (!experimentConfig || !experimentConfig.sections || experimentConfig.sections.length === 0) {
+  if (!environmentConfig || !environmentConfig.sections || environmentConfig.sections.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        No experiment configuration fields available for this template.
+        No environment configuration fields available for this template.
       </div>
     )
   }
@@ -37,14 +37,14 @@ export function ExperimentConfigurationForm({
   return (
     <div className="flex flex-col gap-6 rounded-lg border border-border bg-muted/30 p-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">{experimentConfig.label}</h2>
-        {experimentConfig.description && (
-          <p className="text-sm text-muted-foreground mt-2">{experimentConfig.description}</p>
+        <h2 className="text-lg font-semibold text-foreground">{environmentConfig.label}</h2>
+        {environmentConfig.description && (
+          <p className="text-sm text-muted-foreground mt-2">{environmentConfig.description}</p>
         )}
       </div>
 
       <div className="flex flex-col gap-4">
-        {experimentConfig.sections.map((section: any, sectionIdx: number) => (
+        {environmentConfig.sections.map((section: any, sectionIdx: number) => (
           <div key={section.name}>
             {sectionIdx > 0 && <Separator className="my-2" />}
             <div className="flex flex-col gap-3">

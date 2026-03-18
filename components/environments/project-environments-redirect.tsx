@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 
-export function ProjectExperimentsRedirect() {
+export function ProjectEnvironmentsRedirect() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.projectId as string | undefined

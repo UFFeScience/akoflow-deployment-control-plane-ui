@@ -12,7 +12,7 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jet
 
 export const metadata: Metadata = {
   title: "AkoFlow - Multi-Cloud Control Plane",
-  description: "Cloud-native multi-cloud orchestration platform for scientific experiments, distributed instances, and infrastructure management.",
+  description: "Cloud-native multi-cloud orchestration platform for scientific environments, distributed instances, and infrastructure management.",
 }
 
 export default function RootLayout({

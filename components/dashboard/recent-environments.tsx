@@ -3,18 +3,18 @@
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
-import type { Experiment } from "@/lib/api/types"
+import type { Environment } from "@/lib/api/types"
 
-type RecentExperimentsProps = {
-  recentExperiments: Experiment[]
+type RecentEnvironmentsProps = {
+  recentEnvironments: Environment[]
   isLoading: boolean
   getProjectName: (projectId: string) => string
 }
 
-export function RecentExperiments({ recentExperiments, isLoading, getProjectName }: RecentExperimentsProps) {
+export function RecentEnvironments({ recentEnvironments, isLoading, getProjectName }: RecentEnvironmentsProps) {
   return (
     <div>
-      <h2 className="text-xs font-medium text-muted-foreground mb-2">Recent Experiments</h2>
+      <h2 className="text-xs font-medium text-muted-foreground mb-2">Recent Environments</h2>
       <div className="rounded-md border border-border overflow-hidden">
         <Table>
           <TableHeader>
@@ -28,11 +28,11 @@ export function RecentExperiments({ recentExperiments, isLoading, getProjectName
             </TableRow>
           </TableHeader>
           <TableBody>
-            {recentExperiments.map((exp) => (
+            {recentEnvironments.map((exp) => (
               <TableRow key={exp.id} className="h-9">
                 <TableCell className="py-1.5">
                   <Link
-                    href={`/projects/${exp.projectId}/experiments/${exp.id}`}
+                    href={`/projects/${exp.projectId}/environments/${exp.id}`}
                     className="text-xs font-medium text-foreground hover:text-primary transition-colors"
                   >
                     {exp.name}
@@ -74,10 +74,10 @@ export function RecentExperiments({ recentExperiments, isLoading, getProjectName
                 </TableCell>
               </TableRow>
             ))}
-            {!isLoading && recentExperiments.length === 0 && (
+            {!isLoading && recentEnvironments.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground">
-                  No experiments yet.
+                  No environments yet.
                 </TableCell>
               </TableRow>
             )}

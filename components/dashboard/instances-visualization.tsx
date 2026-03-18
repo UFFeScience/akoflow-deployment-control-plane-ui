@@ -578,7 +578,7 @@ function InstancesList({ instances }: { instances: Instance[] }) {
                 <div className={cn("h-2 w-2 rounded-full flex-shrink-0", getStatusColor(instance.status))} />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm truncate">
-                    {instance.experimentName || `Instance ${String(instance.id).slice(0, 8)}`}
+                    {instance.environmentName || `Instance ${String(instance.id).slice(0, 8)}`}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {instance.role && <span>{instance.role}</span>}

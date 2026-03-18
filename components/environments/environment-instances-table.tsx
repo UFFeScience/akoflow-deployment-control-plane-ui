@@ -17,12 +17,12 @@ const COLUMNS = [
   { key: "privateIp", label: "Private IP" },
 ]
 
-interface ExperimentInstancesTableProps {
+interface EnvironmentInstancesTableProps {
   instances: Instance[]
   isLoading?: boolean
 }
 
-export function ExperimentInstancesTable({ instances, isLoading }: ExperimentInstancesTableProps) {
+export function EnvironmentInstancesTable({ instances, isLoading }: EnvironmentInstancesTableProps) {
   return (
     <DataTable
       columns={COLUMNS}

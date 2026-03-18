@@ -4,7 +4,7 @@ import type { Project } from "@/lib/api/types"
 type ProjectRenderers = {
   name: (p: Project) => React.ReactNode
   organization: (p: Project, resolveOrgName: (id: string) => string) => React.ReactNode
-  experiments: (p: Project) => React.ReactNode
+  environments: (p: Project) => React.ReactNode
   created: (p: Project) => React.ReactNode
 }
 
@@ -24,8 +24,8 @@ export const ProjectCellRenderers: ProjectRenderers = {
     return <span className="text-xs text-muted-foreground">{resolveOrgName(p.organizationId)}</span>
   },
 
-  experiments(p) {
-    return <span className="text-xs text-muted-foreground">{p.experimentCount}</span>
+  environments(p) {
+    return <span className="text-xs text-muted-foreground">{p.environmentCount}</span>
   },
 
   created(p) {

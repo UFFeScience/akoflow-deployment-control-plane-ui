@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TopologyTab } from "@/components/experiments/topology-tab"
-import { ClustersTab } from "@/components/experiments/clusters-tab"
-import { InstancesTab } from "@/components/experiments/instances-tab"
-import { ScalingTab } from "@/components/experiments/scaling-tab"
-import { LogsTab } from "@/components/experiments/logs-tab"
-import { ConfigurationTab } from "@/components/experiments/configuration-tab"
-import type { Cluster, Experiment, Instance, InstanceType, Provider, Template } from "@/lib/api/types"
+import { TopologyTab } from "@/components/environments/topology-tab"
+import { ClustersTab } from "@/components/environments/clusters-tab"
+import { InstancesTab } from "@/components/environments/instances-tab"
+import { ScalingTab } from "@/components/environments/scaling-tab"
+import { LogsTab } from "@/components/environments/logs-tab"
+import { ConfigurationTab } from "@/components/environments/configuration-tab"
+import type { Cluster, Environment, Instance, InstanceType, Provider, Template } from "@/lib/api/types"
 
-interface ExperimentTabsProps {
-  experimentId: string
-  experiment: Experiment | null
+interface EnvironmentTabsProps {
+  environmentId: string
+  environment: Environment | null
   clusters: Cluster[]
   instancesByCluster: Record<string, Instance[]>
   providers: Provider[]
@@ -23,9 +23,9 @@ interface ExperimentTabsProps {
   onRefreshClusters: () => Promise<void>
 }
 
-export function ExperimentTabs({
-  experimentId,
-  experiment,
+export function EnvironmentTabs({
+  environmentId,
+  environment,
   clusters,
   instancesByCluster,
   providers,
@@ -34,7 +34,7 @@ export function ExperimentTabs({
   isLoadingClusters = false,
   onClustersChange,
   onRefreshClusters,
-}: ExperimentTabsProps) {
+}: EnvironmentTabsProps) {
   const allInstances = useMemo(() => Object.values(instancesByCluster).flat(), [instancesByCluster])
   const [activeTab, setActiveTab] = useState<string>("topology")
 
@@ -64,7 +64,7 @@ export function ExperimentTabs({
         <TabsTrigger value="logs" className="text-xs h-6 px-3">
           Logs
         </TabsTrigger>
-        {experiment && ((experiment as any).experiment_template_version_id || (experiment as any).configuration_json) && (
+        {environment && ((environment as any).environment_template_version_id || (environment as any).configuration_json) && (
           <TabsTrigger value="configuration" className="text-xs h-6 px-3">
             Configuration
           </TabsTrigger>
@@ -72,15 +72,15 @@ export function ExperimentTabs({
       </TabsList>
 
       <TabsContent value="topology" className="mt-3">
-        {experiment && (
-          <TopologyTab experiment={experiment} clusters={clusters} instancesByCluster={instancesByCluster} />
+        {environment && (
+          <TopologyTab environment={environment} clusters={clusters} instancesByCluster={instancesByCluster} />
         )}
       </TabsContent>
 
       <TabsContent value="clusters" className="mt-3">
         <ClustersTab
-          experimentId={experimentId}
-          experiment={experiment}
+          environmentId={environmentId}
+          environment={environment}
           clusters={clusters}
           isLoading={isLoadingClusters}
           onClustersChange={onClustersChange}
@@ -107,7 +107,7 @@ export function ExperimentTabs({
       </TabsContent>
 
       <TabsContent value="configuration" className="mt-3">
-        {experiment && <ConfigurationTab experiment={experiment} />}
+        {environment && <ConfigurationTab environment={environment} />}
       </TabsContent>
     </Tabs>
   )

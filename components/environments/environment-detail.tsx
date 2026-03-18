@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { ExperimentHeader } from "@/components/experiments/experiment-header"
-import { ExperimentTabs } from "@/components/experiments/experiment-tabs"
-import { experimentsApi } from "@/lib/api/experiments"
+import { EnvironmentHeader } from "@/components/environments/environment-header"
+import { EnvironmentTabs } from "@/components/environments/environment-tabs"
+import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
 import { clustersApi } from "@/lib/api/clusters"
 import { providersApi } from "@/lib/api/providers"
@@ -12,7 +12,7 @@ import { instanceTypesApi } from "@/lib/api/instance-types"
 import { templatesApi } from "@/lib/api/templates"
 import type {
   Cluster,
-  Experiment,
+  Environment,
   Instance,
   InstanceType,
   Project,
@@ -45,7 +45,7 @@ function normalizeCluster(raw: any): Cluster {
   return {
     ...raw,
     id: raw?.id?.toString?.() ?? raw?.id,
-    experimentId: raw?.experimentId ?? raw?.experiment_id ?? raw?.experiment?.id,
+    environmentId: raw?.environmentId ?? raw?.environment_id ?? raw?.environment?.id,
     providerId: raw?.providerId ?? raw?.provider_id ?? raw?.provider ?? raw?.provider?.id,
     providerName: raw?.providerName ?? raw?.provider_name ?? raw?.provider_label ?? raw?.provider?.name,
     region: raw?.region,
@@ -68,7 +68,7 @@ function normalizeInstance(raw: any, cluster?: Cluster): Instance {
   return {
     ...raw,
     id: raw?.id?.toString?.() ?? raw?.id,
-    experimentId: raw?.experimentId ?? raw?.experiment_id ?? cluster?.experimentId,
+    environmentId: raw?.environmentId ?? raw?.environment_id ?? cluster?.environmentId,
     clusterId: raw?.clusterId ?? raw?.cluster_id ?? cluster?.id,
     instanceGroupId: raw?.instance_group_id ?? raw?.instanceGroupId,
     provider: typeof provider === "string" ? provider.toLowerCase() : provider,
@@ -82,12 +82,12 @@ function normalizeInstance(raw: any, cluster?: Cluster): Instance {
   } as Instance
 }
 
-export function ExperimentDetailView() {
+export function EnvironmentDetailView() {
   const params = useParams()
   const projectId = params.projectId as string
-  const experimentId = params.experimentId as string
+  const environmentId = params.environmentId as string
   const { currentOrg } = useAuth()
-  const [experiment, setExperiment] = useState<Experiment | null>(null)
+  const [environment, setEnvironment] = useState<Environment | null>(null)
   const [project, setProject] = useState<Project | null>(null)
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [instancesByCluster, setInstancesByCluster] = useState<Record<string, Instance[]>>({})
@@ -118,22 +118,22 @@ export function ExperimentDetailView() {
     return map
   }, [])
 
-  const refreshExperimentData = useCallback(
+  const refreshEnvironmentData = useCallback(
     async (options: { silent?: boolean } = {}) => {
       if (isRefreshingRef.current) return
       isRefreshingRef.current = true
       setIsRefreshingStatus(true)
 
       try {
-        const [experimentData, clusterData] = await Promise.all([
-          experimentsApi.get(projectId, experimentId).catch(() => null),
-          clustersApi.list(experimentId).catch(() => []),
+        const [environmentData, clusterData] = await Promise.all([
+          environmentsApi.get(projectId, environmentId).catch(() => null),
+          clustersApi.list(environmentId).catch(() => []),
         ])
 
         const normalized = clusterData.map((c) => normalizeCluster(c))
         const map = await loadInstances(normalized, !options.silent)
 
-        if (experimentData) setExperiment(experimentData)
+        if (environmentData) setEnvironment(environmentData)
         setClusters(normalized)
         setInstancesByCluster(map)
         setLastRefreshedAt(new Date())
@@ -146,27 +146,27 @@ export function ExperimentDetailView() {
         setIsRefreshingStatus(false)
       }
     },
-    [experimentId, loadInstances, projectId]
+    [environmentId, loadInstances, projectId]
   )
 
   useEffect(() => {
     let active = true
 
-    async function loadExperiment() {
+    async function loadEnvironment() {
       setIsLoading(true)
       try {
-        const [experimentData, projectData, providerData, instanceTypeData, templateData] = await Promise.all([
-          experimentsApi.get(projectId, experimentId),
+        const [environmentData, projectData, providerData, instanceTypeData, templateData] = await Promise.all([
+          environmentsApi.get(projectId, environmentId),
           currentOrg ? projectsApi.get(currentOrg.id, projectId) : Promise.resolve(null),
           providersApi.list().catch(() => []),
           instanceTypesApi.list().catch(() => []),
           templatesApi.list().catch(() => []),
         ])
-        const clusterData = await clustersApi.list(experimentId).catch(() => [])
+        const clusterData = await clustersApi.list(environmentId).catch(() => [])
         const normalizedClusters = clusterData.map((c) => normalizeCluster(c))
         const instancesMap = await loadInstances(normalizedClusters)
         if (!active) return
-        setExperiment(experimentData)
+        setEnvironment(environmentData)
         setProject(projectData)
         setProviders(providerData)
         setInstanceTypes(
@@ -185,7 +185,7 @@ export function ExperimentDetailView() {
         setLastRefreshedAt(new Date())
       } catch {
         if (active) {
-          setExperiment(null)
+          setEnvironment(null)
           setProject(null)
           setClusters([])
           setInstancesByCluster({})
@@ -196,40 +196,40 @@ export function ExperimentDetailView() {
       }
     }
 
-    loadExperiment()
+    loadEnvironment()
 
     const intervalId = setInterval(() => {
-      refreshExperimentData({ silent: true })
+      refreshEnvironmentData({ silent: true })
     }, 5000)
 
     return () => {
       active = false
       clearInterval(intervalId)
     }
-  }, [currentOrg, experimentId, projectId, loadInstances, refreshExperimentData])
+  }, [currentOrg, environmentId, projectId, loadInstances, refreshEnvironmentData])
 
-  if (!experiment && !isLoading) {
+  if (!environment && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-xs text-muted-foreground">
-        Experiment not found.
+        Environment not found.
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <ExperimentHeader
+      <EnvironmentHeader
         projectId={projectId}
         project={project}
-        experiment={experiment}
+        environment={environment}
         instancesCount={totalInstances}
         isRefreshing={isRefreshingStatus}
         lastUpdatedAt={lastRefreshedAt}
       />
 
-      <ExperimentTabs
-        experimentId={experimentId}
-        experiment={experiment}
+      <EnvironmentTabs
+        environmentId={environmentId}
+        environment={environment}
         clusters={clusters}
         instancesByCluster={instancesByCluster}
         providers={providers}
@@ -241,7 +241,7 @@ export function ExperimentDetailView() {
           setClusters(normalized)
           loadInstances(normalized).then((map) => setInstancesByCluster(map))
         }}
-        onRefreshClusters={() => refreshExperimentData({ silent: false })}
+        onRefreshClusters={() => refreshEnvironmentData({ silent: false })}
       />
     </div>
   )

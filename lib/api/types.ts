@@ -31,7 +31,7 @@ export interface Project {
   name: string
   description?: string
   createdAt?: string
-  experimentCount?: number
+  environmentCount?: number
 }
 
 export interface Template {
@@ -51,7 +51,7 @@ export interface Template {
   created_at?: string
   updatedAt?: string
   updated_at?: string
-  experimentCount?: number
+  environmentCount?: number
 }
 
 export interface TemplateInstance {
@@ -64,7 +64,7 @@ export interface TemplateInstance {
   gpu: string
 }
 
-export interface Experiment {
+export interface Environment {
   id: string
   projectId: string
   /** Alias for API response which returns project_id */
@@ -73,10 +73,10 @@ export interface Experiment {
   templateName?: string
   /** snake_case from API response */
   template_name?: string
-  /** ID of the ExperimentTemplateVersion used when creating this experiment */
-  experimentTemplateVersionId?: string
-  experiment_template_version_id?: string
-  /** Filled-in template form values (experiment_configuration + instance_configurations) */
+  /** ID of the EnvironmentTemplateVersion used when creating this environment */
+  environmentTemplateVersionId?: string
+  environment_template_version_id?: string
+  /** Filled-in template form values (environment_configuration + instance_configurations) */
   configurationJson?: Record<string, unknown>
   configuration_json?: Record<string, unknown>
   name: string
@@ -90,13 +90,13 @@ export interface Experiment {
   instanceCount?: number
   awsInstanceCount?: number
   gcpInstanceCount?: number
-  metadata?: ExperimentMetadata[]
+  metadata?: EnvironmentMetadata[]
 }
 
 export interface Instance {
   id: string
-  experimentId: string
-  experimentName?: string
+  environmentId: string
+  environmentName?: string
   instanceGroupId?: string
   provider: "aws" | "gcp" | "hpc"
   region: string
@@ -133,9 +133,9 @@ export interface InstanceConfig {
   gpu: string
 }
 
-export interface ExperimentMetadata {
+export interface EnvironmentMetadata {
   id: string
-  experimentId: string
+  environmentId: string
   key: string
   value: string
 }
@@ -143,8 +143,8 @@ export interface ExperimentMetadata {
 export interface LogEntry {
   id: string
   timestamp: string
-  experimentId?: string
-  experimentName?: string
+  environmentId?: string
+  environmentName?: string
   instanceId?: string
   provider?: "aws" | "gcp" | "hpc"
   level: "info" | "warning" | "error" | "debug"
@@ -226,7 +226,7 @@ export interface InstanceType {
 
 export interface Cluster {
   id: string
-  experimentId: string
+  environmentId: string
   name?: string
   providerId: string
   providerName?: string
@@ -269,7 +269,7 @@ export interface TerraformModule {
   outputs_tf?: string | null
   // Mapping definition fields → terraform variable names
   tfvars_mapping_json?: {
-    experiment_configuration?: Record<string, string>
+    environment_configuration?: Record<string, string>
     instance_configurations?: Record<string, Record<string, string>>
   } | null
   credential_env_keys?: string[]
@@ -282,14 +282,14 @@ export interface TemplateDefinition {
   ui?: {
     allow_multiple_instance_groups?: boolean
   }
-  experiment_configuration?: TemplateExperimentConfiguration
+  environment_configuration?: TemplateEnvironmentConfiguration
   instance_configurations?: Record<string, TemplateInstanceConfiguration>
   cluster_topology?: TemplateClusterTopology
   sections?: FormSection[]
   lifecycle_hooks?: LifecycleHook[]
 }
 
-export interface TemplateExperimentConfiguration {
+export interface TemplateEnvironmentConfiguration {
   label?: string
   description?: string
   type?: string

@@ -213,7 +213,7 @@ export function ProviderDetailScreen() {
             <Key className="h-8 w-8 text-muted-foreground mb-2" />
             <p className="font-medium text-sm">No credentials yet</p>
             <p className="text-xs text-muted-foreground">
-              Add a credential to allow this provider to be used in experiments.
+              Add a credential to allow this provider to be used in environments.
             </p>
           </div>
         ) : (

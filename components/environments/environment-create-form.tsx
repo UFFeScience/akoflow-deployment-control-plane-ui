@@ -6,13 +6,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Template } from "@/lib/api/types"
 
-type ExperimentCreateFormProps = {
+type EnvironmentCreateFormProps = {
   form: { name: string; description: string; templateId: string; executionMode: "manual" | "auto" }
   setForm: (updater: any) => void
   templates: Template[]
 }
 
-export function ExperimentCreateForm({ form, setForm, templates }: ExperimentCreateFormProps) {
+export function EnvironmentCreateForm({ form, setForm, templates }: EnvironmentCreateFormProps) {
   return (
     <>
       <div className="flex flex-col gap-1.5">
@@ -37,7 +37,7 @@ export function ExperimentCreateForm({ form, setForm, templates }: ExperimentCre
         <Label className="text-xs">Name</Label>
         <Input
           className="h-8 text-xs"
-          placeholder="Experiment name"
+          placeholder="Environment name"
           value={form.name}
           onChange={(e) => setForm((prev: any) => ({ ...prev, name: e.target.value }))}
         />

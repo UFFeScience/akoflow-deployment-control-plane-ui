@@ -92,7 +92,7 @@ export function ProvidersScreen() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Organization</p>
           <h1 className="text-lg font-semibold text-foreground">Providers</h1>
           <p className="text-sm text-muted-foreground">
-            Configure cloud and HPC providers used to run experiments.
+            Configure cloud and HPC providers used to run environments.
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -13,13 +13,13 @@ import { instanceTypesApi } from "@/lib/api/instance-types"
 import { templatesApi } from "@/lib/api/templates"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
-import { ExperimentTemplateSelect } from "./experiment-template-select"
+import { EnvironmentTemplateSelect } from "./environment-template-select"
 import { toast } from "sonner"
 
 export function CreateClusterForm() {
   const params = useParams()
   const router = useRouter()
-  const experimentId = params.experimentId as string
+  const environmentId = params.environmentId as string
   const projectId = params.projectId as string
   
   const [isSaving, setIsSaving] = useState(false)
@@ -30,7 +30,7 @@ export function CreateClusterForm() {
   const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([])
   
   const [templateLoaded, setTemplateLoaded] = useState(false)
-  const [experimentTemplateVersionId, setExperimentTemplateVersionId] = useState<string | null>(null)
+  const [environmentTemplateVersionId, setEnvironmentTemplateVersionId] = useState<string | null>(null)
   
   const [form, setForm] = useState<ClusterFormData>({
     templateId: "none",
@@ -137,14 +137,14 @@ export function CreateClusterForm() {
         nodeCount,
       }
 
-      // Include experiment template version if loaded from template
-      if (experimentTemplateVersionId) {
-        payload.experiment_template_version_id = experimentTemplateVersionId
+      // Include environment template version if loaded from template
+      if (environmentTemplateVersionId) {
+        payload.environment_template_version_id = environmentTemplateVersionId
       }
       
-      await clustersApi.create(experimentId, payload)
+      await clustersApi.create(environmentId, payload)
       toast.success("Cluster created successfully")
-      router.push(`/projects/${projectId}/experiments/${experimentId}`)
+      router.push(`/projects/${projectId}/environments/${environmentId}`)
     } catch (error) {
       toast.error("Failed to create cluster")
       console.error(error)
@@ -159,11 +159,11 @@ export function CreateClusterForm() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push(`/projects/${projectId}/experiments/${experimentId}`)}
+          onClick={() => router.push(`/projects/${projectId}/environments/${environmentId}`)}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Experiment
+          Back to Environment
         </Button>
         <Card>
           <CardContent className="py-12 text-center">
@@ -179,11 +179,11 @@ export function CreateClusterForm() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => router.push(`/projects/${projectId}/experiments/${experimentId}`)}
+        onClick={() => router.push(`/projects/${projectId}/environments/${environmentId}`)}
         className="mb-4"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Experiment
+        Back to Environment
       </Button>
 
       <Card>
@@ -194,10 +194,10 @@ export function CreateClusterForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <ExperimentTemplateSelect
+          <EnvironmentTemplateSelect
             onTemplateSelected={(data) => {
               setTemplateLoaded(true)
-              setExperimentTemplateVersionId(data.experimentTemplateVersionId)
+              setEnvironmentTemplateVersionId(data.environmentTemplateVersionId)
               setForm((prev) => ({
                 ...prev,
                 instanceGroups: (data.instanceGroups || []).map((g) => ({
@@ -231,7 +231,7 @@ export function CreateClusterForm() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => router.push(`/projects/${projectId}/experiments/${experimentId}`)}
+              onClick={() => router.push(`/projects/${projectId}/environments/${environmentId}`)}
             >
               Cancel
             </Button>

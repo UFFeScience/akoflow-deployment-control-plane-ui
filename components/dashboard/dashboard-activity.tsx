@@ -4,27 +4,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Clock, Activity, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getStatusColor, getStatusText, formatRelativeTime } from "@/lib/utils/dashboard"
-import type { Experiment, Instance } from "@/lib/api/types"
+import type { Environment, Instance } from "@/lib/api/types"
 
 interface DashboardActivityProps {
-  experiments: Experiment[]
+  environments: Environment[]
   instances: Instance[]
 }
 
-export function DashboardActivity({ experiments, instances }: DashboardActivityProps) {
+export function DashboardActivity({ environments, instances }: DashboardActivityProps) {
   // Combinar e ordenar atividades recentes
   const recentActivities = [
-    ...experiments.slice(0, 5).map((exp) => ({
-      type: "experiment" as const,
+    ...environments.slice(0, 5).map((exp) => ({
+      type: "environment" as const,
       name: exp.name,
       status: exp.status,
       time: exp.updatedAt || exp.createdAt,
       id: exp.id,
-      subtitle: "Experiment",
+      subtitle: "Environment",
     })),
     ...instances.slice(0, 5).map((inst) => ({
       type: "instance" as const,
-      name: inst.experimentName || `Instance ${String(inst.id).slice(0, 8)}`,
+      name: inst.environmentName || `Instance ${String(inst.id).slice(0, 8)}`,
       status: inst.status,
       time: inst.createdAt,
       id: inst.id,
@@ -43,7 +43,7 @@ export function DashboardActivity({ experiments, instances }: DashboardActivityP
           <CardTitle>Recent Activity</CardTitle>
         </div>
         <CardDescription>
-          Latest updates from experiments and instances
+          Latest updates from environments and instances
         </CardDescription>
       </CardHeader>
       <CardContent>

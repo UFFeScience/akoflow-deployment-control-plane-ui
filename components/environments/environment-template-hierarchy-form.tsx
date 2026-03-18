@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button"
 import { AlertCircle } from "lucide-react"
 import TemplateHierarchyForm from "./template-hierarchy-form"
 
-interface ExperimentTemplateHierarchyFormProps {
+interface EnvironmentTemplateHierarchyFormProps {
   templates?: Array<{ id: string; name: string; description?: string }>
   onLoad?: (data: { templateId: string; values: Record<string, any> }) => void
 }
 
-const ExperimentTemplateHierarchyForm: FC<ExperimentTemplateHierarchyFormProps> = ({ templates = [], onLoad }) => {
+const EnvironmentTemplateHierarchyForm: FC<EnvironmentTemplateHierarchyFormProps> = ({ templates = [], onLoad }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [templateVersion, setTemplateVersion] = useState<any>(null)
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false)
@@ -50,8 +50,8 @@ const ExperimentTemplateHierarchyForm: FC<ExperimentTemplateHierarchyFormProps> 
     }
 
     const nextValues: Record<string, unknown> = {}
-    if (def.experiment_configuration?.sections) {
-      nextValues.experiment = buildDefaults(def.experiment_configuration.sections)
+    if (def.environment_configuration?.sections) {
+      nextValues.environment = buildDefaults(def.environment_configuration.sections)
     }
 
     Object.entries(def.instance_configurations || {}).forEach(([slug, cfg]: [string, any]) => {
@@ -74,7 +74,7 @@ const ExperimentTemplateHierarchyForm: FC<ExperimentTemplateHierarchyFormProps> 
 
     try {
       setIsLoadingTemplate(true)
-      const response = await fetch(`/api/experiment-templates/${selectedTemplateId}/active`)
+      const response = await fetch(`/api/environment-templates/${selectedTemplateId}/active`)
       const data = await response.json()
       setTemplateVersion(data)
     } catch (error) {
@@ -96,7 +96,7 @@ const ExperimentTemplateHierarchyForm: FC<ExperimentTemplateHierarchyFormProps> 
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Select Experiment Template</CardTitle>
+          <CardTitle>Select Environment Template</CardTitle>
           <CardDescription>Choose a template to configure your AkoFlow cluster</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -174,4 +174,4 @@ const ExperimentTemplateHierarchyForm: FC<ExperimentTemplateHierarchyFormProps> 
   )
 }
 
-export default ExperimentTemplateHierarchyForm
+export default EnvironmentTemplateHierarchyForm

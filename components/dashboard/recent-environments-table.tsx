@@ -5,10 +5,10 @@ import { DataTable } from "@/components/ui/data-table"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
 import { CloudBadgeGroup } from "@/components/ui/cloud-badge"
-import type { Experiment, Project } from "@/lib/api/types"
+import type { Environment, Project } from "@/lib/api/types"
 
-interface RecentExperimentsTableProps {
-  experiments: Experiment[]
+interface RecentEnvironmentsTableProps {
+  environments: Environment[]
   projects: Project[]
   isLoading: boolean
 }
@@ -22,26 +22,26 @@ const COLUMNS = [
   { key: "updated", label: "Updated", className: "hidden lg:table-cell" },
 ]
 
-export function RecentExperimentsTable({ experiments, projects, isLoading }: RecentExperimentsTableProps) {
+export function RecentEnvironmentsTable({ environments, projects, isLoading }: RecentEnvironmentsTableProps) {
   function getProjectName(projectId: string) {
     return projects.find((p) => p.id === projectId)?.name || projectId
   }
 
   return (
     <div>
-      <h2 className="text-xs font-medium text-muted-foreground mb-2">Recent Experiments</h2>
+      <h2 className="text-xs font-medium text-muted-foreground mb-2">Recent Environments</h2>
       <DataTable
         columns={COLUMNS}
-        isEmpty={!isLoading && experiments.length === 0}
+        isEmpty={!isLoading && environments.length === 0}
         isLoading={isLoading}
-        emptyLabel="No experiments yet."
-        loadingLabel="Loading experiments..."
+        emptyLabel="No environments yet."
+        loadingLabel="Loading environments..."
       >
-        {experiments.map((exp) => (
+        {environments.map((exp) => (
           <TableRow key={exp.id} className="h-9">
             <TableCell className="py-1.5">
               <Link
-                href={`/projects/${exp.projectId}/experiments/${exp.id}`}
+                href={`/projects/${exp.projectId}/environments/${exp.id}`}
                 className="text-xs font-medium text-foreground hover:text-primary transition-colors"
               >
                 {exp.name}

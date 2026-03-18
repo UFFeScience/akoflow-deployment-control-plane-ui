@@ -1,4 +1,4 @@
-import type { Experiment, Instance } from "@/lib/api/types"
+import type { Environment, Instance } from "@/lib/api/types"
 
 /**
  * Retorna a classe de cor do Tailwind baseado no status
@@ -80,15 +80,15 @@ export function calculateInstanceMetrics(instances: Instance[]) {
 }
 
 /**
- * Calcula métricas de experimentos
+ * Calcula métricas de environmentos
  */
-export function calculateExperimentMetrics(experiments: Experiment[]) {
+export function calculateEnvironmentMetrics(environments: Environment[]) {
   return {
-    total: experiments.length,
-    running: experiments.filter((e) => e.status === "running").length,
-    completed: experiments.filter((e) => e.status === "completed").length,
-    failed: experiments.filter((e) => e.status === "failed").length,
-    pending: experiments.filter((e) => e.status === "pending").length,
-    draft: experiments.filter((e) => e.status === "draft").length,
+    total: environments.length,
+    running: environments.filter((e) => e.status === "running").length,
+    completed: environments.filter((e) => e.status === "completed").length,
+    failed: environments.filter((e) => e.status === "failed").length,
+    pending: environments.filter((e) => e.status === "pending").length,
+    draft: environments.filter((e) => e.status === "draft").length,
   }
 }

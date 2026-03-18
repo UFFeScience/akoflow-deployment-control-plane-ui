@@ -2,9 +2,9 @@ import { request } from "./client"
 import type { Cluster, Instance } from "./types"
 
 export const clustersApi = {
-  list: (experimentId: string) => request<Cluster[]>(`/experiments/${experimentId}/clusters`),
+  list: (environmentId: string) => request<Cluster[]>(`/environments/${environmentId}/clusters`),
   create: (
-    experimentId: string,
+    environmentId: string,
     data: {
       templateId?: string
       providerId: string
@@ -36,7 +36,7 @@ export const clustersApi = {
       lifecycle_hooks: i.lifecycleHooks,
     }))
 
-    return request<Cluster>(`/experiments/${experimentId}/clusters`, { method: "POST", body: payload })
+    return request<Cluster>(`/environments/${environmentId}/clusters`, { method: "POST", body: payload })
   },
   scale: (clusterId: string, data: { nodeCount: number }) =>
     request<Cluster>(`/clusters/${clusterId}/scale`, { method: "POST", body: data }),

@@ -11,31 +11,31 @@ import {
   TrendingUp
 } from "lucide-react"
 import { StatCard } from "./stat-card"
-import { calculateInstanceMetrics, calculateExperimentMetrics } from "@/lib/utils/dashboard"
-import type { Cluster, Experiment, Instance } from "@/lib/api/types"
+import { calculateInstanceMetrics, calculateEnvironmentMetrics } from "@/lib/utils/dashboard"
+import type { Cluster, Environment, Instance } from "@/lib/api/types"
 
 type DashboardStatsProps = {
   totalProjects: number
-  totalExperiments: number
+  totalEnvironments: number
   runningInstances: number
   failedInstances: number
   clusters: Cluster[]
   instances: Instance[]
-  experiments: Experiment[]
+  environments: Environment[]
 }
 
 export function DashboardStats({ 
   totalProjects, 
-  totalExperiments, 
+  totalEnvironments, 
   runningInstances, 
   failedInstances,
   clusters,
   instances,
-  experiments
+  environments
 }: DashboardStatsProps) {
   // Calcular métricas usando utilitários
   const instanceMetrics = calculateInstanceMetrics(instances)
-  const experimentMetrics = calculateExperimentMetrics(experiments)
+  const environmentMetrics = calculateEnvironmentMetrics(environments)
   
   const totalClusters = clusters.length
 
@@ -47,15 +47,15 @@ export function DashboardStats({
           title="Total Projects"
           value={totalProjects}
           icon={FolderKanban}
-          description={`${totalExperiments} active experiments`}
+          description={`${totalEnvironments} active environments`}
           colorClass="text-blue-500 bg-blue-500/10"
         />
         
         <StatCard
-          title="Experiments"
-          value={totalExperiments}
+          title="Environments"
+          value={totalEnvironments}
           icon={FlaskConical}
-          description={`${experimentMetrics.running} running, ${experimentMetrics.completed} completed`}
+          description={`${environmentMetrics.running} running, ${environmentMetrics.completed} completed`}
           colorClass="text-purple-500 bg-purple-500/10"
         />
         

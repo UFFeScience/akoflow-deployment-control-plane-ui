@@ -5,32 +5,32 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useExperimentTemplates, useExperimentTemplateActive } from "@/hooks/use-experiment-templates"
+import { useEnvironmentTemplates, useEnvironmentTemplateActive } from "@/hooks/use-environment-templates"
 import TemplateHierarchyForm from "./template-hierarchy-form"
 import type { ClusterFormData } from "./cluster-form-fields"
 
-interface ExperimentTemplateSelectProps {
+interface EnvironmentTemplateSelectProps {
   onTemplateSelected: (data: {
-    experimentTemplateVersionId: string
-    experimentLevelVariables: Record<string, unknown>
+    environmentTemplateVersionId: string
+    environmentLevelVariables: Record<string, unknown>
     instanceGroups: ClusterFormData["instanceGroups"]
   }) => void
   instanceTypes: Array<{ id: string; name: string }>
 }
 
-export function ExperimentTemplateSelect({
+export function EnvironmentTemplateSelect({
   onTemplateSelected,
   instanceTypes,
-}: ExperimentTemplateSelectProps) {
-  const { templates, isLoading: templatesLoading } = useExperimentTemplates()
+}: EnvironmentTemplateSelectProps) {
+  const { templates, isLoading: templatesLoading } = useEnvironmentTemplates()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const { template, isLoading: templateLoading } = useExperimentTemplateActive(selectedTemplateId)
+  const { template, isLoading: templateLoading } = useEnvironmentTemplateActive(selectedTemplateId)
   const [templateValues, setTemplateValues] = useState<Record<string, any>>({})
   const [isConfirmed, setIsConfirmed] = useState(false)
 
   const definition = useMemo(() => template?.definition_json, [template])
 
-  // Auto-select AkoFlow+GKE template when available so the default experiment starts with GKE(3) + AkoFlow(1)
+  // Auto-select AkoFlow+GKE template when available so the default environment starts with GKE(3) + AkoFlow(1)
   useEffect(() => {
     if (selectedTemplateId || templates.length === 0) return
     const akoflowGke = templates.find((t) => t.slug === "akoflow-gke")
@@ -54,8 +54,8 @@ export function ExperimentTemplateSelect({
     }
 
     const nextValues: Record<string, any> = {}
-    if (definition.experiment_configuration?.sections) {
-      nextValues.experiment = buildDefaults(definition.experiment_configuration.sections)
+    if (definition.environment_configuration?.sections) {
+      nextValues.environment = buildDefaults(definition.environment_configuration.sections)
     }
 
     Object.entries(definition.instance_configurations || {}).forEach(([slug, cfg]: [string, any]) => {
@@ -105,8 +105,8 @@ export function ExperimentTemplateSelect({
     }
 
     onTemplateSelected({
-      experimentTemplateVersionId: template.id,
-      experimentLevelVariables: (templateValues as any).experiment || {},
+      environmentTemplateVersionId: template.id,
+      environmentLevelVariables: (templateValues as any).environment || {},
       instanceGroups,
     })
 
@@ -126,7 +126,7 @@ export function ExperimentTemplateSelect({
               size="sm"
               onClick={() => {
                 setIsConfirmed(false)
-                setExperimentVariables({})
+                setEnvironmentVariables({})
               }}
             >
               Change
@@ -140,14 +140,14 @@ export function ExperimentTemplateSelect({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Load from Experiment Template</CardTitle>
+        <CardTitle className="text-base">Load from Environment Template</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label className="text-sm">Select Template</Label>
           <Select value={selectedTemplateId || ""} onValueChange={setSelectedTemplateId}>
             <SelectTrigger disabled={templatesLoading}>
-              <SelectValue placeholder="Choose an experiment template..." />
+              <SelectValue placeholder="Choose an environment template..." />
             </SelectTrigger>
             <SelectContent>
               {templates.map((t) => (

@@ -36,7 +36,7 @@ export interface DraftInstanceConfig {
 }
 
 export interface DraftDefinition {
-  experiment_configuration: {
+  environment_configuration: {
     label: string
     description: string
     sections: DraftSection[]
@@ -64,7 +64,7 @@ function emptyInstance(): DraftInstanceConfig {
 
 export function emptyDraftDefinition(): DraftDefinition {
   return {
-    experiment_configuration: { label: "Experiment Configuration", description: "", sections: [emptySection()] },
+    environment_configuration: { label: "Environment Configuration", description: "", sections: [emptySection()] },
     instance_configurations: [],
   }
 }
@@ -82,12 +82,12 @@ export function draftToDefinition(draft: DraftDefinition): TemplateDefinition {
     fields: s.fields.map(cleanField),
   })
 
-  const expCfg = draft.experiment_configuration
+  const expCfg = draft.environment_configuration
   return {
-    experiment_configuration: {
-      label: expCfg.label || "Experiment Configuration",
+    environment_configuration: {
+      label: expCfg.label || "Environment Configuration",
       description: expCfg.description,
-      type: "experiment",
+      type: "environment",
       sections: expCfg.sections.map(cleanSection),
     },
     instance_configurations: Object.fromEntries(
@@ -111,10 +111,10 @@ export function definitionToDraft(def: TemplateDefinition): DraftDefinition {
   })
 
   return {
-    experiment_configuration: {
-      label: def.experiment_configuration?.label ?? "Experiment Configuration",
-      description: def.experiment_configuration?.description ?? "",
-      sections: (def.experiment_configuration?.sections ?? []).map(draftSection),
+    environment_configuration: {
+      label: def.environment_configuration?.label ?? "Environment Configuration",
+      description: def.environment_configuration?.description ?? "",
+      sections: (def.environment_configuration?.sections ?? []).map(draftSection),
     },
     instance_configurations: Object.entries(def.instance_configurations ?? {}).map(([key, cfg], i) => ({
       _id: uid(),
@@ -152,20 +152,20 @@ interface Props {
   onChange: (draft: DraftDefinition) => void
 }
 
-type Tab = "experiment" | "instances"
+type Tab = "environment" | "instances"
 
 export function DefinitionBuilder({ value, onChange }: Props) {
-  const [tab, setTab] = useState<Tab>("experiment")
+  const [tab, setTab] = useState<Tab>("environment")
 
-  // ── Experiment configuration mutations ──────────────────────────────────
+  // ── Environment configuration mutations ──────────────────────────────────
   const setExpLabel = (label: string) =>
-    onChange({ ...value, experiment_configuration: { ...value.experiment_configuration, label } })
+    onChange({ ...value, environment_configuration: { ...value.environment_configuration, label } })
 
   const setExpDescription = (description: string) =>
-    onChange({ ...value, experiment_configuration: { ...value.experiment_configuration, description } })
+    onChange({ ...value, environment_configuration: { ...value.environment_configuration, description } })
 
   const setExpSections = (sections: DraftSection[]) =>
-    onChange({ ...value, experiment_configuration: { ...value.experiment_configuration, sections } })
+    onChange({ ...value, environment_configuration: { ...value.environment_configuration, sections } })
 
   // ── Instance configuration mutations ────────────────────────────────────
   const setInstances = (instance_configurations: DraftInstanceConfig[]) =>
@@ -184,7 +184,7 @@ export function DefinitionBuilder({ value, onChange }: Props) {
     <div className="flex flex-col gap-4">
       {/* Tab switcher */}
       <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs">
-        {(["experiment", "instances"] as Tab[]).map((t) => (
+        {(["environment", "instances"] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -194,26 +194,26 @@ export function DefinitionBuilder({ value, onChange }: Props) {
               tab === t ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50",
             )}
           >
-            {t === "experiment" ? "Experiment Configuration" : `Instance Configurations (${value.instance_configurations.length})`}
+            {t === "environment" ? "Environment Configuration" : `Instance Configurations (${value.instance_configurations.length})`}
           </button>
         ))}
       </div>
 
-      {/* Experiment tab */}
-      {tab === "experiment" && (
+      {/* Environment tab */}
+      {tab === "environment" && (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs">Section Label</Label>
-              <Input className="h-8 text-xs" value={value.experiment_configuration.label} onChange={(e) => setExpLabel(e.target.value)} placeholder="Experiment Configuration" />
+              <Input className="h-8 text-xs" value={value.environment_configuration.label} onChange={(e) => setExpLabel(e.target.value)} placeholder="Environment Configuration" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs">Description</Label>
-              <Input className="h-8 text-xs" value={value.experiment_configuration.description} onChange={(e) => setExpDescription(e.target.value)} placeholder="Optional description" />
+              <Input className="h-8 text-xs" value={value.environment_configuration.description} onChange={(e) => setExpDescription(e.target.value)} placeholder="Optional description" />
             </div>
           </div>
           <SectionsEditor
-            sections={value.experiment_configuration.sections}
+            sections={value.environment_configuration.sections}
             onChange={setExpSections}
           />
         </div>

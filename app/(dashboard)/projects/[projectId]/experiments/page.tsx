@@ -1,5 +1,5 @@
-import { ProjectExperimentsRedirect } from "@/components/experiments/project-experiments-redirect"
+import { ProjectEnvironmentsRedirect } from "@/components/environments/project-environments-redirect"
 
-export default function ProjectExperimentsPage() {
-  return <ProjectExperimentsRedirect />
+export default function ProjectEnvironmentsPage() {
+  return <ProjectEnvironmentsRedirect />
 }

@@ -41,17 +41,17 @@ export function DefinitionViewer({ definition }: Props) {
     )
   }
 
-  const expConfig = definition.experiment_configuration
+  const expConfig = definition.environment_configuration
   const instConfigs = definition.instance_configurations ?? {}
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Experiment Configuration */}
+      {/* Environment Configuration */}
       {expConfig && (
         <ConfigSection
-          title={expConfig.label ?? "Experiment Configuration"}
+          title={expConfig.label ?? "Environment Configuration"}
           description={expConfig.description}
-          badge="experiment"
+          badge="environment"
           badgeColor="bg-blue-500/10 text-blue-600 border-blue-500/20"
           sections={expConfig.sections ?? []}
         />

@@ -3,17 +3,17 @@
 import { useState } from "react"
 import { FormDialog } from "@/components/form/form-dialog"
 import { DialogActions } from "@/components/form/dialog-actions"
-import { ExperimentCreateForm } from "./experiment-create-form"
+import { EnvironmentCreateForm } from "./environment-create-form"
 import type { Template } from "@/lib/api/types"
 
-interface ExperimentCreateDialogProps {
+interface EnvironmentCreateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   templates: Template[]
   onSubmit: (data: { name: string; description: string; templateId?: string; executionMode: "manual" | "auto" }) => Promise<void>
 }
 
-export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit }: ExperimentCreateDialogProps) {
+export function EnvironmentCreateDialog({ open, onOpenChange, templates, onSubmit }: EnvironmentCreateDialogProps) {
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -47,8 +47,8 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
     <FormDialog
       open={open}
       onOpenChange={(next) => { if (!next) resetForm(); onOpenChange(next) }}
-      title="Create experiment"
-      description="Set up a new experiment for this project."
+      title="Create environment"
+      description="Set up a new environment for this project."
       footer={
         <DialogActions
           onCancel={() => onOpenChange(false)}
@@ -58,7 +58,7 @@ export function ExperimentCreateDialog({ open, onOpenChange, templates, onSubmit
         />
       }
     >
-      <ExperimentCreateForm form={form} setForm={setForm} templates={templates} />
+      <EnvironmentCreateForm form={form} setForm={setForm} templates={templates} />
     </FormDialog>
   )
 }

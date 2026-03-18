@@ -1,5 +1,5 @@
-import { ExperimentCreateFlow } from "@/components/experiments/experiment-create"
+import { EnvironmentCreateFlow } from "@/components/environments/environment-create"
 
-export default function ExperimentCreatePage() {
-  return <ExperimentCreateFlow />
+export default function EnvironmentCreatePage() {
+  return <EnvironmentCreateFlow />
 }

@@ -2,14 +2,14 @@
 
 interface DashboardMetricsProps {
   totalProjects: number
-  totalExperiments: number
+  totalEnvironments: number
   runningInstances: number
   failedInstances: number
 }
 
 export function DashboardMetrics({
   totalProjects,
-  totalExperiments,
+  totalEnvironments,
   runningInstances,
   failedInstances,
 }: DashboardMetricsProps) {
@@ -21,8 +21,8 @@ export function DashboardMetrics({
       </div>
       <div className="h-3 w-px bg-border" />
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground">Experiments</span>
-        <span className="font-bold text-foreground">{totalExperiments}</span>
+        <span className="text-muted-foreground">Environments</span>
+        <span className="font-bold text-foreground">{totalEnvironments}</span>
       </div>
       <div className="h-3 w-px bg-border" />
       <div className="flex items-center gap-2">

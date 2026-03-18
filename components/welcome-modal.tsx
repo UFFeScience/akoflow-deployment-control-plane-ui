@@ -53,17 +53,17 @@ const steps = [
     },
     {
         title: "Projects",
-        description: "Projects are spaces to group experiments. Create multiple projects to organize environments or teams.",
+        description: "Projects are spaces to group environments. Create multiple projects to organize environments or teams.",
         icon: "📁"
     },
     {
-        title: "Experiments",
-        description: "Experiments are where you choose machines and providers. Create as many experiments as needed within a project.",
+        title: "Environments",
+        description: "Environments are where you choose machines and providers. Create as many environments as needed within a project.",
         icon: "🔬"
     },
     {
         title: "Machines & Providers",
-        description: "Choose providers like AWS, GCP or HPC and configure instance types to run your experiments.",
+        description: "Choose providers like AWS, GCP or HPC and configure instance types to run your environments.",
         icon: "⚙️"
     }
 ]

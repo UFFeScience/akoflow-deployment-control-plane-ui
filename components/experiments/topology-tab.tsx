@@ -2,11 +2,11 @@
 
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
-import type { Cluster, Experiment, Instance } from "@/lib/api/types"
+import type { Cluster, Environment, Instance } from "@/lib/api/types"
 import { ClusterCard } from "./cluster-card"
 
 interface TopologyTabProps {
-  experiment: Experiment
+  environment: Environment
   clusters: Cluster[]
   instancesByCluster: Record<string, Instance[]>
 }
@@ -14,9 +14,9 @@ interface TopologyTabProps {
 const toStatus = (value: unknown, fallback = "pending") =>
   typeof value === "string" && value.trim() ? value.toLowerCase() : fallback
 
-/* ClusterCard extracted to components/experiments/cluster-card.tsx */
+/* ClusterCard extracted to components/environments/cluster-card.tsx */
 
-export function TopologyTab({ experiment, clusters, instancesByCluster }: TopologyTabProps) {
+export function TopologyTab({ environment, clusters, instancesByCluster }: TopologyTabProps) {
   const grouped = useMemo(() => {
     const map: Record<string, { label: string; clusters: Cluster[] }> = {}
     clusters.forEach((c) => {
@@ -32,7 +32,7 @@ export function TopologyTab({ experiment, clusters, instancesByCluster }: Topolo
   if (clusters.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed border-border py-12 text-xs text-muted-foreground">
-        No clusters provisioned for this experiment yet.
+        No clusters provisioned for this environment yet.
       </div>
     )
   }
@@ -41,7 +41,7 @@ export function TopologyTab({ experiment, clusters, instancesByCluster }: Topolo
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-center gap-1">
         <div className="rounded-lg border-2 border-primary/40 bg-primary/5 px-4 py-2">
-          <span className="text-xs font-semibold text-primary">{experiment.name}</span>
+          <span className="text-xs font-semibold text-primary">{environment.name}</span>
         </div>
       </div>
 

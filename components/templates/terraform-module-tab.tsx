@@ -54,7 +54,7 @@ function defaultForm(mod?: TerraformModule | null): TfForm {
     credential_env_keys: credKeys,
     tfvars_mapping_json: mod?.tfvars_mapping_json
       ? JSON.stringify(mod.tfvars_mapping_json, null, 2)
-      : JSON.stringify({ experiment_configuration: {}, instance_configurations: {} }, null, 2),
+      : JSON.stringify({ environment_configuration: {}, instance_configurations: {} }, null, 2),
     mapping_mode: "visual",
   }
 }
@@ -62,7 +62,7 @@ function defaultForm(mod?: TerraformModule | null): TfForm {
 // ─── TfvarsMapping types ──────────────────────────────────────────────────────
 
 interface MappingState {
-  experiment_configuration: Record<string, string>
+  environment_configuration: Record<string, string>
   instance_configurations: Record<string, Record<string, string>>
 }
 
@@ -81,7 +81,7 @@ function parseMappingJson(raw: string): MappingState | null {
     const parsed = JSON.parse(raw)
     const instCfg = parsed.instance_configurations ?? {}
     return {
-      experiment_configuration: toStringRecord(parsed.experiment_configuration),
+      environment_configuration: toStringRecord(parsed.environment_configuration),
       instance_configurations: Object.fromEntries(
         Object.entries(instCfg as Record<string, unknown>).map(([k, v]) => [k, toStringRecord(v)])
       ),
@@ -271,7 +271,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
 
   // Extract definition fields for visual mapping
   const def = version.definition_json
-  const expFields = def?.experiment_configuration?.sections?.flatMap((s) =>
+  const expFields = def?.environment_configuration?.sections?.flatMap((s) =>
     s.fields.map((f) => ({ sectionLabel: s.label, ...f }))
   ) ?? []
   const instanceEntries = Object.entries(def?.instance_configurations ?? {})
@@ -280,13 +280,13 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
   const mappingParsed = parseMappingJson(form.tfvars_mapping_json)
 
   const updateExpMapping = (fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(form.tfvars_mapping_json) ?? { experiment_configuration: {}, instance_configurations: {} }
-    m.experiment_configuration[fieldName] = tfVar
+    const m = parseMappingJson(form.tfvars_mapping_json) ?? { environment_configuration: {}, instance_configurations: {} }
+    m.environment_configuration[fieldName] = tfVar
     patch({ tfvars_mapping_json: mappingToJson(m) })
   }
 
   const updateInstMapping = (instanceKey: string, fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(form.tfvars_mapping_json) ?? { experiment_configuration: {}, instance_configurations: {} }
+    const m = parseMappingJson(form.tfvars_mapping_json) ?? { environment_configuration: {}, instance_configurations: {} }
     if (!m.instance_configurations[instanceKey]) m.instance_configurations[instanceKey] = {}
     m.instance_configurations[instanceKey][fieldName] = tfVar
     patch({ tfvars_mapping_json: mappingToJson(m) })
@@ -448,7 +448,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
               onChange={(e) => patch({ tfvars_mapping_json: e.target.value })}
               className="font-mono text-xs leading-relaxed min-h-[200px] resize-y bg-muted/20"
               spellCheck={false}
-              placeholder='{ "experiment_configuration": {}, "instance_configurations": {} }'
+              placeholder='{ "environment_configuration": {}, "instance_configurations": {} }'
             />
             {parseMappingJson(form.tfvars_mapping_json) === null && form.tfvars_mapping_json.trim() && (
               <p className="text-xs text-destructive flex items-center gap-1">
@@ -458,17 +458,17 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {/* Experiment configuration mapping */}
+            {/* Environment configuration mapping */}
             {expFields.length > 0 ? (
               <MappingGroup
-                title="Experiment Configuration"
+                title="Environment Configuration"
                 fields={expFields.map((f) => ({ name: f.name, label: f.label, sectionLabel: f.sectionLabel }))}
-                mapping={mappingParsed?.experiment_configuration ?? {}}
+                mapping={mappingParsed?.environment_configuration ?? {}}
                 onUpdate={(fieldName, tfVar) => updateExpMapping(fieldName, tfVar)}
               />
             ) : (
               <p className="text-xs text-muted-foreground italic">
-                No experiment configuration fields defined in this version's definition.
+                No environment configuration fields defined in this version's definition.
               </p>
             )}
 
@@ -492,7 +492,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
             {expFields.length === 0 && instanceEntries.length === 0 && (
               <div className="rounded-lg border border-dashed border-border p-4 text-center">
                 <p className="text-xs text-muted-foreground">
-                  No fields from definition available. Define the experiment configuration first, or use Raw JSON mode.
+                  No fields from definition available. Define the environment configuration first, or use Raw JSON mode.
                 </p>
               </div>
             )}

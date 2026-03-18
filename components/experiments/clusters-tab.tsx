@@ -7,13 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/status-badge"
 import { ConfirmationDialog } from "@/components/confirmation-dialog"
 import { CreateClusterDialog } from "./create-cluster-dialog"
-import type { Cluster, Experiment } from "@/lib/api/types"
+import type { Cluster, Environment } from "@/lib/api/types"
 import { clustersApi } from "@/lib/api/clusters"
 import { toast } from "sonner"
 
 interface ClustersTabProps {
-  experimentId: string
-  experiment?: Experiment | null
+  environmentId: string
+  environment?: Environment | null
   clusters: Cluster[]
   isLoading?: boolean
   onClustersChange: (clusters: Cluster[]) => void
@@ -22,8 +22,8 @@ interface ClustersTabProps {
 }
 
 export function ClustersTab({
-  experimentId,
-  experiment = null,
+  environmentId,
+  environment = null,
   clusters,
   isLoading = false,
   onClustersChange,
@@ -135,8 +135,8 @@ export function ClustersTab({
       <CreateClusterDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        experimentId={experimentId}
-        experiment={experiment}
+        environmentId={environmentId}
+        environment={environment}
         onSuccess={async () => { await onRefresh?.() }}
       />
     </div>

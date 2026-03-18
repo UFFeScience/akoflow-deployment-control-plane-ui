@@ -175,7 +175,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
             else if (instance.status === 'pending') instanceColor = '#f59e0b'
             else if (instance.status === 'stopped') instanceColor = '#6b7280'
 
-            const instanceLabel = instance.experimentName || 
+            const instanceLabel = instance.environmentName || 
                                  `${String(instance.id).slice(0, 8)}`
 
             nodes.push({
@@ -271,7 +271,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
           else if (instance.status === 'pending') instanceColor = '#f59e0b'
           else if (instance.status === 'stopped') instanceColor = '#6b7280'
 
-          const instanceLabel = instance.experimentName || 
+          const instanceLabel = instance.environmentName || 
                                `Instance ${String(instance.id).slice(0, 8)}`
           
           const provider = instance.provider ? String(instance.provider).toUpperCase() : ''

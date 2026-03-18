@@ -1,10 +1,10 @@
 import { DataTable } from "@/components/ui/data-table"
-import type { Experiment } from "@/lib/api/types"
-import { ExperimentRow } from "./experiment-row"
+import type { Environment } from "@/lib/api/types"
+import { EnvironmentRow } from "./environment-row"
 
-interface ExperimentsTableProps {
+interface EnvironmentsTableProps {
   projectId: string
-  experiments: Experiment[]
+  environments: Environment[]
   isLoading?: boolean
 }
 
@@ -18,17 +18,17 @@ const COLUMNS = [
   { key: "updated", label: "Updated", className: "hidden lg:table-cell" },
 ]
 
-export function ExperimentsTable({ projectId, experiments, isLoading = false }: ExperimentsTableProps) {
+export function EnvironmentsTable({ projectId, environments, isLoading = false }: EnvironmentsTableProps) {
   return (
     <DataTable
       columns={COLUMNS}
-      isEmpty={!isLoading && experiments.length === 0}
+      isEmpty={!isLoading && environments.length === 0}
       isLoading={isLoading}
-      emptyLabel="No experiments yet. Create one to get started."
-      loadingLabel="Loading experiments..."
+      emptyLabel="No environments yet. Create one to get started."
+      loadingLabel="Loading environments..."
     >
-      {experiments.map((exp) => (
-        <ExperimentRow key={exp.id} projectId={projectId} exp={exp} />
+      {environments.map((exp) => (
+        <EnvironmentRow key={exp.id} projectId={projectId} exp={exp} />
       ))}
     </DataTable>
   )

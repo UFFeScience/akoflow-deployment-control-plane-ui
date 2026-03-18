@@ -151,7 +151,7 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
             {/* Definition builder — always pre-filled from active version */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Experiment Definition</h3>
+                <h3 className="text-sm font-semibold">Environment Definition</h3>
                 {activeVersion && (
                   <span className="text-[11px] text-muted-foreground">
                     Pre-filled from v{activeVersion.version}

@@ -1,9 +1,9 @@
 import { request } from "./client"
-import type { ExperimentMetadata } from "./types"
+import type { EnvironmentMetadata } from "./types"
 
 export const metadataApi = {
-  create: (experimentId: string, data: { key: string; value: string }) =>
-    request<ExperimentMetadata>(`/experiments/${experimentId}/metadata`, { method: "POST", body: data }),
-  delete: (experimentId: string, metadataId: string) =>
-    request(`/experiments/${experimentId}/metadata/${metadataId}`, { method: "DELETE" }),
+  create: (environmentId: string, data: { key: string; value: string }) =>
+    request<EnvironmentMetadata>(`/environments/${environmentId}/metadata`, { method: "POST", body: data }),
+  delete: (environmentId: string, metadataId: string) =>
+    request(`/environments/${environmentId}/metadata/${metadataId}`, { method: "DELETE" }),
 }
