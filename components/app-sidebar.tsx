@@ -52,7 +52,14 @@ const navItems: NavItem[] = [
     ],
   },
   { label: "Templates", href: "/organization/templates", icon: FileCode2 },
-  { label: "Providers", href: "/organization/providers", icon: Server },
+  {
+    label: "Organization",
+    href: "/organization",
+    icon: Cloud,
+    children: [
+      { label: "Providers", hrefSuffix: "/providers", icon: Server },
+    ],
+  },
 ]
 
 export function AppSidebar() {
@@ -73,6 +80,12 @@ export function AppSidebar() {
       setOpenMenus((prev) => ({ ...prev, Projects: true }))
     }
   }, [currentProjectId])
+
+  useEffect(() => {
+    if (pathname.startsWith("/organization")) {
+      setOpenMenus((prev) => ({ ...prev, Organization: true }))
+    }
+  }, [pathname])
 
   const initials = user?.name
     ? user.name
@@ -192,7 +205,7 @@ export function AppSidebar() {
                 {/* Sub-items */}
                 {hasChildren && isOpen && (
                   <ul className="mt-0.5 flex flex-col gap-0.5 pl-4" role="list">
-                    {currentProjectId
+                    {item.label === "Projects" && currentProjectId
                       ? // Inside a project: show context-aware children (e.g. Environments of this project)
                         item.children!.map((child) => {
                           const childHref = `/projects/${currentProjectId}${child.hrefSuffix}`
@@ -215,11 +228,9 @@ export function AppSidebar() {
                             </li>
                           )
                         })
-                      : // Not inside a project: show generic children pointing to global routes
+                      : // All other expandable items: use item.href + hrefSuffix
                         item.children!.map((child) => {
-                          const childHref = child.hrefSuffix.replace(/^\//, "") === "environments"
-                            ? "/environments"
-                            : item.href + child.hrefSuffix
+                          const childHref = item.href + child.hrefSuffix
                           const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
                           return (
                             <li key={child.hrefSuffix}>
