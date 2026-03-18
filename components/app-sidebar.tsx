@@ -15,6 +15,10 @@ import {
   UserRound,
   Server,
   FileCode2,
+  Globe,
+  FlaskConical,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -28,9 +32,24 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useRouter } from "next/navigation"
 import { membersApi } from "@/lib/api/members"
 
-const navItems = [
+type NavChild = { label: string; hrefSuffix: string; icon: React.ElementType }
+type NavItem = {
+  label: string
+  href: string
+  icon: React.ElementType
+  children?: NavChild[]
+}
+
+const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Projects", href: "/projects", icon: FolderKanban },
+  {
+    label: "Projects",
+    href: "/projects",
+    icon: FolderKanban,
+    children: [
+      { label: "Environments", hrefSuffix: "/environments", icon: Globe },
+    ],
+  },
   { label: "Templates", href: "/organization/templates", icon: FileCode2 },
   { label: "Providers", href: "/organization/providers", icon: Server },
 ]
@@ -40,6 +59,19 @@ export function AppSidebar() {
   const router = useRouter()
   const { user, organizations, currentOrg, setCurrentOrg, logout } = useAuth()
   const [isOrgAdmin, setIsOrgAdmin] = useState(false)
+
+  // Detect if we're inside a project and extract the projectId
+  const projectMatch = pathname.match(/^\/projects\/([^/]+)/)
+  const currentProjectId = projectMatch ? projectMatch[1] : null
+
+  // Track which expandable items are open; auto-open projects when inside one
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (currentProjectId) {
+      setOpenMenus((prev) => ({ ...prev, Projects: true }))
+    }
+  }, [currentProjectId])
 
   const initials = user?.name
     ? user.name
@@ -109,21 +141,88 @@ export function AppSidebar() {
         <ul className="flex flex-col gap-0.5" role="list">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+            const hasChildren = !!item.children?.length
+            const isOpen = openMenus[item.label] ?? false
+
             return (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-primary"
-                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  )}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <item.icon className="h-3.5 w-3.5 shrink-0" />
-                  {item.label}
-                </Link>
+                {hasChildren ? (
+                  <button
+                    onClick={() => setOpenMenus((prev) => ({ ...prev, [item.label]: !isOpen }))}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary"
+                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <item.icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {isOpen
+                      ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    }
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary"
+                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    )}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <item.icon className="h-3.5 w-3.5 shrink-0" />
+                    {item.label}
+                  </Link>
+                )}
+
+                {/* Sub-items */}
+                {hasChildren && isOpen && (
+                  <ul className="mt-0.5 flex flex-col gap-0.5 pl-4" role="list">
+                    {/* Link to parent list page */}
+                    <li>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                          pathname === item.href
+                            ? "bg-sidebar-accent text-sidebar-primary"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        )}
+                        aria-current={pathname === item.href ? "page" : undefined}
+                      >
+                        <item.icon className="h-3 w-3 shrink-0" />
+                        All {item.label}
+                      </Link>
+                    </li>
+                    {/* Context-aware children (only when inside a project) */}
+                    {currentProjectId &&
+                      item.children!.map((child) => {
+                        const childHref = `/projects/${currentProjectId}${child.hrefSuffix}`
+                        const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
+                        return (
+                          <li key={child.hrefSuffix}>
+                            <Link
+                              href={childHref}
+                              className={cn(
+                                "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                isChildActive
+                                  ? "bg-sidebar-accent text-sidebar-primary"
+                                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                              )}
+                              aria-current={isChildActive ? "page" : undefined}
+                            >
+                              <child.icon className="h-3 w-3 shrink-0" />
+                              {child.label}
+                            </Link>
+                          </li>
+                        )
+                      })}
+                  </ul>
+                )}
               </li>
             )
           })}
