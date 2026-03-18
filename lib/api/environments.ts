@@ -2,6 +2,7 @@ import { request } from "./client"
 import type { Environment } from "./types"
 
 export const environmentsApi = {
+  listAll: (orgId: string) => request<Environment[]>(`/organizations/${orgId}/environments`),
   list: (projectId: string) => request<Environment[]>(`/projects/${projectId}/environments`),
   create: (
     projectId: string,

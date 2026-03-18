@@ -45,6 +45,9 @@ export function ClusterFormFields({
 }: ClusterFormFieldsProps) {
   const healthyProviders = useMemo(() => providers.filter((p) => p.status !== "DOWN"), [providers])
 
+  // Normalise all provider IDs to strings so Select value-matching is reliable
+  const providerIdStr = form.providerId ? String(form.providerId) : ""
+
   const templateIdBySlug = useMemo(() => {
     const map: Record<string, string> = {}
     instanceGroupTemplates.forEach((t) => (map[t.slug] = t.id))
@@ -61,18 +64,18 @@ export function ClusterFormFields({
   const filteredInstanceTypes = useMemo(
     () =>
       instanceTypes.filter((it) => {
-        const providerId = (it as any).providerId || (it as any).provider_id || (it as any).provider?.id
-        return !form.providerId || providerId === form.providerId
+        const pid = String((it as any).providerId || (it as any).provider_id || (it as any).provider?.id || "")
+        return !providerIdStr || pid === providerIdStr
       }),
-    [instanceTypes, form.providerId]
+    [instanceTypes, providerIdStr]
   )
 
   const regionOptions = useMemo(() => {
-    const providerRegions = providers.find((p) => p.id === form.providerId)?.regions || []
+    const providerRegions = providers.find((p) => String(p.id) === providerIdStr)?.regions || []
     if (providerRegions.length > 0) return providerRegions
     const regionsFromTypes = filteredInstanceTypes.map((t) => t.region).filter(Boolean) as string[]
     return Array.from(new Set(regionsFromTypes))
-  }, [providers, form.providerId, filteredInstanceTypes])
+  }, [providers, providerIdStr, filteredInstanceTypes])
 
   function addInstanceGroup() {
     onFormChange({
@@ -136,7 +139,7 @@ export function ClusterFormFields({
         <div className="flex flex-col gap-1.5">
           <Label className={labelSize}>Provider *</Label>
           <Select
-            value={form.providerId}
+            value={providerIdStr}
             onValueChange={(v) =>
               onFormChange({
                 ...form,
@@ -151,7 +154,7 @@ export function ClusterFormFields({
             </SelectTrigger>
             <SelectContent>
               {healthyProviders.map((p) => (
-                <SelectItem key={p.id} value={p.id} className={textSize}>
+                <SelectItem key={p.id} value={String(p.id)} className={textSize}>
                   {p.name}
                 </SelectItem>
               ))}

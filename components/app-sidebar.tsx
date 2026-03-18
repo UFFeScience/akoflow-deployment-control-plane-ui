@@ -19,6 +19,7 @@ import {
   FlaskConical,
   ChevronDown,
   ChevronRight,
+  Layers,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -147,22 +148,31 @@ export function AppSidebar() {
             return (
               <li key={item.href}>
                 {hasChildren ? (
-                  <button
-                    onClick={() => setOpenMenus((prev) => ({ ...prev, [item.label]: !isOpen }))}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-primary"
-                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    )}
-                  >
-                    <item.icon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {isOpen
-                      ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                      : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                    }
-                  </button>
+                  <div className={cn(
+                    "flex w-full items-center rounded text-xs font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-primary"
+                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  )}>
+                    <Link
+                      href={item.href}
+                      className="flex flex-1 items-center gap-2.5 px-2.5 py-1.5"
+                      aria-current={pathname === item.href ? "page" : undefined}
+                    >
+                      <item.icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                    </Link>
+                    <button
+                      onClick={() => setOpenMenus((prev) => ({ ...prev, [item.label]: !isOpen }))}
+                      className="px-2 py-1.5 rounded-r"
+                      aria-label={isOpen ? "Collapse" : "Expand"}
+                    >
+                      {isOpen
+                        ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      }
+                    </button>
+                  </div>
                 ) : (
                   <Link
                     href={item.href}
@@ -182,45 +192,54 @@ export function AppSidebar() {
                 {/* Sub-items */}
                 {hasChildren && isOpen && (
                   <ul className="mt-0.5 flex flex-col gap-0.5 pl-4" role="list">
-                    {/* Link to parent list page */}
-                    <li>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                          pathname === item.href
-                            ? "bg-sidebar-accent text-sidebar-primary"
-                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                        )}
-                        aria-current={pathname === item.href ? "page" : undefined}
-                      >
-                        <item.icon className="h-3 w-3 shrink-0" />
-                        All {item.label}
-                      </Link>
-                    </li>
-                    {/* Context-aware children (only when inside a project) */}
-                    {currentProjectId &&
-                      item.children!.map((child) => {
-                        const childHref = `/projects/${currentProjectId}${child.hrefSuffix}`
-                        const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
-                        return (
-                          <li key={child.hrefSuffix}>
-                            <Link
-                              href={childHref}
-                              className={cn(
-                                "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                                isChildActive
-                                  ? "bg-sidebar-accent text-sidebar-primary"
-                                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                              )}
-                              aria-current={isChildActive ? "page" : undefined}
-                            >
-                              <child.icon className="h-3 w-3 shrink-0" />
-                              {child.label}
-                            </Link>
-                          </li>
-                        )
-                      })}
+                    {currentProjectId
+                      ? // Inside a project: show context-aware children (e.g. Environments of this project)
+                        item.children!.map((child) => {
+                          const childHref = `/projects/${currentProjectId}${child.hrefSuffix}`
+                          const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
+                          return (
+                            <li key={child.hrefSuffix}>
+                              <Link
+                                href={childHref}
+                                className={cn(
+                                  "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                  isChildActive
+                                    ? "bg-sidebar-accent text-sidebar-primary"
+                                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                )}
+                                aria-current={isChildActive ? "page" : undefined}
+                              >
+                                <child.icon className="h-3 w-3 shrink-0" />
+                                {child.label}
+                              </Link>
+                            </li>
+                          )
+                        })
+                      : // Not inside a project: show generic children pointing to global routes
+                        item.children!.map((child) => {
+                          const childHref = child.hrefSuffix.replace(/^\//, "") === "environments"
+                            ? "/environments"
+                            : item.href + child.hrefSuffix
+                          const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
+                          return (
+                            <li key={child.hrefSuffix}>
+                              <Link
+                                href={childHref}
+                                className={cn(
+                                  "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                  isChildActive
+                                    ? "bg-sidebar-accent text-sidebar-primary"
+                                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                )}
+                                aria-current={isChildActive ? "page" : undefined}
+                              >
+                                <child.icon className="h-3 w-3 shrink-0" />
+                                {child.label}
+                              </Link>
+                            </li>
+                          )
+                        })
+                    }
                   </ul>
                 )}
               </li>

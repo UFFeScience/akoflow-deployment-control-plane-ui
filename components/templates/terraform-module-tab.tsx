@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
+import { useAuth } from "@/contexts/auth-context"
 import type { TemplateVersion, TerraformModule, TerraformProviderType, Provider } from "@/lib/api/types"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -106,6 +107,7 @@ interface Props {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TerraformModuleTab({ templateId, versionId, version }: Props) {
+  const { currentOrg } = useAuth()
   const [providers, setProviders] = useState<Provider[]>([])
   const [configuredProviders, setConfiguredProviders] = useState<TerraformProviderType[]>([])
   const [activeProvider, setActiveProvider] = useState<TerraformProviderType>("")
@@ -124,9 +126,10 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
 
   // Load provider catalog from backend (cloud-only)
   const loadProviders = useCallback(async () => {
+    if (!currentOrg) return
     setLoadingProviders(true)
     try {
-      const list = await providersApi.list()
+      const list = await providersApi.list(String(currentOrg.id))
       const cloudProviders = (list as Provider[]).filter((p) => p.type === "CLOUD")
       setProviders(cloudProviders)
       if (!activeProvider && cloudProviders.length) {

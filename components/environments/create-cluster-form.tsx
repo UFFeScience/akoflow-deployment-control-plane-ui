@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import type { Provider, InstanceType, Template } from "@/lib/api/types"
 import { clustersApi } from "@/lib/api/clusters"
 import { providersApi } from "@/lib/api/providers"
+import { useAuth } from "@/contexts/auth-context"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { templatesApi } from "@/lib/api/templates"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
@@ -19,6 +20,7 @@ import { toast } from "sonner"
 export function CreateClusterForm() {
   const params = useParams()
   const router = useRouter()
+  const { currentOrg } = useAuth()
   const environmentId = params.environmentId as string
   const projectId = params.projectId as string
   
@@ -55,7 +57,7 @@ export function CreateClusterForm() {
       try {
         const [templateData, providerData, instanceTypeData, groupTemplateData] = await Promise.all([
           templatesApi.list().catch(() => []),
-          providersApi.list().catch(() => []),
+          (currentOrg ? providersApi.list(String(currentOrg.id)) : Promise.resolve([])).catch(() => []),
           instanceTypesApi.list().catch(() => []),
           instanceGroupTemplatesApi.list().catch(() => []),
         ])
@@ -70,7 +72,7 @@ export function CreateClusterForm() {
         // Set default provider
         const healthy = providerData.filter((p) => p.status !== "DOWN")
         if (healthy.length > 0) {
-          setForm((prev) => ({ ...prev, providerId: healthy[0].id }))
+          setForm((prev) => ({ ...prev, providerId: String(healthy[0].id) }))
         }
       } catch (error) {
         console.error("Failed to load data:", error)

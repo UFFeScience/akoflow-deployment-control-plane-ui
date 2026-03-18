@@ -6,6 +6,7 @@ import { DialogActions } from "@/components/form/dialog-actions"
 import { LoadingState } from "@/components/ui/loading-state"
 import { clustersApi } from "@/lib/api/clusters"
 import { providersApi } from "@/lib/api/providers"
+import { useAuth } from "@/contexts/auth-context"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
@@ -58,7 +59,7 @@ function buildInitialForm(
   }
 
   return {
-    providerId: defaultProvider?.id || "",
+    providerId: defaultProvider ? String(defaultProvider.id) : "",
     region: regionFromConfig,
     instanceGroups: [defaultGroup],
   }
@@ -71,6 +72,7 @@ export function CreateClusterDialog({
   environment,
   onSuccess,
 }: CreateClusterDialogProps) {
+  const { currentOrg } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [providers, setProviders] = useState<Provider[]>([])
@@ -120,7 +122,7 @@ export function CreateClusterDialog({
       setIsLoading(true)
       try {
         const [providerData, instanceTypeData, groupTemplateData] = await Promise.all([
-          providersApi.list().catch(() => []),
+          (currentOrg ? providersApi.list(String(currentOrg.id)) : Promise.resolve([])).catch(() => []),
           instanceTypesApi.list().catch(() => []),
           instanceGroupTemplatesApi.list().catch(() => []),
         ])

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import {
   ArrowLeft,
   Key,
@@ -52,6 +53,7 @@ export function ProviderDetailScreen() {
   const params = useParams()
   const providerId = params.providerId as string
   const router = useRouter()
+  const { currentOrg } = useAuth()
   const [provider, setProvider] = useState<Provider | null>(null)
   const [credentials, setCredentials] = useState<ProviderCredential[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -59,9 +61,10 @@ export function ProviderDetailScreen() {
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   async function loadProvider() {
+    if (!currentOrg) return
     setIsLoading(true)
     try {
-      const p = await providersApi.show(providerId)
+      const p = await providersApi.show(String(currentOrg.id), providerId)
       setProvider(p)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load provider")
@@ -71,9 +74,10 @@ export function ProviderDetailScreen() {
   }
 
   async function loadCredentials() {
+    if (!currentOrg) return
     setIsCredLoading(true)
     try {
-      const list = await providersApi.listCredentials(providerId)
+      const list = await providersApi.listCredentials(String(currentOrg.id), providerId)
       setCredentials(list)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load credentials")
@@ -89,8 +93,9 @@ export function ProviderDetailScreen() {
   }, [providerId])
 
   async function handleDeleteCredential(credId: string) {
+    if (!currentOrg) return
     try {
-      await providersApi.deleteCredential(providerId, credId)
+      await providersApi.deleteCredential(String(currentOrg.id), providerId, credId)
       setCredentials((prev) => prev.filter((c) => c.id !== credId))
       toast.success("Credential deleted")
     } catch (err) {

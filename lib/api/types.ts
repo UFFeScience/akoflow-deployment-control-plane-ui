@@ -69,6 +69,8 @@ export interface Environment {
   projectId: string
   /** Alias for API response which returns project_id */
   project_id?: string
+  /** Project name returned by the all-environments endpoint */
+  project_name?: string
   templateId?: string
   templateName?: string
   /** snake_case from API response */

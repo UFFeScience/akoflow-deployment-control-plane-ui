@@ -17,6 +17,7 @@ import {
 import { providersApi } from "@/lib/api/providers"
 import type { Provider } from "@/lib/api/types"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/auth-context"
 import { ProviderCreateForm } from "./provider-create-form"
 
 function ProviderTypeIcon({ type }: { type: string }) {
@@ -58,14 +59,16 @@ function StatusBadge({ status }: { status: string }) {
 
 export function ProvidersScreen() {
   const router = useRouter()
+  const { currentOrg } = useAuth()
   const [providers, setProviders] = useState<Provider[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   async function load() {
+    if (!currentOrg) return
     setIsLoading(true)
     try {
-      const list = await providersApi.list()
+      const list = await providersApi.list(String(currentOrg.id))
       setProviders(list)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load providers")
@@ -76,7 +79,7 @@ export function ProvidersScreen() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [currentOrg])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleCreated(p: Provider) {
     setProviders((prev) => [p, ...prev])

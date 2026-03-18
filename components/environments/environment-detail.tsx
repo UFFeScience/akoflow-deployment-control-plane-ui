@@ -158,7 +158,7 @@ export function EnvironmentDetailView() {
         const [environmentData, projectData, providerData, instanceTypeData, templateData] = await Promise.all([
           environmentsApi.get(projectId, environmentId),
           currentOrg ? projectsApi.get(currentOrg.id, projectId) : Promise.resolve(null),
-          providersApi.list().catch(() => []),
+          (currentOrg ? providersApi.list(String(currentOrg.id)) : Promise.resolve([])).catch(() => []),
           instanceTypesApi.list().catch(() => []),
           templatesApi.list().catch(() => []),
         ])

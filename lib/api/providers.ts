@@ -2,16 +2,20 @@ import { request } from "./client"
 import type { Provider, ProviderCredential } from "./types"
 
 export const providersApi = {
-  list: () => request<Provider[]>("/providers"),
-  show: (id: string) => request<Provider>(`/providers/${id}`),
-  create: (data: Partial<Provider>) => request<Provider>("/providers", { method: "POST", body: data }),
-  checkHealth: (id: string) => request<Provider>(`/providers/${id}/health/check`, { method: "POST" }),
+  list: (organizationId: string) =>
+    request<Provider[]>(`/organizations/${organizationId}/providers`),
+  show: (organizationId: string, id: string) =>
+    request<Provider>(`/organizations/${organizationId}/providers/${id}`),
+  create: (organizationId: string, data: Partial<Provider>) =>
+    request<Provider>(`/organizations/${organizationId}/providers`, { method: "POST", body: data }),
+  checkHealth: (organizationId: string, id: string) =>
+    request<Provider>(`/organizations/${organizationId}/providers/${id}/health/check`, { method: "POST" }),
 
   // Credentials
-  listCredentials: (providerId: string) =>
-    request<ProviderCredential[]>(`/providers/${providerId}/credentials`),
-  createCredential: (providerId: string, data: { name: string; description?: string; is_active?: boolean; values: Record<string, string> }) =>
-    request<ProviderCredential>(`/providers/${providerId}/credentials`, { method: "POST", body: data }),
-  deleteCredential: (providerId: string, credentialId: string) =>
-    request<{ message: string }>(`/providers/${providerId}/credentials/${credentialId}`, { method: "DELETE" }),
+  listCredentials: (organizationId: string, providerId: string) =>
+    request<ProviderCredential[]>(`/organizations/${organizationId}/providers/${providerId}/credentials`),
+  createCredential: (organizationId: string, providerId: string, data: { name: string; description?: string; is_active?: boolean; values: Record<string, string> }) =>
+    request<ProviderCredential>(`/organizations/${organizationId}/providers/${providerId}/credentials`, { method: "POST", body: data }),
+  deleteCredential: (organizationId: string, providerId: string, credentialId: string) =>
+    request<{ message: string }>(`/organizations/${organizationId}/providers/${providerId}/credentials/${credentialId}`, { method: "DELETE" }),
 }

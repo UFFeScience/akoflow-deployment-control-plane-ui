@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { providerSchemasApi } from "@/lib/api/provider-schemas"
 import { providersApi } from "@/lib/api/providers"
 import type { ProviderVariableSchema, ProviderCredential } from "@/lib/api/types"
+import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 
 type Props = {
@@ -27,6 +28,7 @@ type Props = {
   onCancel: () => void
 }
 
+
 // Group schemas by section
 function groupBySection(schemas: ProviderVariableSchema[]) {
   return schemas.reduce<Record<string, ProviderVariableSchema[]>>((acc, s) => {
@@ -34,6 +36,7 @@ function groupBySection(schemas: ProviderVariableSchema[]) {
     return acc
   }, {})
 }
+
 
 function SecretInput({
   value,
@@ -133,6 +136,7 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
   const [schemas, setSchemas] = useState<ProviderVariableSchema[]>([])
   const [isSchemasLoading, setIsSchemasLoading] = useState(false)
   const [credentialName, setCredentialName] = useState("")
+  const { currentOrg } = useAuth()
   const [credentialDescription, setCredentialDescription] = useState("")
   const [values, setValues] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -173,9 +177,10 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
       return
     }
 
+    if (!currentOrg) return
     setIsSubmitting(true)
     try {
-      const cred = await providersApi.createCredential(providerId, {
+      const cred = await providersApi.createCredential(String(currentOrg.id), providerId, {
         name: credentialName.trim(),
         description: credentialDescription.trim() || undefined,
         is_active: true,

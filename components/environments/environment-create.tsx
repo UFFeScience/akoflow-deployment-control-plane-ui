@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { environmentsApi } from "@/lib/api/environments"
 import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
+import { useAuth } from "@/contexts/auth-context"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { clustersApi } from "@/lib/api/clusters"
@@ -54,6 +55,7 @@ export function EnvironmentCreateFlow() {
   const params = useParams()
   const projectId = params.projectId as string
   const router = useRouter()
+  const { currentOrg } = useAuth()
 
   const [environmentId, setEnvironmentId] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState<StepId>("basics")
@@ -161,7 +163,7 @@ export function EnvironmentCreateFlow() {
       try {
         const [templateData, providerData, instanceTypeData, instanceGroupTemplateData] = await Promise.all([
           templatesApi.list().catch(() => []),
-          providersApi.list().catch(() => []),
+          (currentOrg ? providersApi.list(String(currentOrg.id)) : Promise.resolve([])).catch(() => []),
           instanceTypesApi.list().catch(() => []),
           instanceGroupTemplatesApi.list().catch(() => []),
         ])
@@ -173,7 +175,7 @@ export function EnvironmentCreateFlow() {
 
         const firstHealthy = providerData.find((p) => p.status !== "DOWN")
         if (firstHealthy) {
-          setClusterForm((prev) => ({ ...prev, providerId: prev.providerId || firstHealthy.id }))
+          setClusterForm((prev) => ({ ...prev, providerId: prev.providerId || String(firstHealthy.id) }))
         }
       } catch {
         if (active) {

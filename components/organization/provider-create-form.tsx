@@ -15,6 +15,7 @@ import {
 import { providersApi } from "@/lib/api/providers"
 import type { Provider } from "@/lib/api/types"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/auth-context"
 
 type Props = {
   onCreated: (provider: Provider) => void
@@ -33,6 +34,7 @@ const SLUG_SUGGESTIONS: Record<string, string> = {
 }
 
 export function ProviderCreateForm({ onCreated }: Props) {
+  const { currentOrg } = useAuth()
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
@@ -47,9 +49,10 @@ export function ProviderCreateForm({ onCreated }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
+    if (!currentOrg) return
     setIsSubmitting(true)
     try {
-      const provider = await providersApi.create({
+      const provider = await providersApi.create(String(currentOrg.id), {
         name: name.trim(),
         slug: slug.trim() || undefined,
         description: description.trim() || undefined,
