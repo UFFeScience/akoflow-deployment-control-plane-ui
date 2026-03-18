@@ -1,5 +1,5 @@
-import { ProjectEnvironmentsRedirect } from "@/components/environments/project-environments-redirect"
+import { ProjectEnvironmentsList } from "@/components/environments/project-environments-list"
 
 export default function ProjectEnvironmentsPage() {
-  return <ProjectEnvironmentsRedirect />
+  return <ProjectEnvironmentsList />
 }

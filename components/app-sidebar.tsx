@@ -48,16 +48,15 @@ const navItems: NavItem[] = [
     href: "/projects",
     icon: FolderKanban,
     children: [
-      { label: "Environments", hrefSuffix: "/environments", icon: Globe },
     ],
   },
-  { label: "Templates", href: "/organization/templates", icon: FileCode2 },
   {
     label: "Organization",
     href: "/organization",
     icon: Cloud,
     children: [
       { label: "Providers", hrefSuffix: "/providers", icon: Server },
+      { label: "Templates", hrefSuffix: "/templates", icon: FileCode2 },
     ],
   },
 ]
@@ -89,10 +88,10 @@ export function AppSidebar() {
 
   const initials = user?.name
     ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
     : "?"
 
   useEffect(() => {
@@ -207,49 +206,49 @@ export function AppSidebar() {
                   <ul className="mt-0.5 flex flex-col gap-0.5 pl-4" role="list">
                     {item.label === "Projects" && currentProjectId
                       ? // Inside a project: show context-aware children (e.g. Environments of this project)
-                        item.children!.map((child) => {
-                          const childHref = `/projects/${currentProjectId}${child.hrefSuffix}`
-                          const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
-                          return (
-                            <li key={child.hrefSuffix}>
-                              <Link
-                                href={childHref}
-                                className={cn(
-                                  "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                                  isChildActive
-                                    ? "bg-sidebar-accent text-sidebar-primary"
-                                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                                )}
-                                aria-current={isChildActive ? "page" : undefined}
-                              >
-                                <child.icon className="h-3 w-3 shrink-0" />
-                                {child.label}
-                              </Link>
-                            </li>
-                          )
-                        })
+                      item.children!.map((child) => {
+                        const childHref = `/projects/${currentProjectId}${child.hrefSuffix}`
+                        const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
+                        return (
+                          <li key={child.hrefSuffix}>
+                            <Link
+                              href={childHref}
+                              className={cn(
+                                "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                isChildActive
+                                  ? "bg-sidebar-accent text-sidebar-primary"
+                                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                              )}
+                              aria-current={isChildActive ? "page" : undefined}
+                            >
+                              <child.icon className="h-3 w-3 shrink-0" />
+                              {child.label}
+                            </Link>
+                          </li>
+                        )
+                      })
                       : // All other expandable items: use item.href + hrefSuffix
-                        item.children!.map((child) => {
-                          const childHref = item.href + child.hrefSuffix
-                          const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
-                          return (
-                            <li key={child.hrefSuffix}>
-                              <Link
-                                href={childHref}
-                                className={cn(
-                                  "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                                  isChildActive
-                                    ? "bg-sidebar-accent text-sidebar-primary"
-                                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                                )}
-                                aria-current={isChildActive ? "page" : undefined}
-                              >
-                                <child.icon className="h-3 w-3 shrink-0" />
-                                {child.label}
-                              </Link>
-                            </li>
-                          )
-                        })
+                      item.children!.map((child) => {
+                        const childHref = item.href + child.hrefSuffix
+                        const isChildActive = pathname === childHref || pathname.startsWith(childHref + "/")
+                        return (
+                          <li key={child.hrefSuffix}>
+                            <Link
+                              href={childHref}
+                              className={cn(
+                                "flex items-center gap-2 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                isChildActive
+                                  ? "bg-sidebar-accent text-sidebar-primary"
+                                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                              )}
+                              aria-current={isChildActive ? "page" : undefined}
+                            >
+                              <child.icon className="h-3 w-3 shrink-0" />
+                              {child.label}
+                            </Link>
+                          </li>
+                        )
+                      })
                     }
                   </ul>
                 )}
