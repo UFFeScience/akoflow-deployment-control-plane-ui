@@ -23,11 +23,9 @@ import { toast } from "sonner"
 
 type Props = {
   providerId: string
-  providerSlug?: string
   onCreated: (credential: ProviderCredential) => void
   onCancel: () => void
 }
-
 
 // Group schemas by section
 function groupBySection(schemas: ProviderVariableSchema[]) {
@@ -36,7 +34,6 @@ function groupBySection(schemas: ProviderVariableSchema[]) {
     return acc
   }, {})
 }
-
 
 function SecretInput({
   value,
@@ -132,20 +129,21 @@ function SchemaField({
   )
 }
 
-export function ProviderCredentialForm({ providerId, providerSlug, onCreated, onCancel }: Props) {
+export function ProviderCredentialForm({ providerId, onCreated, onCancel }: Props) {
   const [schemas, setSchemas] = useState<ProviderVariableSchema[]>([])
   const [isSchemasLoading, setIsSchemasLoading] = useState(false)
   const [credentialName, setCredentialName] = useState("")
+  const [credentialSlug, setCredentialSlug] = useState("")
   const { currentOrg } = useAuth()
   const [credentialDescription, setCredentialDescription] = useState("")
   const [values, setValues] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!providerSlug) return
+    if (!currentOrg) return
     setIsSchemasLoading(true)
     providerSchemasApi
-      .listBySlug(providerSlug)
+      .listByProvider(String(currentOrg.id), providerId)
       .then((list) => {
         setSchemas(list)
         // Pre-fill defaults
@@ -157,7 +155,7 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : "Failed to load schema"))
       .finally(() => setIsSchemasLoading(false))
-  }, [providerSlug])
+  }, [providerId, currentOrg])
 
   const grouped = useMemo(() => groupBySection(schemas), [schemas])
   const sections = useMemo(() => Object.keys(grouped).sort(), [grouped])
@@ -168,7 +166,7 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!credentialName.trim()) return
+    if (!credentialName.trim() || !credentialSlug.trim()) return
 
     // Validate required fields
     const missing = schemas.filter((s) => s.required && !values[s.name]?.trim())
@@ -181,9 +179,10 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
     setIsSubmitting(true)
     try {
       const cred = await providersApi.createCredential(String(currentOrg.id), providerId, {
-        name: credentialName.trim(),
+        name:        credentialName.trim(),
+        slug:        credentialSlug.trim(),
         description: credentialDescription.trim() || undefined,
-        is_active: true,
+        is_active:   true,
         values,
       })
       onCreated(cred as ProviderCredential)
@@ -208,6 +207,23 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
             required
           />
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="cred-slug">Slug *</Label>
+          <Input
+            id="cred-slug"
+            value={credentialSlug}
+            onChange={(e) =>
+              setCredentialSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+            }
+            placeholder="e.g. prod-key"
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            Unique identifier for this credential within the provider. Used when creating environments.
+          </p>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="cred-desc">Description</Label>
           <Input
@@ -227,15 +243,9 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
           ))}
         </div>
       ) : schemas.length === 0 ? (
-        !providerSlug ? (
-          <p className="text-sm text-muted-foreground">
-            No schema found. You can still name the credential above.
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No variable schema defined for slug &quot;{providerSlug}&quot;.
-          </p>
-        )
+        <p className="text-sm text-muted-foreground">
+          This provider has no credential fields defined yet.
+        </p>
       ) : (
         <div className="space-y-6">
           {sections.map((section) => (
@@ -275,10 +285,11 @@ export function ProviderCredentialForm({ providerId, providerSlug, onCreated, on
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting || !credentialName.trim()}>
+        <Button type="submit" disabled={isSubmitting || !credentialName.trim() || !credentialSlug.trim()}>
           {isSubmitting ? "Saving…" : "Save Credential"}
         </Button>
       </div>
     </form>
   )
 }
+

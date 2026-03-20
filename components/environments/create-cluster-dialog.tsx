@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
-import type { Environment, Provider, InstanceType } from "@/lib/api/types"
+import type { Environment, Provider, InstanceType, ProviderCredential } from "@/lib/api/types"
 import { toast } from "sonner"
 
 interface CreateClusterDialogProps {
@@ -39,12 +39,12 @@ function buildInitialForm(
     (expConfig?.aws_region as string) ||
     ""
 
-  // Pick provider: prefer GCP if environment references GCP keys, else first healthy
+  // Pick provider: prefer GCP if environment references GCP keys, else first healthy, else any
   const gcpProvider = providers.find(
     (p) => p.name?.toUpperCase().includes("GCP") || p.name?.toUpperCase().includes("GOOGLE")
   )
   const firstHealthy = providers.find((p) => p.status !== "DOWN")
-  const defaultProvider = gcpProvider || firstHealthy
+  const defaultProvider = gcpProvider || firstHealthy || providers[0]
 
   // Build default instance group
   const defaultGroup: ClusterFormData["instanceGroups"][0] = {
@@ -60,6 +60,7 @@ function buildInitialForm(
 
   return {
     providerId: defaultProvider ? String(defaultProvider.id) : "",
+    credentialId: "",
     region: regionFromConfig,
     instanceGroups: [defaultGroup],
   }
@@ -76,6 +77,7 @@ export function CreateClusterDialog({
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [providers, setProviders] = useState<Provider[]>([])
+  const [credentials, setCredentials] = useState<ProviderCredential[]>([])
   const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
   const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<
     Array<{ id: string; name: string; slug: string }>
@@ -85,6 +87,7 @@ export function CreateClusterDialog({
   const environmentSnapshot = useRef<Environment | null>(null)
   const [form, setForm] = useState<ClusterFormData>({
     providerId: "",
+    credentialId: "",
     region: "",
     instanceGroups: [
       {
@@ -144,9 +147,18 @@ export function CreateClusterDialog({
           groupTemplateData[0]?.id ||
           ""
 
-        setForm(
-          buildInitialForm(environmentSnapshot.current, providerData, normalizedInstanceTypes, groupTemplateData, defaultTemplate)
-        )
+        const initialForm = buildInitialForm(environmentSnapshot.current, providerData, normalizedInstanceTypes, groupTemplateData, defaultTemplate)
+        setForm(initialForm)
+
+        // Eagerly load credentials for the default provider so they are ready
+        // when the form renders — the reactive effect may not fire if providerId
+        // never transitions from its initial "" value.
+        if (initialForm.providerId && currentOrg) {
+          providersApi
+            .listCredentials(String(currentOrg.id), initialForm.providerId)
+            .then((credData) => { if (active) setCredentials(credData) })
+            .catch(() => { if (active) setCredentials([]) })
+        }
       } catch {
         toast.error("Failed to load form data")
       } finally {
@@ -160,9 +172,26 @@ export function CreateClusterDialog({
     }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch credentials whenever the selected provider changes
+  useEffect(() => {
+    if (!form.providerId || !currentOrg) {
+      setCredentials([])
+      return
+    }
+    let active = true
+    providersApi.listCredentials(String(currentOrg.id), form.providerId).then((data) => {
+      console.log("Loaded credentials for provider", form.providerId, data)
+      if (active) setCredentials(data)
+    }).catch((err) => {
+      console.error("[credentials] failed to load:", err)
+      if (active) setCredentials([])
+    })
+    return () => { active = false }
+  }, [form.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleCreate() {
-    if (!form.providerId || !form.region) {
-      toast.error("Provider and region are required")
+    if (!form.providerId || !form.credentialId || !form.region) {
+      toast.error("Provider, credentials, and region are required")
       return
     }
 
@@ -211,6 +240,7 @@ export function CreateClusterDialog({
     try {
       await clustersApi.create(environmentId, {
         providerId: form.providerId,
+        credentialId: form.credentialId,
         region: form.region,
         instanceGroups: instanceGroupsPayload,
         nodeCount,
@@ -227,6 +257,7 @@ export function CreateClusterDialog({
 
   const canSubmit =
     Boolean(form.providerId) &&
+    Boolean(form.credentialId) &&
     Boolean(form.region) &&
     form.instanceGroups.some((g) => g.instanceTypeId && g.quantity > 0)
 
@@ -258,6 +289,7 @@ export function CreateClusterDialog({
           form={form}
           onFormChange={setForm}
           providers={providers}
+          credentials={credentials}
           instanceTypes={instanceTypes}
           instanceGroupTemplates={instanceGroupTemplates}
           isCompact={false}

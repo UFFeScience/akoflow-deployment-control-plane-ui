@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import type { Provider, InstanceType } from "@/lib/api/types"
+import type { Provider, InstanceType, ProviderCredential } from "@/lib/api/types"
 import { InstanceGroupSchemaForm } from "./instance-group-schema-form"
 
 export interface ClusterFormData {
   providerId: string
+  credentialId: string
   region: string
   instanceGroups: {
     id: string
@@ -30,6 +31,7 @@ interface ClusterFormFieldsProps {
   form: ClusterFormData
   onFormChange: (form: ClusterFormData) => void
   providers: Provider[]
+  credentials: ProviderCredential[]
   instanceTypes: InstanceType[]
   instanceGroupTemplates?: Array<{ id: string; name: string; slug: string }>
   isCompact?: boolean
@@ -39,11 +41,14 @@ export function ClusterFormFields({
   form,
   onFormChange,
   providers,
+  credentials = [],
   instanceTypes,
   instanceGroupTemplates = [],
   isCompact = false,
 }: ClusterFormFieldsProps) {
   const healthyProviders = useMemo(() => providers.filter((p) => p.status !== "DOWN"), [providers])
+
+  console.log("ClusterFormFields render", { form, providers, credentials, instanceTypes, instanceGroupTemplates })
 
   // Normalise all provider IDs to strings so Select value-matching is reliable
   const providerIdStr = form.providerId ? String(form.providerId) : ""
@@ -144,6 +149,7 @@ export function ClusterFormFields({
               onFormChange({
                 ...form,
                 providerId: v,
+                credentialId: "",
                 region: "",
                 instanceGroups: form.instanceGroups.map((g) => ({ ...g, instanceTypeId: "" })),
               })
@@ -156,6 +162,26 @@ export function ClusterFormFields({
               {healthyProviders.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)} className={textSize}>
                   {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className={labelSize}>Credentials</Label>
+          <Select
+            value={form.credentialId}
+            onValueChange={(v) => onFormChange({ ...form, credentialId: v })}
+            disabled={!form.providerId}
+          >
+            <SelectTrigger className={`${inputHeight} ${textSize}`}>
+              <SelectValue placeholder={!form.providerId ? "Select provider first" : credentials.length === 0 ? "No credentials defined" : "Select credential"} />
+            </SelectTrigger>
+            <SelectContent>
+              {credentials.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)} className={textSize}>
+                  {c.name}{c.slug ? ` (${c.slug})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>

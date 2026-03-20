@@ -8,6 +8,7 @@ export const clustersApi = {
     data: {
       templateId?: string
       providerId: string
+      credentialId: string
       region: string
       instanceTypeId?: string
       role?: string
@@ -18,6 +19,7 @@ export const clustersApi = {
   ) => {
     const payload: Record<string, unknown> = {
       provider_id: data.providerId,
+      provider_credential_id: data.credentialId,
       region: data.region,
       cluster_template_id: data.templateId ?? undefined,
       environment_type: 'CLOUD',

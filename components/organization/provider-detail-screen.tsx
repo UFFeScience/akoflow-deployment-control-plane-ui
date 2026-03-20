@@ -198,7 +198,6 @@ export function ProviderDetailScreen() {
                 </DialogHeader>
                 <ProviderCredentialForm
                   providerId={providerId}
-                  providerSlug={provider.slug}
                   onCreated={handleCredentialCreated}
                   onCancel={() => setIsAddOpen(false)}
                 />
@@ -228,7 +227,10 @@ export function ProviderDetailScreen() {
                 <CardHeader className="py-3 px-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-sm">{cred.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-sm">{cred.name}</CardTitle>
+                        <Badge variant="secondary" className="font-mono text-xs">{cred.slug}</Badge>
+                      </div>
                       {cred.description && (
                         <p className="text-xs text-muted-foreground mt-0.5">{cred.description}</p>
                       )}

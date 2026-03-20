@@ -160,7 +160,7 @@ export interface Provider {
   slug?: string
   default_module_slug?: string | null
   description?: string
-  type: string
+  type: "AWS" | "GCP" | "AZURE" | "ON_PREM" | "HPC" | "CUSTOM"
   status: string
   health_status?: string
   health_message?: string
@@ -175,7 +175,7 @@ export interface Provider {
 
 export interface ProviderVariableSchema {
   id: string
-  provider_slug: string
+  provider_id: string
   section: string
   name: string
   label: string
@@ -199,6 +199,7 @@ export interface ProviderCredential {
   id: string
   provider_id: string
   name: string
+  slug?: string
   description?: string
   is_active: boolean
   values?: ProviderCredentialValue[]

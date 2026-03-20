@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import type { Provider, InstanceType, Template } from "@/lib/api/types"
+import type { Provider, InstanceType, Template, ProviderCredential } from "@/lib/api/types"
 import { clustersApi } from "@/lib/api/clusters"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
@@ -27,6 +27,7 @@ export function CreateClusterForm() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [providers, setProviders] = useState<Provider[]>([])
+  const [credentials, setCredentials] = useState<ProviderCredential[]>([])
   const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([])
@@ -37,6 +38,7 @@ export function CreateClusterForm() {
   const [form, setForm] = useState<ClusterFormData>({
     templateId: "none",
     providerId: "",
+    credentialId: "",
     region: "",
     instanceGroups: [
       {
@@ -68,11 +70,17 @@ export function CreateClusterForm() {
         setProviders(providerData)
         setInstanceTypes(instanceTypeData)
         setInstanceGroupTemplates(groupTemplateData)
-        
-        // Set default provider
+
+        // Set default provider and eagerly load its credentials
         const healthy = providerData.filter((p) => p.status !== "DOWN")
-        if (healthy.length > 0) {
-          setForm((prev) => ({ ...prev, providerId: String(healthy[0].id) }))
+        const defaultProvider = healthy[0] || providerData[0]
+        if (defaultProvider && currentOrg) {
+          const defaultProviderId = String(defaultProvider.id)
+          setForm((prev) => ({ ...prev, providerId: defaultProviderId }))
+          providersApi
+            .listCredentials(String(currentOrg.id), defaultProviderId)
+            .then((credData) => { if (active) setCredentials(credData) })
+            .catch(() => { if (active) setCredentials([]) })
         }
       } catch (error) {
         console.error("Failed to load data:", error)
@@ -87,11 +95,27 @@ export function CreateClusterForm() {
     return () => {
       active = false
     }
-  }, [])
+  }, [currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload credentials when provider changes
+  useEffect(() => {
+    if (!form.providerId || !currentOrg) {
+      setCredentials([])
+      return
+    }
+    let active = true
+    providersApi.listCredentials(String(currentOrg.id), form.providerId).then((data) => {
+      if (active) setCredentials(data)
+    }).catch((err) => {
+      console.error("[credentials] failed to load:", err)
+      if (active) setCredentials([])
+    })
+    return () => { active = false }
+  }, [form.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCreate() {
-    if (!form.providerId || !form.region) {
-      toast.error("Provider and region are required")
+    if (!form.providerId || !form.credentialId || !form.region) {
+      toast.error("Provider, credentials, and region are required")
       return
     }
 
@@ -134,6 +158,7 @@ export function CreateClusterForm() {
       const payload: any = {
         templateId: form.templateId === "none" ? undefined : form.templateId,
         providerId: form.providerId,
+        credentialId: form.credentialId,
         region: form.region,
         instanceGroups: instancesPayload,
         nodeCount,
@@ -217,6 +242,7 @@ export function CreateClusterForm() {
             form={form}
             onFormChange={setForm}
             providers={providers}
+            credentials={credentials}
             instanceTypes={instanceTypes}
             templates={templates}
             instanceGroupTemplates={instanceGroupTemplates}
@@ -226,7 +252,7 @@ export function CreateClusterForm() {
           <div className="flex gap-2 pt-4 border-t">
             <Button
               onClick={handleCreate}
-              disabled={isSaving || !form.providerId || !form.region || form.instanceGroups.every((g) => !g.instanceTypeId)}
+              disabled={isSaving || !form.providerId || !form.credentialId || !form.region || form.instanceGroups.every((g) => !g.instanceTypeId)}
               className="min-w-[120px]"
             >
               {isSaving ? "Creating..." : "Create Cluster"}

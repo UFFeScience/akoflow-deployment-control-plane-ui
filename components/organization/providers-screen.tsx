@@ -110,7 +110,7 @@ export function ProvidersScreen() {
                 Add Provider
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add Provider</DialogTitle>
                 <DialogDescription>Register a new cloud or HPC provider.</DialogDescription>

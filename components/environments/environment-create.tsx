@@ -16,7 +16,7 @@ import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
-import type { InstanceType, Provider, Template, TemplateVersion } from "@/lib/api/types"
+import type { InstanceType, Provider, ProviderCredential, Template, TemplateVersion } from "@/lib/api/types"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
@@ -61,6 +61,7 @@ export function EnvironmentCreateFlow() {
   const [providers, setProviders] = useState<Provider[]>([])
   const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
   const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([])
+  const [credentials, setCredentials] = useState<ProviderCredential[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [configErrors, setConfigErrors] = useState<Record<string, string>>({})
@@ -172,8 +173,14 @@ export function EnvironmentCreateFlow() {
         setInstanceGroupTemplates(instanceGroupTemplateData.map((t) => ({ id: t.id, name: t.name, slug: t.slug })))
 
         const firstHealthy = providerData.find((p) => p.status !== "DOWN")
-        if (firstHealthy) {
-          setClusterForm((prev) => ({ ...prev, providerId: prev.providerId || String(firstHealthy.id) }))
+        const defaultProvider = firstHealthy || providerData[0]
+        if (defaultProvider && currentOrg) {
+          const defaultProviderId = String(defaultProvider.id)
+          setClusterForm((prev) => ({ ...prev, providerId: prev.providerId || defaultProviderId }))
+          providersApi
+            .listCredentials(String(currentOrg.id), defaultProviderId)
+            .then((credData) => { if (active) setCredentials(credData) })
+            .catch(() => { if (active) setCredentials([]) })
         }
       } catch {
         if (active) {
@@ -192,7 +199,21 @@ export function EnvironmentCreateFlow() {
     return () => {
       active = false
     }
-  }, [])
+  }, [currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload credentials whenever the selected provider changes
+  useEffect(() => {
+    if (!clusterForm.providerId || !currentOrg) {
+      setCredentials([])
+      return
+    }
+    let active = true
+    providersApi
+      .listCredentials(String(currentOrg.id), clusterForm.providerId)
+      .then((data) => { if (active) setCredentials(data) })
+      .catch(() => { if (active) setCredentials([]) })
+    return () => { active = false }
+  }, [clusterForm.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prefill cluster form from environment template topology (e.g., AkoFlow + GKE)
   useEffect(() => {
@@ -694,6 +715,7 @@ export function EnvironmentCreateFlow() {
               form={clusterForm}
               onFormChange={setClusterForm}
               providers={providers}
+              credentials={credentials}
               instanceTypes={instanceTypes}
               instanceGroupTemplates={instanceGroupTemplates}
               isCompact={true}
