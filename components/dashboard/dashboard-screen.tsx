@@ -113,7 +113,6 @@ export function DashboardScreen() {
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length
 
-  // Group instances by cluster
   const instancesByCluster = instances.reduce((acc, instance) => {
     const clusterId = instance.clusterId || "unknown"
     if (!acc[clusterId]) {
@@ -132,7 +131,7 @@ export function DashboardScreen() {
 
       <WelcomeModal visible={showWelcome} onClose={() => setShowWelcome(false)} />
 
-      {/* Main Statistics */}
+
       <DashboardStats
         totalProjects={totalProjects}
         totalEnvironments={totalEnvironments}
@@ -143,20 +142,7 @@ export function DashboardScreen() {
         environments={environments}
       />
 
-      {/* System Health */}
-      <DashboardHealth environments={environments} clusters={clusters} />
-
-      {/* Activity and Resources */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <DashboardActivity environments={environments} instances={instances} />
-        
-        <div className="space-y-6">
-          <DashboardResources instances={instances} clusters={clusters} />
-        </div>
-      </div>
-
-      {/* Recent Environments */}
-      <RecentEnvironments recentEnvironments={recentEnvironments} isLoading={isLoading} getProjectName={getProjectName} />
+ 
     </div>
   )
 }

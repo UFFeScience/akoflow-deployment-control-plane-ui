@@ -22,6 +22,31 @@ export const environmentsApi = {
       }>
     }
   ) => request<Environment>(`/projects/${projectId}/environments`, { method: "POST", body: data }),
+  provision: (
+    projectId: string,
+    data: {
+      name: string
+      description?: string
+      execution_mode?: "manual" | "auto" | "scheduled"
+      environment_template_version_id?: string
+      configuration_json?: Record<string, unknown>
+      cluster?: {
+        provider_id: string
+        region: string
+        cluster_template_id?: string
+        node_count?: number
+        instance_groups?: Array<{
+          instance_type_id: string
+          instance_group_template_id?: string
+          role?: string
+          quantity: number
+          metadata?: Record<string, unknown>
+          terraform_variables?: Record<string, unknown>
+          lifecycle_hooks?: Record<string, string>
+        }>
+      }
+    }
+  ) => request<Environment & { cluster?: unknown }>(`/projects/${projectId}/environments/provision`, { method: "POST", body: data }),
   get: (projectId: string, environmentId: string) =>
     request<Environment>(`/projects/${projectId}/environments/${environmentId}`),
   update: (projectId: string, environmentId: string, data: Partial<Environment>) =>

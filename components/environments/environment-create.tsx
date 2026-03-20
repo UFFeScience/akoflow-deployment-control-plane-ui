@@ -16,7 +16,6 @@ import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
-import { clustersApi } from "@/lib/api/clusters"
 import type { InstanceType, Provider, Template, TemplateVersion } from "@/lib/api/types"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
@@ -57,7 +56,6 @@ export function EnvironmentCreateFlow() {
   const router = useRouter()
   const { currentOrg } = useAuth()
 
-  const [environmentId, setEnvironmentId] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState<StepId>("basics")
   const [templates, setTemplates] = useState<Template[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
@@ -299,7 +297,6 @@ export function EnvironmentCreateFlow() {
       }
       setConfigErrors({})
       setShowConfigErrors(false)
-      if (!environmentId) handleSaveConfiguration()
     }
 
     setActiveStep(next.id)
@@ -311,11 +308,6 @@ export function EnvironmentCreateFlow() {
     if (prev) setActiveStep(prev.id)
   }
 
-  /**
-   * Merges environment-level and instance-level variables into a single
-   * `configuration_json` that mirrors the template definition structure.
-   * Stored on the environment so the filled-in values can be replayed later.
-   */
   function buildConfigurationJson(): Record<string, unknown> {
     const config: Record<string, unknown> = {}
     if (Object.keys(environmentVariables).length > 0) {
@@ -341,65 +333,26 @@ export function EnvironmentCreateFlow() {
     return Boolean(clusterForm.providerId && clusterForm.region && hasGroups)
   }
 
-  async function handleSaveConfiguration() {
-    // Se o environmento ainda não foi criado, criá-lo com as configurações
-    if (!environmentId) {
-      try {
-        const configurationJson = buildConfigurationJson()
-        const environmentPayload = {
-          name: basics.name.trim(),
-          description: basics.description.trim() || undefined,
-          execution_mode: basics.executionMode,
-          environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
-          ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
-        }
-
-        const environment = await environmentsApi.create(projectId, environmentPayload)
-        setEnvironmentId(environment.id)
-        toast.success("Configuration saved successfully")
-      } catch (error) {
-        toast.error("Failed to save configuration")
-        throw error
-      }
-    }
-  }
-
   async function handleFinish() {
     if (isSubmitting) return
     setIsSubmitting(true)
 
     try {
-      // Usar environmentId se já foi criado, senão criar agora
-      let finalEnvironmentId = environmentId
+      const configurationJson = buildConfigurationJson()
 
-      if (!finalEnvironmentId) {
-        const configurationJson = buildConfigurationJson()
-
-        const environmentPayload = {
-          name: basics.name.trim(),
-          description: basics.description.trim() || undefined,
-          execution_mode: basics.executionMode,
-          environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
-          ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
-        }
-
-        const environment = await environmentsApi.create(projectId, environmentPayload)
-        finalEnvironmentId = environment.id
-      }
-
-      const instanceGroupsPayload = [] as {
-        instanceTypeId: string
-        instanceGroupTemplateId?: string
+      // Build instance groups, validating metadata JSON along the way
+      const instanceGroupsPayload: Array<{
+        instance_type_id: string
+        instance_group_template_id?: string
         role?: string
         quantity: number
         metadata?: Record<string, unknown>
-        terraformVariables?: Record<string, unknown>
-        lifecycleHooks?: Record<string, string>
-      }[]
+        terraform_variables?: Record<string, unknown>
+        lifecycle_hooks?: Record<string, string>
+      }> = []
 
       for (const group of clusterForm.instanceGroups.filter((g) => g.instanceTypeId && g.quantity > 0)) {
         let metadata: Record<string, unknown> | undefined
-
         if (group.metadata.trim()) {
           try {
             metadata = JSON.parse(group.metadata)
@@ -411,28 +364,39 @@ export function EnvironmentCreateFlow() {
         }
 
         instanceGroupsPayload.push({
-          instanceTypeId: group.instanceTypeId,
-          instanceGroupTemplateId: group.instanceGroupTemplateId || undefined,
+          instance_type_id: group.instanceTypeId,
+          instance_group_template_id: group.instanceGroupTemplateId || undefined,
           role: group.role || undefined,
           quantity: group.quantity,
           metadata,
-          ...(group.terraformVariables && Object.keys(group.terraformVariables).length > 0 && { terraformVariables: group.terraformVariables }),
-          ...(group.lifecycleHooks && Object.keys(group.lifecycleHooks).length > 0 && { lifecycleHooks: group.lifecycleHooks }),
+          ...(group.terraformVariables && Object.keys(group.terraformVariables).length > 0 && { terraform_variables: group.terraformVariables }),
+          ...(group.lifecycleHooks && Object.keys(group.lifecycleHooks).length > 0 && { lifecycle_hooks: group.lifecycleHooks }),
         })
       }
 
-      if (instanceGroupsPayload.length > 0 && clusterForm.providerId && clusterForm.region) {
-        const nodeCount = instanceGroupsPayload.reduce((sum, g) => sum + g.quantity, 0)
-        await clustersApi.create(finalEnvironmentId, {
-          providerId: clusterForm.providerId,
-          region: clusterForm.region,
-          instanceGroups: instanceGroupsPayload,
-          nodeCount,
-        })
+      const hasCluster = instanceGroupsPayload.length > 0 && Boolean(clusterForm.providerId) && Boolean(clusterForm.region)
+
+      const payload = {
+        name: basics.name.trim(),
+        description: basics.description.trim() || undefined,
+        execution_mode: basics.executionMode,
+        environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
+        ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
+        ...(hasCluster && {
+          cluster: {
+            provider_id: clusterForm.providerId,
+            region: clusterForm.region,
+            node_count: instanceGroupsPayload.reduce((sum, g) => sum + g.quantity, 0),
+            instance_groups: instanceGroupsPayload,
+          },
+        }),
       }
+
+      const result = await environmentsApi.provision(projectId, payload)
+      const environmentId = result.id
 
       toast.success("Environment created")
-      router.push(`/projects/${projectId}/environments/${finalEnvironmentId}`)
+      router.push(`/projects/${projectId}/environments/${environmentId}`)
     } catch {
       toast.error("Failed to create environment")
       setIsSubmitting(false)
