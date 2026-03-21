@@ -175,7 +175,7 @@ export interface Provider {
 
 export interface ProviderVariableSchema {
   id: string
-  provider_id: string
+  provider_slug: string
   section: string
   name: string
   label: string
