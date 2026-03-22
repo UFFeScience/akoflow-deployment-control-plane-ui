@@ -371,3 +371,19 @@ export interface AuthResponse {
   user: User
   token: string
 }
+
+export interface TerraformRun {
+  id: string
+  environment_id: string
+  action: string
+  status: string
+  provider_type?: string
+  workspace_path?: string
+  tfvars?: Record<string, unknown>
+  output?: Record<string, unknown>
+  logs?: string | null
+  started_at?: string | null
+  finished_at?: string | null
+  created_at?: string
+  updated_at?: string
+}

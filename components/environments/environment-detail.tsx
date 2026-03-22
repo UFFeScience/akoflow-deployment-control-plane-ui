@@ -100,6 +100,8 @@ export function EnvironmentDetailView() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null)
   const isRefreshingRef = useRef(false)
 
+  const [isDestroyingEnv, setIsDestroyingEnv] = useState(false)
+
   const totalInstances = useMemo(
     () => Object.values(instancesByCluster).reduce((sum, list) => sum + list.length, 0),
     [instancesByCluster]
@@ -148,6 +150,18 @@ export function EnvironmentDetailView() {
     },
     [environmentId, loadInstances, projectId]
   )
+
+  const handleDestroyEnvironment = useCallback(async () => {
+    setIsDestroyingEnv(true)
+    try {
+      await environmentsApi.terraformDestroy(projectId, environmentId)
+      await refreshEnvironmentData({ silent: false })
+    } catch {
+      // error is visible via logs / status refresh
+    } finally {
+      setIsDestroyingEnv(false)
+    }
+  }, [projectId, environmentId, refreshEnvironmentData])
 
   useEffect(() => {
     let active = true
@@ -225,10 +239,13 @@ export function EnvironmentDetailView() {
         instancesCount={totalInstances}
         isRefreshing={isRefreshingStatus}
         lastUpdatedAt={lastRefreshedAt}
+        onDestroyEnvironment={handleDestroyEnvironment}
+        isDestroying={isDestroyingEnv}
       />
 
       <EnvironmentTabs
         environmentId={environmentId}
+        projectId={projectId}
         environment={environment}
         clusters={clusters}
         instancesByCluster={instancesByCluster}

@@ -53,4 +53,6 @@ export const environmentsApi = {
     request<Environment>(`/projects/${projectId}/environments/${environmentId}`, { method: "PATCH", body: data }),
   delete: (projectId: string, environmentId: string) =>
     request(`/projects/${projectId}/environments/${environmentId}`, { method: "DELETE" }),
+  terraformDestroy: (projectId: string, environmentId: string) =>
+    request(`/projects/${projectId}/environments/${environmentId}/terraform-runs/destroy`, { method: "POST" }),
 }

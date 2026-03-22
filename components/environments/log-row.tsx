@@ -8,11 +8,11 @@ import type { LogEntry, Instance } from "@/lib/api/types"
 type LogRowProps = {
   log: LogEntry
   instances: Instance[]
-  selectedInstance: string
+  selectedInstance: string | undefined
 }
 
 export function LogRow({ log, instances, selectedInstance }: LogRowProps) {
-  const inst = instances.find((i) => i.id === selectedInstance)
+  const inst = selectedInstance ? instances.find((i) => i.id === selectedInstance) : undefined
 
   return (
     <div className="flex gap-2 py-px hover:bg-[#161b22] rounded px-1 -mx-1 transition-colors">
@@ -21,8 +21,8 @@ export function LogRow({ log, instances, selectedInstance }: LogRowProps) {
         {log.level.slice(0, 4)}
       </span>
       {log.source && <span className="shrink-0 text-indigo-400/60">[{log.source}]</span>}
-      <span className="shrink-0 text-gray-500">{getInstanceLabel(inst)}</span>
-      <span className="shrink-0 text-gray-500">{getInstanceRole(inst)}</span>
+      {inst && <span className="shrink-0 text-gray-500">{getInstanceLabel(inst)}</span>}
+      {inst && <span className="shrink-0 text-gray-500">{getInstanceRole(inst)}</span>}
       <span className={cn("break-all", LOG_LEVEL_TEXT[log.level] || "text-gray-400")}>{log.message}</span>
     </div>
   )

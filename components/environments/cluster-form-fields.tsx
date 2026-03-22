@@ -77,8 +77,10 @@ export function ClusterFormFields({
 
   const regionOptions = useMemo(() => {
     const providerRegions = providers.find((p) => String(p.id) === providerIdStr)?.regions || []
+    console.log("Computed region options", { providerRegions, filteredInstanceTypes } )
     if (providerRegions.length > 0) return providerRegions
     const regionsFromTypes = filteredInstanceTypes.map((t) => t.region).filter(Boolean) as string[]
+    console.log("Regions from instance types", { regionsFromTypes })
     return Array.from(new Set(regionsFromTypes))
   }, [providers, providerIdStr, filteredInstanceTypes])
 

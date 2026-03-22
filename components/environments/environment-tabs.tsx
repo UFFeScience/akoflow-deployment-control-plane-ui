@@ -12,6 +12,7 @@ import type { Cluster, Environment, Instance, InstanceType, Provider, Template }
 
 interface EnvironmentTabsProps {
   environmentId: string
+  projectId: string
   environment: Environment | null
   clusters: Cluster[]
   instancesByCluster: Record<string, Instance[]>
@@ -25,6 +26,7 @@ interface EnvironmentTabsProps {
 
 export function EnvironmentTabs({
   environmentId,
+  projectId,
   environment,
   clusters,
   instancesByCluster,
@@ -103,7 +105,7 @@ export function EnvironmentTabs({
       </TabsContent>
 
       <TabsContent value="logs" className="mt-3">
-        <LogsTab instances={allInstances} />
+        <LogsTab instances={allInstances} projectId={projectId} environmentId={environmentId} />
       </TabsContent>
 
       <TabsContent value="configuration" className="mt-3">

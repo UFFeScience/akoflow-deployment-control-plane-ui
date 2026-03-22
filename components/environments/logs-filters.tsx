@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { Instance } from "@/lib/api/types"
+import { TERRAFORM_RUN_SELECTOR } from "@/lib/api/logs"
 
 function toProviderLabel(value: unknown): string {
   const str = typeof value === "string" ? value : value ? String(value) : "unknown"
@@ -70,6 +71,9 @@ export function LogsFilters({
           <SelectValue placeholder="Select instance" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value={TERRAFORM_RUN_SELECTOR} className="text-xs">
+            Terraform Run
+          </SelectItem>
           {instances.map((inst) => (
             <SelectItem key={inst.id} value={inst.id} className="text-xs">
               {getInstanceLabel(inst)} · {getInstanceRole(inst)} · {toProviderLabel(inst.provider ?? (inst as any).provider_id ?? (inst as any).cloud_provider)} · {inst.region ?? "unknown"}
