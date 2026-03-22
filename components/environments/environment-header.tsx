@@ -1,10 +1,8 @@
 import Link from "next/link"
-import { useState } from "react"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import { LoadingSpinner } from "@/components/ui/loading-state"
-import { ConfirmationDialog } from "@/components/confirmation-dialog"
 import type { Environment, Project } from "@/lib/api/types"
 
 interface EnvironmentHeaderProps {
@@ -25,10 +23,7 @@ export function EnvironmentHeader({
   resourcesCount,
   isRefreshing = false,
   lastUpdatedAt,
-  onDestroyEnvironment,
-  isDestroying = false,
 }: EnvironmentHeaderProps) {
-  const [confirmOpen, setConfirmOpen] = useState(false)
   const lastUpdatedLabel = lastUpdatedAt
     ? new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
@@ -62,50 +57,21 @@ export function EnvironmentHeader({
           )}
           <span>{resourcesCount} resource{resourcesCount !== 1 ? "s" : ""}</span>
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="font-semibold uppercase tracking-wide text-[9px] text-emerald-600">Live</span>
-          {isRefreshing && <LoadingSpinner size="sm" className="text-muted-foreground" />}
-          <span>Refreshing every 5s</span>
-          {lastUpdatedLabel && <span className="text-[9px]">Last update {lastUpdatedLabel}</span>}
-        </div>
+        {environment?.status?.toLowerCase() !== "failed" && (
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <span className="font-semibold uppercase tracking-wide text-[9px] text-emerald-600">Live</span>
+            {isRefreshing && <LoadingSpinner size="sm" className="text-muted-foreground" />}
+            <span>Refreshing every 5s</span>
+            {lastUpdatedLabel && <span className="text-[9px]">Last update {lastUpdatedLabel}</span>}
+          </div>
+        )}
       </div>
 
-      {onDestroyEnvironment && (
-        <>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-[10px] text-destructive border-destructive/40 hover:bg-destructive/10 shrink-0 mt-7"
-            onClick={() => setConfirmOpen(true)}
-            disabled={isDestroying}
-          >
-            {isDestroying ? (
-              <LoadingSpinner size="sm" className="mr-1" />
-            ) : (
-              <Trash2 className="mr-1 h-3 w-3" />
-            )}
-            {isDestroying ? "Destroying..." : "Destroy infrastructure"}
-          </Button>
 
-          <ConfirmationDialog
-            open={confirmOpen}
-            onClose={() => setConfirmOpen(false)}
-            onConfirm={async () => {
-              setConfirmOpen(false)
-              await onDestroyEnvironment()
-            }}
-            title="Destroy infrastructure?"
-            description={`This will run terraform destroy on environment "${environment?.name ?? "this environment"}". All provisioned cloud resources will be permanently deleted. This action cannot be undone.`}
-            confirmLabel="Yes, destroy"
-            variant="destructive"
-            loading={isDestroying}
-          />
-        </>
-      )}
     </div>
   )
 }

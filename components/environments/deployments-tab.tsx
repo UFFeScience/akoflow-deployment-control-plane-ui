@@ -134,6 +134,7 @@ export function DeploymentsTab({
         onConfirm={() => confirmId && handleDestroy(confirmId)}
         title="Destroy deployment?"
         description="This will run terraform destroy and remove all provisioned resources under this deployment."
+        confirmLabel="Destroy"
         loading={isDestroying}
       />
 
