@@ -16,6 +16,7 @@ import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
 import type { TemplateVersion, TerraformModule, TerraformProviderType, Provider } from "@/lib/api/types"
+import { OutputsMappingEditor } from "./outputs-mapping-editor"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ interface TfForm {
   // mapping stored as raw JSON string (editable) plus parsed state
   tfvars_mapping_json: string
   mapping_mode: "visual" | "raw"
+  // outputs mapping stored as raw JSON string
+  outputs_mapping_json: string
 }
 
 function defaultForm(mod?: TerraformModule | null): TfForm {
@@ -57,6 +60,9 @@ function defaultForm(mod?: TerraformModule | null): TfForm {
       ? JSON.stringify(mod.tfvars_mapping_json, null, 2)
       : JSON.stringify({ environment_configuration: {}, instance_configurations: {} }, null, 2),
     mapping_mode: "visual",
+    outputs_mapping_json: mod?.outputs_mapping_json
+      ? JSON.stringify(mod.outputs_mapping_json, null, 2)
+      : JSON.stringify({ resources: [] }, null, 2),
   }
 }
 
@@ -220,10 +226,22 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
       }
     }
 
+    let parsedOutputsMapping = null
+    if (form.outputs_mapping_json.trim()) {
+      try {
+        parsedOutputsMapping = JSON.parse(form.outputs_mapping_json)
+      } catch {
+        setSaveError("Invalid JSON in outputs mapping")
+        setSaving(false)
+        return
+      }
+    }
+
     try {
       const payload: Omit<Partial<TerraformModule>, "provider_type"> = {
         credential_env_keys: form.credential_env_keys.filter(Boolean),
         tfvars_mapping_json: parsedMapping ?? undefined,
+        outputs_mapping_json: parsedOutputsMapping ?? undefined,
       }
 
       payload.main_tf = form.main_tf || undefined
@@ -505,7 +523,20 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
 
       <Separator />
 
-      {/* 4. CREDENTIAL ENV KEYS ───────────────────────────────────────────── */}
+      {/* 4. OUTPUTS MAPPING ───────────────────────────────────────────────── */}
+      <Section
+        title="Outputs Mapping"
+        description="Declare which Terraform outputs map to AkoCloud provisioned-resource fields (IP, ID, preview URL, etc.)."
+      >
+        <OutputsMappingEditor
+          value={form.outputs_mapping_json}
+          onChange={(raw) => patch({ outputs_mapping_json: raw })}
+        />
+      </Section>
+
+      <Separator />
+
+      {/* 5. CREDENTIAL ENV KEYS ───────────────────────────────────────────── */}
       <Section
         title="Credential ENV Keys"
         description="Environment variable names that will be injected from the provider credentials into the Terraform workspace container."

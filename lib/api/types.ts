@@ -291,7 +291,10 @@ export interface ProvisionedResource {
   last_health_check_at?: string | null
   public_ip?: string | null
   private_ip?: string | null
-  metadata_json?: Record<string, unknown> | null
+  metadata_json?: {
+    akoflow_iframe_url?: string
+    [key: string]: unknown
+  } | null
   created_at?: string
   updated_at?: string
 }
@@ -335,6 +338,20 @@ export interface TerraformModule {
   tfvars_mapping_json?: {
     environment_configuration?: Record<string, string>
     instance_configurations?: Record<string, Record<string, string>>
+  } | null
+  // Declares which terraform outputs map to ProvisionedResource fields
+  outputs_mapping_json?: {
+    resources?: Array<{
+      name: string
+      terraform_type?: string
+      outputs: {
+        provider_resource_id?: string
+        public_ip?: string
+        private_ip?: string
+        iframe_url?: string
+        metadata?: Record<string, string>
+      }
+    }>
   } | null
   credential_env_keys?: string[]
   created_at?: string

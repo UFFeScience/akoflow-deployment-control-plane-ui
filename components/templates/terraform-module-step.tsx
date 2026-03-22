@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import type { TerraformProviderType, TemplateDefinition } from "@/lib/api/types"
+import { OutputsMappingEditor, parseOutputsMappingJson } from "./outputs-mapping-editor"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,7 @@ export interface TfDraft {
   outputs_tf: string
   credential_env_keys: string[]
   tfvars_mapping_json: string
+  outputs_mapping_json: string
 }
 
 export function defaultTfDraft(): TfDraft {
@@ -49,6 +51,7 @@ export function defaultTfDraft(): TfDraft {
       null,
       2,
     ),
+    outputs_mapping_json: JSON.stringify({ resources: [] }, null, 2),
   }
 }
 
@@ -63,10 +66,16 @@ export function tfDraftToPayload(draft: TfDraft): Record<string, unknown> {
     }
   }
 
+  let parsedOutputsMapping: unknown = null
+  if (draft.outputs_mapping_json?.trim()) {
+    parsedOutputsMapping = parseOutputsMappingJson(draft.outputs_mapping_json) ?? null
+  }
+
   return {
     provider_type: draft.provider_type || undefined,
     credential_env_keys: draft.credential_env_keys.filter(Boolean),
     tfvars_mapping_json: parsedMapping ?? undefined,
+    outputs_mapping_json: parsedOutputsMapping ?? undefined,
     main_tf: draft.main_tf || undefined,
     variables_tf: draft.variables_tf || undefined,
     outputs_tf: draft.outputs_tf || undefined,
@@ -426,7 +435,18 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
       </Section>
 
       <Separator />
+      {/* OUTPUTS MAPPING ───────────────────────────────────────────────── */}
+      <Section
+        title="Outputs Mapping"
+        description="Declare which Terraform outputs map to AkoCloud provisioned-resource fields (IP, ID, preview URL, etc.)."
+      >
+        <OutputsMappingEditor
+          value={current.outputs_mapping_json}
+          onChange={(raw) => patchCurrent({ outputs_mapping_json: raw })}
+        />
+      </Section>
 
+      <Separator />
       {/* CREDENTIAL ENV KEYS ────────────────────────────────────────────── */}
       <Section
         title="Credential ENV Keys"

@@ -7,6 +7,7 @@ import { DeploymentsTab } from "@/components/environments/deployments-tab"
 import { ResourcesTab } from "@/components/environments/resources-tab"
 import { LogsTab } from "@/components/environments/logs-tab"
 import { ConfigurationTab } from "@/components/environments/configuration-tab"
+import { IframeTab } from "@/components/environments/iframe-tab"
 import type { Deployment, Environment, Provider, ProvisionedResource, Template } from "@/lib/api/types"
 
 interface EnvironmentTabsProps {
@@ -68,6 +69,11 @@ export function EnvironmentTabs({
               Configuration
             </TabsTrigger>
           )}
+        {allResources.some((r) => r.metadata_json?.akoflow_iframe_url) && (
+          <TabsTrigger value="preview" className="text-xs h-6 px-3">
+            Preview
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="topology" className="mt-3">
@@ -107,6 +113,10 @@ export function EnvironmentTabs({
 
       <TabsContent value="configuration" className="mt-3">
         {environment && <ConfigurationTab environment={environment} />}
+      </TabsContent>
+
+      <TabsContent value="preview" className="mt-3">
+        <IframeTab resources={allResources} />
       </TabsContent>
     </Tabs>
   )

@@ -43,8 +43,13 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
 
     loadLogs()
 
+    const intervalId = setInterval(() => {
+      loadLogs()
+    }, 5000)
+
     return () => {
       active = false
+      clearInterval(intervalId)
     }
   }, [selectedInstance, projectId, environmentId, isTerraformRun])
 

@@ -110,7 +110,7 @@ const { definition, isLoading, error } = useTemplateDefinition(templateId)
 // lib/api/types.ts
 
 interface TemplateDefinition {
-  cluster_defaults?: Record<string, unknown>
+  deployment_defaults?: Record<string, unknown>
   ui?: {
     allow_multiple_instance_groups?: boolean
   }
@@ -199,7 +199,7 @@ const { definition } = useTemplateDefinition(templateId)
 
 // definition contém:
 {
-  cluster_defaults: { provider: "aws", region: "us-east-1" },
+  deployment_defaults: { provider: "aws", region: "us-east-1" },
   sections: [
     {
       name: "infrastructure",
