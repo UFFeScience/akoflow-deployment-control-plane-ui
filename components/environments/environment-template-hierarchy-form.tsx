@@ -29,7 +29,7 @@ const EnvironmentTemplateHierarchyForm: FC<EnvironmentTemplateHierarchyFormProps
     const def = templateVersion.definition_json
     return {
       definition: def,
-      clusterTopology: def.cluster_topology || null,
+      deploymentTopology: def.deployment_topology || null,
     }
   }, [templateVersion])
 
@@ -56,8 +56,8 @@ const EnvironmentTemplateHierarchyForm: FC<EnvironmentTemplateHierarchyFormProps
 
     Object.entries(def.instance_configurations || {}).forEach(([slug, cfg]: [string, any]) => {
       nextValues[slug] = buildDefaults(cfg.sections || [])
-      if (def.cluster_topology?.instance_groups) {
-        const topo = def.cluster_topology.instance_groups.find(
+      if (def.deployment_topology?.instance_groups) {
+        const topo = def.deployment_topology.instance_groups.find(
           (g: any) => (g.instance_group_template_slug || g.name) === slug
         )
         if (topo?.quantity) {
@@ -134,7 +134,7 @@ const EnvironmentTemplateHierarchyForm: FC<EnvironmentTemplateHierarchyFormProps
 
           <TemplateHierarchyForm
             definition={templateStructure.definition}
-            clusterTopology={templateStructure.clusterTopology}
+            deploymentTopology={templateStructure.deploymentTopology}
             values={formValues}
             onChange={setFormValues}
           />

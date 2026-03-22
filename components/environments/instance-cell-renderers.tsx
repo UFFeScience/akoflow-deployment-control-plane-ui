@@ -3,7 +3,7 @@ import type { Instance } from "@/lib/api/types"
 
 type InstanceRenderers = {
   instanceLabel: (row: any) => React.ReactNode
-  clusterName: (row: any) => React.ReactNode
+  deploymentName: (row: any) => React.ReactNode
   role: (row: any) => React.ReactNode
   provider: (row: any) => React.ReactNode
   region: (row: any) => React.ReactNode
@@ -18,12 +18,12 @@ export const InstanceCellRenderers: InstanceRenderers = {
     return <span className="py-1.5 text-xs font-medium text-foreground">{row.instanceLabel}</span>
   },
 
-  clusterName(row) {
-    return <span className="py-1.5 text-xs font-medium text-foreground">{row.clusterName}</span>
+  deploymentName(row) {
+    return <span className="py-1.5 text-xs font-medium text-foreground">{row.deploymentName}</span>
   },
 
   role(row) {
-    return <span className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{row.instanceRole || row.clusterRole || "--"}</span>
+    return <span className="py-1.5 text-[11px] text-muted-foreground hidden md:table-cell">{row.instanceRole || row.deploymentRole || "--"}</span>
   },
 
   provider(row) {

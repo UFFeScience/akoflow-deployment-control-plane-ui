@@ -21,7 +21,7 @@ import type { Deployment, Instance, InstanceGroup } from "@/lib/api/types"
 
 interface InstancesVisualizationProps {
   deployments: Deployment[]
-  instancesByCluster: Record<string, Instance[]>
+  instancesByDeployment: Record<string, Instance[]>
   isLoading?: boolean
 }
 
@@ -32,21 +32,21 @@ interface GroupedInstances {
 
 export function InstancesVisualization({ 
   deployments, 
-  instancesByCluster, 
+  instancesByDeployment, 
   isLoading = false 
 }: InstancesVisualizationProps) {
-  const [selectedCluster, setSelectedCluster] = useState<string>("instances")
+  const [selectedDeployment, setSelectedDeployment] = useState<string>("instances")
 
   useEffect(() => {
-    if (deployments.length > 0 && !selectedCluster) {
-      setSelectedCluster("all")
+    if (deployments.length > 0 && !selectedDeployment) {
+      setSelectedDeployment("all")
     }
-  }, [deployments, selectedCluster])
+  }, [deployments, selectedDeployment])
 
   const shouldUseDropdown = deployments.length > 5
   
   // Get all instances for overview
-  const allInstances = Object.values(instancesByCluster).flat()
+  const allInstances = Object.values(instancesByDeployment).flat()
 
   if (isLoading) {
     return (
@@ -73,7 +73,7 @@ export function InstancesVisualization({
       {/* Deployment Selector - Dropdown or Tabs */}
       {shouldUseDropdown ? (
         <div className="flex items-center gap-3">
-          <Select value={selectedCluster} onValueChange={setSelectedCluster}>
+          <Select value={selectedDeployment} onValueChange={setSelectedDeployment}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Select deployment" />
             </SelectTrigger>
@@ -97,7 +97,7 @@ export function InstancesVisualization({
                 </div>
               </SelectItem>
               {deployments.map((deployment) => {
-                const instances = instancesByCluster[deployment.id] || []
+                const instances = instancesByDeployment[deployment.id] || []
                 return (
                   <SelectItem key={deployment.id} value={deployment.id}>
                     <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function InstancesVisualization({
           </Select>
         </div>
       ) : (
-        <Tabs value={selectedCluster} onValueChange={setSelectedCluster} className="w-full">
+        <Tabs value={selectedDeployment} onValueChange={setSelectedDeployment} className="w-full">
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
             <TabsTrigger value="instances" className="flex items-center gap-2 flex-shrink-0">
               <Server className="h-3.5 w-3.5" />
@@ -131,7 +131,7 @@ export function InstancesVisualization({
               </Badge>
             </TabsTrigger>
             {deployments.map((deployment) => {
-              const instances = instancesByCluster[deployment.id] || []
+              const instances = instancesByDeployment[deployment.id] || []
               
               return (
                 <TabsTrigger 
@@ -153,30 +153,30 @@ export function InstancesVisualization({
 
       {/* Content */}
       <div className="space-y-6">
-        {selectedCluster === "instances" ? (
+        {selectedDeployment === "instances" ? (
           <AllInstancesTab instances={allInstances} />
-        ) : selectedCluster === "all" ? (
+        ) : selectedDeployment === "all" ? (
           <>
-            <OverviewStats deployments={deployments} instancesByCluster={instancesByCluster} />
+            <OverviewStats deployments={deployments} instancesByDeployment={instancesByDeployment} />
             <InstanceGraph 
               instances={allInstances} 
-              clusterId="all"
-              clusterName="All Deployments Overview"
+              deploymentId="all"
+              deploymentName="All Deployments Overview"
               deployments={deployments}
             />
-            <ClustersList deployments={deployments} instancesByCluster={instancesByCluster} />
+            <DeploymentsList deployments={deployments} instancesByDeployment={instancesByDeployment} />
           </>
         ) : (
-          deployments.filter(c => c.id === selectedCluster).map((deployment) => {
-            const instances = instancesByCluster[deployment.id] || []
+          deployments.filter(c => c.id === selectedDeployment).map((deployment) => {
+            const instances = instancesByDeployment[deployment.id] || []
             
             return (
               <div key={deployment.id} className="space-y-6">
-                <ClusterOverview deployment={deployment} instances={instances} />
+                <DeploymentOverview deployment={deployment} instances={instances} />
                 <InstanceGraph 
                   instances={instances} 
-                  clusterId={deployment.id}
-                  clusterName={deployment.name || `Deployment ${String(deployment.id).slice(0, 8)}`}
+                  deploymentId={deployment.id}
+                  deploymentName={deployment.name || `Deployment ${String(deployment.id).slice(0, 8)}`}
                 />
                 <InstancesList instances={instances} />
               </div>
@@ -190,23 +190,23 @@ export function InstancesVisualization({
 
 function OverviewStats({ 
   deployments, 
-  instancesByCluster 
+  instancesByDeployment 
 }: { 
   deployments: Deployment[]; 
-  instancesByCluster: Record<string, Instance[]>; 
+  instancesByDeployment: Record<string, Instance[]>; 
 }) {
-  const allInstances = Object.values(instancesByCluster).flat()
+  const allInstances = Object.values(instancesByDeployment).flat()
   console.log("TOTAL DE INSTANCIA", allInstances)
   const totalInstances = allInstances.length
   const runningInstances = allInstances.filter((i) => i.status === "running").length
   const failedInstances = allInstances.filter((i) => i.status === "failed").length
   const pendingInstances = allInstances.filter((i) => i.status === "pending").length
-  const totalClusters = deployments.length
+  const totalDeployments = deployments.length
 
   const metrics = [
     {
       label: "Total Deployments",
-      value: totalClusters,
+      value: totalDeployments,
       icon: Server,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
@@ -265,12 +265,12 @@ function OverviewStats({
   )
 }
 
-function ClustersList({ 
+function DeploymentsList({ 
   deployments, 
-  instancesByCluster 
+  instancesByDeployment 
 }: { 
   deployments: Deployment[]; 
-  instancesByCluster: Record<string, Instance[]>; 
+  instancesByDeployment: Record<string, Instance[]>; 
 }) {
   return (
     <Card>
@@ -283,7 +283,7 @@ function ClustersList({
       <CardContent>
         <div className="space-y-3">
           {deployments.map((deployment) => {
-            const instances = instancesByCluster[deployment.id] || []
+            const instances = instancesByDeployment[deployment.id] || []
             const total = instances.length
             const running = instances.filter((i) => i.status === "running").length
             const failed = instances.filter((i) => i.status === "failed").length
@@ -356,7 +356,7 @@ function ClustersList({
   )
 }
 
-function ClusterOverview({ deployment, instances }: { deployment: Deployment; instances: Instance[] }) {
+function DeploymentOverview({ deployment, instances }: { deployment: Deployment; instances: Instance[] }) {
   const totalInstances = instances.length
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length

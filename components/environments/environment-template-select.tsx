@@ -72,8 +72,8 @@ export function EnvironmentTemplateSelect({
       nextValues[slug] = buildDefaults(cfg.sections || [])
     })
 
-    if (definition.cluster_topology?.instance_groups) {
-      definition.cluster_topology.instance_groups.forEach((group: any) => {
+    if (definition.deployment_topology?.instance_groups) {
+      definition.deployment_topology.instance_groups.forEach((group: any) => {
         const slug = group.instance_group_template_slug || group.instance_group_template_id || group.name
         if (!nextValues[slug]) nextValues[slug] = {}
         nextValues[slug].__quantity = group.quantity || 1
@@ -88,7 +88,7 @@ export function EnvironmentTemplateSelect({
 
     // Get instance groups from template
     const instanceGroups: InstanceGroupItem[] = []
-    const topologyGroups = template.definition_json?.cluster_topology?.instance_groups || []
+    const topologyGroups = template.definition_json?.deployment_topology?.instance_groups || []
 
     for (const group of topologyGroups) {
       const slug = group.instance_group_template_slug || group.instance_group_template_id || group.name
@@ -129,7 +129,7 @@ export function EnvironmentTemplateSelect({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">{template.definition_json?.cluster_topology?.description || "Template loaded"}</CardTitle>
+              <CardTitle className="text-base">{template.definition_json?.deployment_topology?.description || "Template loaded"}</CardTitle>
             </div>
             <Button
               variant="outline"
@@ -177,7 +177,7 @@ export function EnvironmentTemplateSelect({
           <>
             <TemplateHierarchyForm
               definition={definition}
-              clusterTopology={definition.cluster_topology || null}
+              deploymentTopology={definition.deployment_topology || null}
               values={templateValues}
               onChange={setTemplateValues}
             />

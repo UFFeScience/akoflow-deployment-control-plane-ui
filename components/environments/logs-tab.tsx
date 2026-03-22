@@ -1,24 +1,18 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { getInstanceLabel, getInstanceRole } from "@/lib/utils/instance"
-import type { Instance, LogEntry } from "@/lib/api/types"
+import type { ProvisionedResource, LogEntry } from "@/lib/api/types"
 import { logsApi, TERRAFORM_RUN_SELECTOR } from "@/lib/api/logs"
 import { LogsFilters } from "./logs-filters"
 import { LogRow } from "./log-row"
 
-function toProviderLabel(value: unknown): string {
-  const str = typeof value === "string" ? value : value ? String(value) : "unknown"
-  return str.toUpperCase()
-}
-
 interface LogsTabProps {
-  instances: Instance[]
+  resources: ProvisionedResource[]
   projectId: string
   environmentId: string
 }
 
-export function LogsTab({ instances, projectId, environmentId }: LogsTabProps) {
+export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [filterLevel, setFilterLevel] = useState<string>("all")
   const [selectedInstance, setSelectedInstance] = useState<string>(TERRAFORM_RUN_SELECTOR)
@@ -38,7 +32,7 @@ export function LogsTab({ instances, projectId, environmentId }: LogsTabProps) {
       try {
         const data = isTerraformRun
           ? await logsApi.terraformRunLogs(projectId, environmentId)
-          : await logsApi.byInstance(selectedInstance)
+          : await logsApi.byResource(selectedInstance)
         if (active) setLogs(data)
       } catch {
         if (active) setLogs([])
@@ -75,9 +69,10 @@ export function LogsTab({ instances, projectId, environmentId }: LogsTabProps) {
 
   function getTerminalTitle(): string {
     if (isTerraformRun) return "Terraform Run · latest"
-    if (!selectedInstance) return "No instance selected"
-    const inst = instances.find((i) => i.id === selectedInstance)
-    return `${getInstanceLabel(inst)} · ${getInstanceRole(inst)} · ${toProviderLabel(inst?.provider ?? (inst as any)?.provider_id ?? (inst as any)?.cloud_provider)} · ${inst?.region ?? "unknown"}`
+    if (!selectedInstance) return "No resource selected"
+    const res = resources.find((r) => r.id === selectedInstance)
+    const name = res?.name || res?.provider_resource_id || `resource-${res?.id ?? "?"}`
+    return `${name} · ${res?.resource_type?.kind?.slug ?? "—"} · ${res?.resource_type?.slug ?? "—"}`
   }
 
   return (
@@ -91,14 +86,14 @@ export function LogsTab({ instances, projectId, environmentId }: LogsTabProps) {
         autoScroll={autoScroll}
         setAutoScroll={setAutoScroll}
         handleDownload={handleDownload}
-        instances={instances}
+        resources={resources}
         isLoading={isLoading}
       />
 
       {/* Section labels */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-medium text-muted-foreground">
-          {isTerraformRun ? "Terraform Run Logs" : selectedInstance ? "Instance Logs" : "Select an instance"} ({displayLogs.length})
+          {isTerraformRun ? "Terraform Run Logs" : selectedInstance ? "Resource Logs" : "Select a resource"} ({displayLogs.length})
         </span>
         {isLoading && <span className="text-[10px] text-muted-foreground">Loading...</span>}
       </div>
@@ -121,8 +116,8 @@ export function LogsTab({ instances, projectId, environmentId }: LogsTabProps) {
               <LogRow
                 key={log.id}
                 log={log}
-                instances={instances}
-                selectedInstance={isTerraformRun ? undefined : selectedInstance}
+                resources={resources}
+                selectedResource={isTerraformRun ? undefined : selectedInstance}
               />
             ))
           )}

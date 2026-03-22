@@ -15,7 +15,7 @@ import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
 import type { Provider, ProviderCredential, Template, TemplateVersion } from "@/lib/api/types"
-import { ClusterFormFields, type ClusterFormData } from "./deployment-form-fields"
+import { DeploymentFormFields, type DeploymentFormData } from "./deployment-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
 import { EnvironmentConfigurationForm } from "@/components/form/environment-configuration-form"
@@ -105,7 +105,7 @@ export function EnvironmentCreateFlow() {
     selectedTemplateVersionId,
   )
   
-  const [clusterForm, setClusterForm] = useState<ClusterFormData>({
+  const [deploymentForm, setDeploymentForm] = useState<DeploymentFormData>({
     providerId: "",
     credentialId: "",
   })
@@ -128,7 +128,7 @@ export function EnvironmentCreateFlow() {
         const defaultProvider = firstHealthy || providerData[0]
         if (defaultProvider && currentOrg) {
           const defaultProviderId = String(defaultProvider.id)
-          setClusterForm((prev) => ({ ...prev, providerId: prev.providerId || defaultProviderId }))
+          setDeploymentForm((prev) => ({ ...prev, providerId: prev.providerId || defaultProviderId }))
           providersApi
             .listCredentials(String(currentOrg.id), defaultProviderId)
             .then((credData) => { if (active) setCredentials(credData) })
@@ -153,17 +153,17 @@ export function EnvironmentCreateFlow() {
 
   // Reload credentials whenever the selected provider changes
   useEffect(() => {
-    if (!clusterForm.providerId || !currentOrg) {
+    if (!deploymentForm.providerId || !currentOrg) {
       setCredentials([])
       return
     }
     let active = true
     providersApi
-      .listCredentials(String(currentOrg.id), clusterForm.providerId)
+      .listCredentials(String(currentOrg.id), deploymentForm.providerId)
       .then((data) => { if (active) setCredentials(data) })
       .catch(() => { if (active) setCredentials([]) })
     return () => { active = false }
-  }, [clusterForm.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deploymentForm.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function validateConfigFields(): Record<string, string> {
     const errors: Record<string, string> = {}
@@ -248,7 +248,7 @@ export function EnvironmentCreateFlow() {
     if (step === "basics") return basics.name.trim().length > 0
     if (step === "template") return true
     if (step === "config") return true
-    return Boolean(clusterForm.providerId && clusterForm.credentialId)
+    return Boolean(deploymentForm.providerId && deploymentForm.credentialId)
   }
 
   async function handleFinish() {
@@ -258,7 +258,7 @@ export function EnvironmentCreateFlow() {
     try {
       const configurationJson = buildConfigurationJson()
 
-      const hasCluster = Boolean(clusterForm.providerId) && Boolean(clusterForm.credentialId)
+      const hasDeployment = Boolean(deploymentForm.providerId) && Boolean(deploymentForm.credentialId)
 
       const payload = {
         name: basics.name.trim(),
@@ -266,10 +266,10 @@ export function EnvironmentCreateFlow() {
         execution_mode: basics.executionMode,
         environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
         ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
-        ...(hasCluster && {
+        ...(hasDeployment && {
           deployment: {
-            provider_id: clusterForm.providerId,
-            credential_id: clusterForm.credentialId,
+            provider_id: deploymentForm.providerId,
+            provider_credential_id: deploymentForm.credentialId,
           },
         }),
       }
@@ -572,9 +572,9 @@ export function EnvironmentCreateFlow() {
               <p className="text-xs text-muted-foreground">Select provider and credentials. Region and instance configuration are defined in the template.</p>
             </div>
 
-            <ClusterFormFields
-              form={clusterForm}
-              onFormChange={setClusterForm}
+            <DeploymentFormFields
+              form={deploymentForm}
+              onFormChange={setDeploymentForm}
               providers={providers}
               credentials={credentials}
               isCompact={true}

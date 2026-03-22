@@ -13,7 +13,7 @@ import { InstancesVisualization } from "./instances-visualization"
 import { RecentEnvironments } from "./recent-environments"
 import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
-import { clustersApi } from "@/lib/api/deployments"
+import { deploymentsApi } from "@/lib/api/deployments"
 import type { Deployment, Environment, Instance, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -21,7 +21,7 @@ export function DashboardScreen() {
   const { currentOrg } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
-  const [deployments, setClusters] = useState<Deployment[]>([])
+  const [deployments, setDeployments] = useState<Deployment[]>([])
   const [instances, setInstances] = useState<Instance[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -44,7 +44,7 @@ export function DashboardScreen() {
         if (active) {
           setProjects([])
           setEnvironments([])
-          setClusters([])
+          setDeployments([])
           setInstances([])
           setIsLoading(false)
         }
@@ -69,15 +69,15 @@ export function DashboardScreen() {
         if (!active) return
         setEnvironments(environmentData)
 
-        const clusterLists = await Promise.all(
-          environmentData.map((exp) => clustersApi.list(exp.id).catch(() => []))
+        const deploymentLists = await Promise.all(
+          environmentData.map((exp) => deploymentsApi.list(exp.id).catch(() => []))
         )
-        const clusterData = clusterLists.flat()
+        const deploymentData = deploymentLists.flat()
         if (!active) return
-        setClusters(clusterData)
+        setDeployments(deploymentData)
 
         const instanceLists = await Promise.all(
-          clusterData.map((deployment) => clustersApi.instances(deployment.id).catch(() => []))
+          deploymentData.map((deployment) => deploymentsApi.instances(deployment.id).catch(() => []))
         )
         if (!active) return
         setInstances(instanceLists.flat())
@@ -85,7 +85,7 @@ export function DashboardScreen() {
         if (active) {
           setProjects([])
           setEnvironments([])
-          setClusters([])
+          setDeployments([])
           setInstances([])
         }
       } finally {
@@ -113,12 +113,12 @@ export function DashboardScreen() {
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length
 
-  const instancesByCluster = instances.reduce((acc, instance) => {
-    const clusterId = instance.clusterId || "unknown"
-    if (!acc[clusterId]) {
-      acc[clusterId] = []
+  const instancesByDeployment = instances.reduce((acc, instance) => {
+    const deploymentId = instance.deploymentId || "unknown"
+    if (!acc[deploymentId]) {
+      acc[deploymentId] = []
     }
-    acc[clusterId].push(instance)
+    acc[deploymentId].push(instance)
     return acc
   }, {} as Record<string, Instance[]>)
 

@@ -11,7 +11,7 @@ export function InstanceRow({ row }: InstanceRowProps) {
   return (
     <TableRow key={row.id} className="h-9">
       <TableCell>{r.instanceLabel(row)}</TableCell>
-      <TableCell>{r.clusterName(row)}</TableCell>
+      <TableCell>{r.deploymentName(row)}</TableCell>
       <TableCell>{r.role(row)}</TableCell>
       <TableCell>{r.provider(row)}</TableCell>
       <TableCell>{r.region(row)}</TableCell>

@@ -2,17 +2,19 @@
 
 import { cn, formatTimestamp } from "@/lib/utils"
 import { LOG_LEVEL_BADGE, LOG_LEVEL_TEXT } from "@/lib/utils/log-levels"
-import { getInstanceLabel, getInstanceRole } from "@/lib/utils/instance"
-import type { LogEntry, Instance } from "@/lib/api/types"
+import type { LogEntry, ProvisionedResource } from "@/lib/api/types"
 
 type LogRowProps = {
   log: LogEntry
-  instances: Instance[]
-  selectedInstance: string | undefined
+  resources: ProvisionedResource[]
+  selectedResource: string | undefined
 }
 
-export function LogRow({ log, instances, selectedInstance }: LogRowProps) {
-  const inst = selectedInstance ? instances.find((i) => i.id === selectedInstance) : undefined
+export function LogRow({ log, resources, selectedResource }: LogRowProps) {
+  const res = selectedResource ? resources.find((r) => r.id === selectedResource) : undefined
+  const resLabel = res
+    ? res.name || res.provider_resource_id || `resource-${res.id}`
+    : undefined
 
   return (
     <div className="flex gap-2 py-px hover:bg-[#161b22] rounded px-1 -mx-1 transition-colors">
@@ -21,8 +23,7 @@ export function LogRow({ log, instances, selectedInstance }: LogRowProps) {
         {log.level.slice(0, 4)}
       </span>
       {log.source && <span className="shrink-0 text-indigo-400/60">[{log.source}]</span>}
-      {inst && <span className="shrink-0 text-gray-500">{getInstanceLabel(inst)}</span>}
-      {inst && <span className="shrink-0 text-gray-500">{getInstanceRole(inst)}</span>}
+      {resLabel && <span className="shrink-0 text-gray-500">{resLabel}</span>}
       <span className={cn("break-all", LOG_LEVEL_TEXT[log.level] || "text-gray-400")}>{log.message}</span>
     </div>
   )

@@ -7,13 +7,13 @@ import { InstancesVisualization } from "@/components/dashboard/instances-visuali
 
 interface InstancesTabProps {
   deployments: Deployment[]
-  instancesByCluster: Record<string, Instance[]>
+  instancesByDeployment: Record<string, Instance[]>
   isLoading?: boolean
   onRefresh?: () => Promise<void>
 }
 
-export function InstancesTab({ deployments, instancesByCluster, isLoading = false, onRefresh }: InstancesTabProps) {
-  const totalInstances = Object.values(instancesByCluster).flat().length
+export function InstancesTab({ deployments, instancesByDeployment, isLoading = false, onRefresh }: InstancesTabProps) {
+  const totalInstances = Object.values(instancesByDeployment).flat().length
 
   return (
     <div className="flex flex-col gap-4">
@@ -38,7 +38,7 @@ export function InstancesTab({ deployments, instancesByCluster, isLoading = fals
 
       <InstancesVisualization 
         deployments={deployments}
-        instancesByCluster={instancesByCluster}
+        instancesByDeployment={instancesByDeployment}
         isLoading={isLoading}
       />
     </div>

@@ -37,7 +37,7 @@ export function DashboardStats({
   const instanceMetrics = calculateInstanceMetrics(instances)
   const environmentMetrics = calculateEnvironmentMetrics(environments)
   
-  const totalClusters = deployments.length
+  const totalDeployments = deployments.length
 
   return (
     <div className="space-y-6">
@@ -61,7 +61,7 @@ export function DashboardStats({
         
         <StatCard
           title="Active Deployments"
-          value={totalClusters}
+          value={totalDeployments}
           icon={GitBranch}
           description={`${instanceMetrics.total} instances total`}
           colorClass="text-green-500 bg-green-500/10"

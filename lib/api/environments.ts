@@ -32,18 +32,10 @@ export const environmentsApi = {
       configuration_json?: Record<string, unknown>
       deployment?: {
         provider_id: string
+        provider_credential_id?: string | null
         region?: string
-        cluster_template_id?: string
-        node_count?: number
-        instance_groups?: Array<{
-          instance_type_id: string
-          instance_group_template_id?: string
-          role?: string
-          quantity: number
-          metadata?: Record<string, unknown>
-          terraform_variables?: Record<string, unknown>
-          lifecycle_hooks?: Record<string, string>
-        }>
+        deployment_template_id?: string
+        name?: string
       }
     }
   ) => request<Environment & { deployment?: unknown }>(`/projects/${projectId}/environments/provision`, { method: "POST", body: data }),

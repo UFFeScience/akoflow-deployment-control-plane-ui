@@ -6,12 +6,12 @@ import type { Instance, Deployment } from "@/lib/api/types"
 
 interface InstanceGraphProps {
   instances: Instance[]
-  clusterId: string
-  clusterName: string
+  deploymentId: string
+  deploymentName: string
   deployments?: Deployment[]
 }
 
-export function InstanceGraph({ instances, clusterId, clusterName, deployments }: InstanceGraphProps) {
+export function InstanceGraph({ instances, deploymentId, deploymentName, deployments }: InstanceGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const networkRef = useRef<any>(null)
 
@@ -43,7 +43,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
         networkRef.current.destroy()
       }
     }
-  }, [instances, clusterId, deployments])
+  }, [instances, deploymentId, deployments])
 
   const initializeGraph = () => {
     if (!containerRef.current || !(window as any).vis) return
@@ -51,13 +51,13 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
     const vis = (window as any).vis
 
     // Check if this is the "all deployments" view
-    const isAllClustersView = clusterId === "all" && deployments && deployments.length > 0
+    const isAllDeploymentsView = deploymentId === "all" && deployments && deployments.length > 0
 
     // Create nodes and edges
     const nodes: any[] = []
     const edges: any[] = []
 
-    if (isAllClustersView) {
+    if (isAllDeploymentsView) {
       // Create a central "overview" node
       nodes.push({
         id: 'overview',
@@ -74,38 +74,38 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
       })
 
       // Group instances by deployment
-      const instancesByCluster = instances.reduce((acc, instance) => {
-        const clusterKey = instance.clusterId || 'unknown'
-        if (!acc[clusterKey]) {
-          acc[clusterKey] = []
+      const instancesByDeployment = instances.reduce((acc, instance) => {
+        const deploymentKey = instance.deploymentId || 'unknown'
+        if (!acc[deploymentKey]) {
+          acc[deploymentKey] = []
         }
-        acc[clusterKey].push(instance)
+        acc[deploymentKey].push(instance)
         return acc
       }, {} as Record<string, Instance[]>)
 
-      console.log(instancesByCluster);
+      console.log(instancesByDeployment);
 
       // Add deployment nodes
-      Object.entries(instancesByCluster).forEach(([clusterKey, clusterInstances]) => {
-        const deployment = deployments?.find(c => c.id === clusterKey)
-        const clusterName = deployment?.name || `Deployment ${String(clusterKey).slice(0, 8)}`
-        const running = clusterInstances.filter(i => i.status === "running").length
-        const total = clusterInstances.length
+      Object.entries(instancesByDeployment).forEach(([deploymentKey, deploymentInstances]) => {
+        const deployment = deployments?.find(c => c.id === deploymentKey)
+        const deploymentName = deployment?.name || `Deployment ${String(deploymentKey).slice(0, 8)}`
+        const running = deploymentInstances.filter(i => i.status === "running").length
+        const total = deploymentInstances.length
         const healthPercent = total > 0 ? (running / total) * 100 : 0
 
-        let clusterColor = '#10b981'
-        if (healthPercent < 50) clusterColor = '#ef4444'
-        else if (healthPercent < 80) clusterColor = '#f59e0b'
+        let deploymentColor = '#10b981'
+        if (healthPercent < 50) deploymentColor = '#ef4444'
+        else if (healthPercent < 80) deploymentColor = '#f59e0b'
 
-        const clusterNodeId = `deployment-${clusterKey}`
+        const deploymentNodeId = `deployment-${deploymentKey}`
         nodes.push({
-          id: clusterNodeId,
-          label: `${clusterName}\n(${total} instances)`,
+          id: deploymentNodeId,
+          label: `${deploymentName}\n(${total} instances)`,
           shape: 'box',
           color: {
-            background: clusterColor,
-            border: clusterColor,
-            highlight: { background: clusterColor, border: clusterColor }
+            background: deploymentColor,
+            border: deploymentColor,
+            highlight: { background: deploymentColor, border: deploymentColor }
           },
           font: { color: '#ffffff', size: 14, bold: true },
           size: 28,
@@ -114,14 +114,14 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
 
         edges.push({
           from: 'overview',
-          to: clusterNodeId,
+          to: deploymentNodeId,
           arrows: 'to',
           color: { color: '#94a3b8' },
           width: 2
         })
 
         // Group instances by instance group
-        const groupedInstances = clusterInstances.reduce((acc, instance) => {
+        const groupedInstances = deploymentInstances.reduce((acc, instance) => {
           const groupKey = instance.instanceGroupId || instance.role || "default"
           if (!acc[groupKey]) {
             acc[groupKey] = []
@@ -132,7 +132,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
 
         // Add instance group nodes
         Object.entries(groupedInstances).forEach(([groupKey, groupInstances]) => {
-          const groupId = `group-${clusterKey}-${groupKey}`
+          const groupId = `group-${deploymentKey}-${groupKey}`
           const groupName = groupInstances[0]?.role || groupKey
           
           const running = groupInstances.filter(i => i.status === "running").length
@@ -158,7 +158,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
           })
 
           edges.push({
-            from: clusterNodeId,
+            from: deploymentNodeId,
             to: groupId,
             arrows: 'to',
             color: { color: '#cbd5e1' },
@@ -206,8 +206,8 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
     } else {
       // Single deployment view (original logic)
       nodes.push({
-        id: `deployment-${clusterId}`,
-        label: clusterName,
+        id: `deployment-${deploymentId}`,
+        label: deploymentName,
         shape: 'box',
         color: {
           background: '#3b82f6',
@@ -255,7 +255,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, deployments }
         })
 
         edges.push({
-          from: `deployment-${clusterId}`,
+          from: `deployment-${deploymentId}`,
           to: groupId,
           arrows: 'to',
           color: { color: '#94a3b8' },

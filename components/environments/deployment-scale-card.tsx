@@ -5,14 +5,14 @@ import { StatusBadge } from "@/components/status-badge"
 import { GroupScaleRow } from "./group-scale-row"
 import { SimpleScaleRow } from "./simple-scale-row"
 
-type ClusterScaleCardProps = {
+type DeploymentScaleCardProps = {
   deployment: Deployment
   savingId: string | null
-  onScale: (clusterId: string, delta: number) => void
-  onGroupScale: (clusterId: string, groupId: string, delta: number) => void
+  onScale: (deploymentId: string, delta: number) => void
+  onGroupScale: (deploymentId: string, groupId: string, delta: number) => void
 }
 
-export function ClusterScaleCard({ deployment, savingId, onScale, onGroupScale }: ClusterScaleCardProps) {
+export function DeploymentScaleCard({ deployment, savingId, onScale, onGroupScale }: DeploymentScaleCardProps) {
   const groups = deployment.instanceGroups || []
   const canGroupScale = groups.length > 0
 

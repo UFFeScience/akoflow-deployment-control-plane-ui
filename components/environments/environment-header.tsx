@@ -11,7 +11,7 @@ interface EnvironmentHeaderProps {
   projectId: string
   project: Project | null
   environment: Environment | null
-  instancesCount: number
+  resourcesCount: number
   isRefreshing?: boolean
   lastUpdatedAt?: Date | null
   onDestroyEnvironment?: () => Promise<void>
@@ -22,7 +22,7 @@ export function EnvironmentHeader({
   projectId,
   project,
   environment,
-  instancesCount,
+  resourcesCount,
   isRefreshing = false,
   lastUpdatedAt,
   onDestroyEnvironment,
@@ -60,7 +60,7 @@ export function EnvironmentHeader({
           {(environment?.executionMode || (environment as any)?.execution_mode) && (
             <span className="capitalize">{environment?.executionMode || (environment as any)?.execution_mode} mode</span>
           )}
-          <span>{instancesCount} instances</span>
+          <span>{resourcesCount} resource{resourcesCount !== 1 ? "s" : ""}</span>
         </div>
         <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
           <span className="relative flex h-2 w-2">

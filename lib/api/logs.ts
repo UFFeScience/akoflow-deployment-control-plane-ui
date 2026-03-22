@@ -28,6 +28,7 @@ function parseTerraformLogs(run: TerraformRun): LogEntry[] {
 
 export const logsApi = {
   byInstance: (instanceId: string) => request<LogEntry[]>(`/instances/${instanceId}/logs`),
+  byResource: (resourceId: string) => request<LogEntry[]>(`/resources/${resourceId}/logs`),
 
   terraformRunLogs: async (projectId: string, environmentId: string): Promise<LogEntry[]> => {
     const runs = await request<TerraformRun[]>(

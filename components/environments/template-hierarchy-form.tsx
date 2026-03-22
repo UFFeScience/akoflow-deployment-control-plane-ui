@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { TemplateClusterTopology, TemplateDefinition, TemplateInstanceConfiguration } from "@/lib/api/types"
+import type { TemplateDeploymentTopology, TemplateDefinition, TemplateInstanceConfiguration } from "@/lib/api/types"
 
 interface Field {
   name: string
@@ -29,12 +29,12 @@ interface Section {
 
 interface TemplateHierarchyFormProps {
   definition: TemplateDefinition | null
-  clusterTopology?: TemplateClusterTopology | null
+  deploymentTopology?: TemplateDeploymentTopology | null
   values: Record<string, any>
   onChange: (values: Record<string, any>) => void
 }
 
-const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, clusterTopology, values = {}, onChange }) => {
+const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, deploymentTopology, values = {}, onChange }) => {
   const environmentSections = useMemo(() => {
     if (!definition) return []
     if (definition.environment_configuration?.sections?.length) return definition.environment_configuration.sections
@@ -46,7 +46,7 @@ const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, clu
   }, [definition])
 
   const orderedGroups = useMemo(() => {
-    const topologyGroups = clusterTopology?.instance_groups || []
+    const topologyGroups = deploymentTopology?.instance_groups || []
     if (topologyGroups.length === 0) {
       return Object.entries(instanceGroupConfigs).map(([slug, config]) => ({ slug, config, topology: null }))
     }
@@ -62,7 +62,7 @@ const TemplateHierarchyForm: FC<TemplateHierarchyFormProps> = ({ definition, clu
         topology: group,
       }
     })
-  }, [clusterTopology, instanceGroupConfigs])
+  }, [deploymentTopology, instanceGroupConfigs])
 
   const handleChange = (path: string, value: unknown) => {
     const keys = path.split(".")

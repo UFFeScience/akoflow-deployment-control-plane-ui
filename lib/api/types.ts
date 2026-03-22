@@ -103,7 +103,7 @@ export interface Instance {
   provider: "aws" | "gcp" | "hpc"
   region: string
   status: "running" | "stopped" | "pending" | "failed"
-  clusterId?: string
+  deploymentId?: string
   role?: string
   health?: string
   publicIp?: string
@@ -114,7 +114,7 @@ export interface Instance {
 
 export interface InstanceGroup {
   id: string
-  clusterId: string
+  deploymentId: string
   instanceTypeId: string
   instanceTypeName?: string
   instanceType?: string
@@ -229,19 +229,80 @@ export interface InstanceType {
 
 export interface Deployment {
   id: string
-  environmentId: string
-  name?: string
-  providerId: string
+  // snake_case from API
+  environment_id?: string
+  provider_id?: string
+  provider_credential_id?: string | null
+  deployment_template_id?: string | null
+  environment_type?: string
+  // camelCase normalized
+  environmentId?: string
+  providerId?: string
   providerName?: string
-  region: string
-  role?: string
-  nodeCount: number
-  instanceTypeId: string
-  instanceType?: string
-  status: "creating" | "running" | "failed" | "deleting" | "scaling" | "stopped"
-  instanceGroups?: InstanceGroup[]
+  region?: string | null
+  name?: string
+  status: string
+  resources?: ProvisionedResource[]
+  created_at?: string
   createdAt?: string
+  updated_at?: string
   updatedAt?: string
+}
+
+// ── Provisioned resource taxonomy ─────────────────────────────────────────────
+
+export interface ProvisionedResourceKind {
+  id: string
+  /** compute | storage | serverless | database | network | container */
+  slug: string
+  name: string
+  description?: string
+  is_active: boolean
+}
+
+export interface ProvisionedResourceType {
+  id: string
+  provisioned_resource_kind_id: string
+  kind?: ProvisionedResourceKind
+  provider_id?: string | null
+  /** e.g. aws_ec2 | gcp_compute_engine | aws_lambda | aws_s3 | aws_rds */
+  slug: string
+  name: string
+  description?: string
+  /** Terraform resource type identifier, e.g. aws_instance */
+  provider_resource_identifier?: string | null
+  attributes_schema_json?: Record<string, unknown> | null
+  is_active: boolean
+}
+
+/** A cloud (or on-prem/serverless) resource created by terraform apply. */
+export interface ProvisionedResource {
+  id: string
+  deployment_id: string
+  deploymentId?: string
+  provisioned_resource_type_id: string
+  resource_type?: ProvisionedResourceType
+  /** Opaque ID from the provider, e.g. "i-0abc123" */
+  provider_resource_id?: string | null
+  name?: string | null
+  /** PENDING | CREATING | RUNNING | STOPPING | STOPPED | ERROR | DESTROYED */
+  status: string
+  health_status?: string | null
+  last_health_check_at?: string | null
+  public_ip?: string | null
+  private_ip?: string | null
+  metadata_json?: Record<string, unknown> | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ResourceLogEntry {
+  id: string
+  provisioned_resource_id: string
+  /** DEBUG | INFO | WARN | ERROR */
+  level: string
+  message: string
+  created_at: string
 }
 
 export interface TemplateVersion {
@@ -281,13 +342,13 @@ export interface TerraformModule {
 }
 
 export interface TemplateDefinition {
-  cluster_defaults?: Record<string, unknown>
+  deployment_defaults?: Record<string, unknown>
   ui?: {
     allow_multiple_instance_groups?: boolean
   }
   environment_configuration?: TemplateEnvironmentConfiguration
   instance_configurations?: Record<string, TemplateInstanceConfiguration>
-  cluster_topology?: TemplateClusterTopology
+  deployment_topology?: TemplateDeploymentTopology
   sections?: FormSection[]
   lifecycle_hooks?: LifecycleHook[]
 }
@@ -307,12 +368,12 @@ export interface TemplateInstanceConfiguration {
   sections: FormSection[]
 }
 
-export interface TemplateClusterTopology {
+export interface TemplateDeploymentTopology {
   description?: string
-  instance_groups: TemplateClusterTopologyGroup[]
+  instance_groups: TemplateDeploymentTopologyGroup[]
 }
 
-export interface TemplateClusterTopologyGroup {
+export interface TemplateDeploymentTopologyGroup {
   name: string
   label: string
   description?: string

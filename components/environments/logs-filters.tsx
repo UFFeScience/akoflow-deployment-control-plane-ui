@@ -1,33 +1,9 @@
-"use client"
-
 import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { Instance } from "@/lib/api/types"
+import type { ProvisionedResource } from "@/lib/api/types"
 import { TERRAFORM_RUN_SELECTOR } from "@/lib/api/logs"
-
-function toProviderLabel(value: unknown): string {
-  const str = typeof value === "string" ? value : value ? String(value) : "unknown"
-  return str.toUpperCase()
-}
-
-function getInstanceLabel(inst?: Partial<Instance> | null): string {
-  if (!inst) return "Unknown instance"
-  const name = (inst as any).name as string | undefined
-  if (name && name.trim()) return name.trim()
-  const publicIp = (inst as any).publicIp || (inst as any).public_ip
-  const privateIp = (inst as any).privateIp || (inst as any).private_ip
-  if (publicIp) return String(publicIp)
-  if (privateIp) return String(privateIp)
-  return `instance-${inst.id}`
-}
-
-function getInstanceRole(inst?: Partial<Instance> | null): string {
-  if (!inst) return "--"
-  const role = (inst as any).role ?? (inst as any).instance_role
-  return typeof role === "string" && role.trim().length > 0 ? role.trim() : "--"
-}
 
 type LogsFiltersProps = {
   filterLevel: string
@@ -37,7 +13,7 @@ type LogsFiltersProps = {
   autoScroll: boolean
   setAutoScroll: (v: boolean) => void
   handleDownload: () => void
-  instances: Instance[]
+  resources: ProvisionedResource[]
   isLoading: boolean
 }
 
@@ -49,7 +25,7 @@ export function LogsFilters({
   autoScroll,
   setAutoScroll,
   handleDownload,
-  instances,
+  resources,
   isLoading,
 }: LogsFiltersProps) {
   return (
@@ -67,18 +43,23 @@ export function LogsFilters({
         </SelectContent>
       </Select>
       <Select value={selectedInstance} onValueChange={setSelectedInstance}>
-        <SelectTrigger className="w-48 h-7 text-[10px]">
-          <SelectValue placeholder="Select instance" />
+        <SelectTrigger className="w-52 h-7 text-[10px]">
+          <SelectValue placeholder="Select resource" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={TERRAFORM_RUN_SELECTOR} className="text-xs">
             Terraform Run
           </SelectItem>
-          {instances.map((inst) => (
-            <SelectItem key={inst.id} value={inst.id} className="text-xs">
-              {getInstanceLabel(inst)} · {getInstanceRole(inst)} · {toProviderLabel(inst.provider ?? (inst as any).provider_id ?? (inst as any).cloud_provider)} · {inst.region ?? "unknown"}
-            </SelectItem>
-          ))}
+          {resources.map((r) => {
+            const name = r.name || r.provider_resource_id || `resource-${r.id}`
+            const kind = r.resource_type?.kind?.slug ?? "—"
+            const type = r.resource_type?.slug ?? "—"
+            return (
+              <SelectItem key={r.id} value={r.id} className="text-xs">
+                {name} · {kind} · {type}
+              </SelectItem>
+            )
+          })}
         </SelectContent>
       </Select>
       <div className="flex items-center gap-1.5 ml-auto">

@@ -5,14 +5,14 @@ import { Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import type { Deployment } from "@/lib/api/types"
-import { clustersApi } from "@/lib/api/deployments"
+import { deploymentsApi } from "@/lib/api/deployments"
 import { toast } from "sonner"
-import { ClusterScaleCard } from "./deployment-scale-card"
+import { DeploymentScaleCard } from "./deployment-scale-card"
 
-function normalizeClusterPayload(data: any): Deployment {
+function normalizeDeploymentPayload(data: any): Deployment {
   const groups = (data?.instance_groups || data?.instanceGroups || []).map((g: any) => ({
     id: g?.id?.toString?.() ?? g?.id,
-    clusterId: g?.cluster_id ?? g?.clusterId,
+    deploymentId: g?.deployment_id ?? g?.deploymentId,
     instanceTypeId: g?.instance_type_id ?? g?.instanceTypeId,
     instanceTypeName: g?.instance_type_name ?? g?.instanceTypeName ?? g?.instance_type?.name,
     instanceType: g?.instance_type ?? g?.instanceType ?? g?.instance_type_name,
@@ -44,28 +44,28 @@ function normalizeClusterPayload(data: any): Deployment {
 
 interface ScalingTabProps {
   deployments: Deployment[]
-  onClustersChange: (deployments: Deployment[]) => void
+  onDeploymentsChange: (deployments: Deployment[]) => void
 }
 
-export function ScalingTab({ deployments, onClustersChange }: ScalingTabProps) {
+export function ScalingTab({ deployments, onDeploymentsChange }: ScalingTabProps) {
   const [savingId, setSavingId] = useState<string | null>(null)
 
-  async function handleScale(clusterId: string, delta: number) {
-    const deployment = deployments.find((c) => c.id === clusterId)
+  async function handleScale(deploymentId: string, delta: number) {
+    const deployment = deployments.find((c) => c.id === deploymentId)
     if (!deployment) return
     const nextCount = Math.max(0, deployment.nodeCount + delta)
     const previous = deployments
-    const optimistic = previous.map((c) => (c.id === clusterId ? { ...c, nodeCount: nextCount, status: "scaling" as Deployment["status"] } : c))
-    onClustersChange(optimistic)
-    setSavingId(clusterId)
+    const optimistic = previous.map((c) => (c.id === deploymentId ? { ...c, nodeCount: nextCount, status: "scaling" as Deployment["status"] } : c))
+    onDeploymentsChange(optimistic)
+    setSavingId(deploymentId)
 
     try {
-      const updated = await clustersApi.scale(clusterId, { nodeCount: nextCount })
-      const merged = previous.map((c) => (c.id === clusterId ? { ...c, ...updated } : c))
-      onClustersChange(merged)
+      const updated = await deploymentsApi.scale(deploymentId, { nodeCount: nextCount })
+      const merged = previous.map((c) => (c.id === deploymentId ? { ...c, ...updated } : c))
+      onDeploymentsChange(merged)
       toast.success(`Deployment scaled to ${nextCount} nodes`)
     } catch {
-      onClustersChange(previous)
+      onDeploymentsChange(previous)
       toast.error("Failed to scale deployment")
     } finally {
       setSavingId(null)
@@ -83,34 +83,34 @@ export function ScalingTab({ deployments, onClustersChange }: ScalingTabProps) {
   return (
     <div className="flex flex-col gap-3">
       {deployments.map((deployment) => (
-        <ClusterScaleCard
+        <DeploymentScaleCard
           key={deployment.id}
           deployment={deployment}
           savingId={savingId}
           onScale={handleScale}
-          onGroupScale={async (clusterId: string, groupId: string, delta: number) => {
+          onGroupScale={async (deploymentId: string, groupId: string, delta: number) => {
             const groups = deployment.instanceGroups || []
             const updatedGroups = groups.map((g) => (g.id === groupId ? { ...g, quantity: Math.max(0, (g.quantity ?? 0) + delta) } : g))
             const nextNodeCount = updatedGroups.reduce((sum, g) => sum + (g.quantity ?? 0), 0)
 
             const optimistic = deployments.map((c) =>
-              c.id === clusterId
+              c.id === deploymentId
                 ? { ...c, instanceGroups: updatedGroups, nodeCount: nextNodeCount, status: "scaling" as Deployment["status"] }
                 : c
             )
-            onClustersChange(optimistic)
-            setSavingId(clusterId)
+            onDeploymentsChange(optimistic)
+            setSavingId(deploymentId)
 
             try {
-              const updated = await clustersApi.updateNodes(clusterId, {
+              const updated = await deploymentsApi.updateNodes(deploymentId, {
                 instanceGroups: updatedGroups.map((g) => ({ id: g.id, quantity: g.quantity ?? 0 })),
               })
-              const normalized = normalizeClusterPayload(updated)
-              const merged = deployments.map((c) => (c.id === clusterId ? normalized : c))
-              onClustersChange(merged)
+              const normalized = normalizeDeploymentPayload(updated)
+              const merged = deployments.map((c) => (c.id === deploymentId ? normalized : c))
+              onDeploymentsChange(merged)
               toast.success("Deployment nodes updated")
             } catch {
-              onClustersChange(deployments)
+              onDeploymentsChange(deployments)
               toast.error("Failed to update nodes")
             } finally {
               setSavingId(null)

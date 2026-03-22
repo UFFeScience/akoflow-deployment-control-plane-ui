@@ -12,7 +12,7 @@ interface DashboardHealthProps {
 
 export function DashboardHealth({ environments, deployments }: DashboardHealthProps) {
   const metrics = calculateEnvironmentMetrics(environments)
-  const totalClusters = deployments.length
+  const totalDeployments = deployments.length
   
   // Calcular taxas
   const successRate = metrics.total > 0 
@@ -42,7 +42,7 @@ export function DashboardHealth({ environments, deployments }: DashboardHealthPr
     },
     {
       label: "Active Deployments",
-      value: totalClusters,
+      value: totalDeployments,
       icon: CheckCircle2,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",

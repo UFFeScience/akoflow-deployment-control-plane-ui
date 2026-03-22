@@ -1,5 +1,5 @@
-import { CreateClusterForm } from "@/components/environments/create-deployment-form"
+import { CreateDeploymentForm } from "@/components/environments/create-deployment-form"
 
-export default function CreateClusterPage() {
-  return <CreateClusterForm />
+export default function CreateDeploymentPage() {
+  return <CreateDeploymentForm />
 }
