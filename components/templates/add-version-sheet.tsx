@@ -82,6 +82,7 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
               variables_tf: tfModule.variables_tf ?? undefined,
               outputs_tf: tfModule.outputs_tf ?? undefined,
               tfvars_mapping_json: tfModule.tfvars_mapping_json ?? undefined,
+              outputs_mapping_json: tfModule.outputs_mapping_json ?? undefined,
               credential_env_keys: tfModule.credential_env_keys ?? [],
             })
           }

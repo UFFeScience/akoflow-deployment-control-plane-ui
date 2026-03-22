@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { StatCard } from "./stat-card"
 import { calculateInstanceMetrics, calculateEnvironmentMetrics } from "@/lib/utils/dashboard"
-import type { Deployment, Environment, Instance } from "@/lib/api/types"
+import type { Deployment, Environment, ProvisionedResource } from "@/lib/api/types"
 
 type DashboardStatsProps = {
   totalProjects: number
@@ -20,7 +20,7 @@ type DashboardStatsProps = {
   runningInstances: number
   failedInstances: number
   deployments: Deployment[]
-  instances: Instance[]
+  resources: ProvisionedResource[]
   environments: Environment[]
 }
 
@@ -30,11 +30,11 @@ export function DashboardStats({
   runningInstances, 
   failedInstances,
   deployments,
-  instances,
+  resources,
   environments
 }: DashboardStatsProps) {
   // Calcular métricas usando utilitários
-  const instanceMetrics = calculateInstanceMetrics(instances)
+  const instanceMetrics = calculateInstanceMetrics(resources)
   const environmentMetrics = calculateEnvironmentMetrics(environments)
   
   const totalDeployments = deployments.length

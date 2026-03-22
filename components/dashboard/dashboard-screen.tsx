@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useRouter } from "next/navigation"
 import WelcomeModal from "@/components/welcome-modal"
 import { DashboardStats } from "./dashboard-stats"
 import { DashboardActivity } from "./dashboard-activity"
@@ -14,7 +13,8 @@ import { RecentEnvironments } from "./recent-environments"
 import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
 import { deploymentsApi } from "@/lib/api/deployments"
-import type { Deployment, Environment, Instance, Project } from "@/lib/api/types"
+import { resourcesApi } from "@/lib/api/resources"
+import type { Deployment, Environment, Project, ProvisionedResource } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export function DashboardScreen() {
@@ -22,9 +22,8 @@ export function DashboardScreen() {
   const [projects, setProjects] = useState<Project[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
   const [deployments, setDeployments] = useState<Deployment[]>([])
-  const [instances, setInstances] = useState<Instance[]>([])
+  const [resources, setResources] = useState<ProvisionedResource[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
   const search = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
 
@@ -36,7 +35,9 @@ export function DashboardScreen() {
       url.searchParams.delete("welcome")
       window.history.replaceState({}, "", url.toString())
     }
+  }, [search])
 
+  useEffect(() => {
     let active = true
 
     async function loadDashboard() {
@@ -45,7 +46,7 @@ export function DashboardScreen() {
           setProjects([])
           setEnvironments([])
           setDeployments([])
-          setInstances([])
+          setResources([])
           setIsLoading(false)
         }
         return
@@ -76,17 +77,17 @@ export function DashboardScreen() {
         if (!active) return
         setDeployments(deploymentData)
 
-        const instanceLists = await Promise.all(
-          deploymentData.map((deployment) => deploymentsApi.instances(deployment.id).catch(() => []))
+        const resourceLists = await Promise.all(
+          deploymentData.map((deployment) => resourcesApi.listByDeployment(deployment.id).catch(() => []))
         )
         if (!active) return
-        setInstances(instanceLists.flat())
+        setResources(resourceLists.flat())
       } catch {
         if (active) {
           setProjects([])
           setEnvironments([])
           setDeployments([])
-          setInstances([])
+          setResources([])
         }
       } finally {
         if (active) setIsLoading(false)
@@ -98,7 +99,7 @@ export function DashboardScreen() {
     return () => {
       active = false
     }
-  }, [currentOrg, search, router])
+  }, [currentOrg])
 
   const recentEnvironments = useMemo(() => {
     return [...environments].sort((a, b) => new Date(b.updatedAt || "").getTime() - new Date(a.updatedAt || "").getTime())
@@ -110,17 +111,17 @@ export function DashboardScreen() {
 
   const totalProjects = projects.length
   const totalEnvironments = environments.length
-  const runningInstances = instances.filter((i) => i.status === "running").length
-  const failedInstances = instances.filter((i) => i.status === "failed").length
+  const runningInstances = resources.filter((r) => r.status === "RUNNING").length
+  const failedInstances = resources.filter((r) => r.status === "ERROR").length
 
-  const instancesByDeployment = instances.reduce((acc, instance) => {
-    const deploymentId = instance.deploymentId || "unknown"
+  const instancesByDeployment = resources.reduce((acc, resource) => {
+    const deploymentId = resource.deployment_id || resource.deploymentId || "unknown"
     if (!acc[deploymentId]) {
       acc[deploymentId] = []
     }
-    acc[deploymentId].push(instance)
+    acc[deploymentId].push(resource)
     return acc
-  }, {} as Record<string, Instance[]>)
+  }, {} as Record<string, ProvisionedResource[]>)
 
   return (
     <div className="flex flex-col gap-8">
@@ -138,7 +139,7 @@ export function DashboardScreen() {
         runningInstances={runningInstances}
         failedInstances={failedInstances}
         deployments={deployments}
-        instances={instances}
+        resources={resources}
         environments={environments}
       />
 

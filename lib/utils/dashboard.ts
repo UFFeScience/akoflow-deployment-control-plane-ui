@@ -1,4 +1,4 @@
-import type { Environment, Instance } from "@/lib/api/types"
+import type { Environment, ProvisionedResource } from "@/lib/api/types"
 
 /**
  * Retorna a classe de cor do Tailwind baseado no status
@@ -64,18 +64,15 @@ export function formatRelativeTime(time: string | undefined): string {
 }
 
 /**
- * Calcula métricas de instâncias
+ * Calcula métricas de recursos provisionados
  */
-export function calculateInstanceMetrics(instances: Instance[]) {
+export function calculateInstanceMetrics(resources: ProvisionedResource[]) {
   return {
-    total: instances.length,
-    running: instances.filter((i) => i.status === "running").length,
-    stopped: instances.filter((i) => i.status === "stopped").length,
-    pending: instances.filter((i) => i.status === "pending").length,
-    failed: instances.filter((i) => i.status === "failed").length,
-    aws: instances.filter((i) => i.provider === "aws").length,
-    gcp: instances.filter((i) => i.provider === "gcp").length,
-    hpc: instances.filter((i) => i.provider === "hpc").length,
+    total: resources.length,
+    running: resources.filter((r) => r.status === "RUNNING").length,
+    stopped: resources.filter((r) => r.status === "STOPPED").length,
+    pending: resources.filter((r) => r.status === "PENDING" || r.status === "CREATING").length,
+    failed: resources.filter((r) => r.status === "ERROR").length,
   }
 }
 

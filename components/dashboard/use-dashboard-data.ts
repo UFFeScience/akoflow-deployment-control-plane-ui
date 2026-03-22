@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from "react"
 import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
 import { deploymentsApi } from "@/lib/api/deployments"
-import type { Deployment, Environment, Instance, Project } from "@/lib/api/types"
+import { resourcesApi } from "@/lib/api/resources"
+import type { Deployment, Environment, Project, ProvisionedResource } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 interface DashboardData {
   projects: Project[]
   environments: Environment[]
   deployments: Deployment[]
-  instances: Instance[]
+  resources: ProvisionedResource[]
   isLoading: boolean
   recentEnvironments: Environment[]
   totalProjects: number
@@ -25,7 +26,7 @@ export function useDashboardData(): DashboardData {
   const [projects, setProjects] = useState<Project[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
   const [deployments, setDeployments] = useState<Deployment[]>([])
-  const [instances, setInstances] = useState<Instance[]>([])
+  const [resources, setResources] = useState<ProvisionedResource[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function useDashboardData(): DashboardData {
           setProjects([])
           setEnvironments([])
           setDeployments([])
-          setInstances([])
+          setResources([])
           setIsLoading(false)
         }
         return
@@ -68,17 +69,17 @@ export function useDashboardData(): DashboardData {
         if (!active) return
         setDeployments(deploymentData)
 
-        const instanceLists = await Promise.all(
-          deploymentData.map((deployment) => deploymentsApi.instances(deployment.id).catch(() => []))
+        const resourceLists = await Promise.all(
+          deploymentData.map((deployment) => resourcesApi.listByDeployment(deployment.id).catch(() => []))
         )
         if (!active) return
-        setInstances(instanceLists.flat())
+        setResources(resourceLists.flat())
       } catch {
         if (active) {
           setProjects([])
           setEnvironments([])
           setDeployments([])
-          setInstances([])
+          setResources([])
         }
       } finally {
         if (active) setIsLoading(false)
@@ -100,14 +101,14 @@ export function useDashboardData(): DashboardData {
 
   const totalProjects = projects.length
   const totalEnvironments = environments.length
-  const runningInstances = instances.filter((i) => i.status === "running").length
-  const failedInstances = instances.filter((i) => i.status === "failed").length
+  const runningInstances = resources.filter((r) => r.status === "RUNNING").length
+  const failedInstances = resources.filter((r) => r.status === "ERROR").length
 
   return {
     projects,
     environments,
     deployments,
-    instances,
+    resources,
     isLoading,
     recentEnvironments,
     totalProjects,
