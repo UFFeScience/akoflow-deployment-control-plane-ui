@@ -50,13 +50,10 @@ export function ConfigurationTab({ environment }: ConfigurationTabProps) {
     (environment as any).configuration_json || {}
 
   const environmentConfig = configJson.environment_configuration as Record<string, unknown> | undefined
-  const instanceConfigs = configJson.instance_configurations as Record<string, Record<string, unknown>> | undefined
   const lifecycleHooks = configJson.lifecycle_hooks as Record<string, string> | undefined
 
   const templateName = (environment as any).template_name || environment.templateName
-  const hasConfig =
-    (environmentConfig && Object.keys(environmentConfig).length > 0) ||
-    (instanceConfigs && Object.keys(instanceConfigs).length > 0)
+  const hasConfig = environmentConfig && Object.keys(environmentConfig).length > 0
 
   if (!templateName && !hasConfig) {
     return (
@@ -99,34 +96,6 @@ export function ConfigurationTab({ environment }: ConfigurationTabProps) {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Instance-level configuration */}
-      {instanceConfigs && Object.keys(instanceConfigs).length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h3 className="text-xs font-semibold text-foreground">Instance Configurations</h3>
-          {Object.entries(instanceConfigs).map(([slug, values]) => (
-            <Card key={slug}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold capitalize">
-                  {slug.replace(/-/g, " ")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {Object.entries(values).map(([key, value]) => (
-                    <div key={key} className="flex flex-col gap-0.5">
-                      <span className="text-[11px] font-medium text-muted-foreground capitalize">
-                        {key.replace(/_/g, " ")}
-                      </span>
-                      <ValueDisplay value={value} />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       )}
 
       {/* Lifecycle hooks */}

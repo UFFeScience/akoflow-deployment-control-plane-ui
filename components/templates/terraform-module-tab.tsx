@@ -58,7 +58,7 @@ function defaultForm(mod?: TerraformModule | null): TfForm {
     credential_env_keys: credKeys,
     tfvars_mapping_json: mod?.tfvars_mapping_json
       ? JSON.stringify(mod.tfvars_mapping_json, null, 2)
-      : JSON.stringify({ environment_configuration: {}, instance_configurations: {} }, null, 2),
+      : JSON.stringify({ environment_configuration: {} }, null, 2),
     mapping_mode: "visual",
     outputs_mapping_json: mod?.outputs_mapping_json
       ? JSON.stringify(mod.outputs_mapping_json, null, 2)
@@ -70,7 +70,6 @@ function defaultForm(mod?: TerraformModule | null): TfForm {
 
 interface MappingState {
   environment_configuration: Record<string, string>
-  instance_configurations: Record<string, Record<string, string>>
 }
 
 function toStringRecord(obj: unknown): Record<string, string> {
@@ -86,12 +85,8 @@ function toStringRecord(obj: unknown): Record<string, string> {
 function parseMappingJson(raw: string): MappingState | null {
   try {
     const parsed = JSON.parse(raw)
-    const instCfg = parsed.instance_configurations ?? {}
     return {
       environment_configuration: toStringRecord(parsed.environment_configuration),
-      instance_configurations: Object.fromEntries(
-        Object.entries(instCfg as Record<string, unknown>).map(([k, v]) => [k, toStringRecord(v)])
-      ),
     }
   } catch {
     return null
@@ -295,21 +290,13 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
   const expFields = def?.environment_configuration?.sections?.flatMap((s) =>
     s.fields.map((f) => ({ sectionLabel: s.label, ...f }))
   ) ?? []
-  const instanceEntries = Object.entries(def?.instance_configurations ?? {})
 
   // Parse current mapping for visual editor
   const mappingParsed = parseMappingJson(form.tfvars_mapping_json)
 
   const updateExpMapping = (fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(form.tfvars_mapping_json) ?? { environment_configuration: {}, instance_configurations: {} }
+    const m = parseMappingJson(form.tfvars_mapping_json) ?? { environment_configuration: {} }
     m.environment_configuration[fieldName] = tfVar
-    patch({ tfvars_mapping_json: mappingToJson(m) })
-  }
-
-  const updateInstMapping = (instanceKey: string, fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(form.tfvars_mapping_json) ?? { environment_configuration: {}, instance_configurations: {} }
-    if (!m.instance_configurations[instanceKey]) m.instance_configurations[instanceKey] = {}
-    m.instance_configurations[instanceKey][fieldName] = tfVar
     patch({ tfvars_mapping_json: mappingToJson(m) })
   }
 
@@ -469,7 +456,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
               onChange={(e) => patch({ tfvars_mapping_json: e.target.value })}
               className="font-mono text-xs leading-relaxed min-h-[200px] resize-y bg-muted/20"
               spellCheck={false}
-              placeholder='{ "environment_configuration": {}, "instance_configurations": {} }'
+              placeholder='{ "environment_configuration": {} }'
             />
             {parseMappingJson(form.tfvars_mapping_json) === null && form.tfvars_mapping_json.trim() && (
               <p className="text-xs text-destructive flex items-center gap-1">
@@ -479,7 +466,6 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {/* Environment configuration mapping */}
             {expFields.length > 0 ? (
               <MappingGroup
                 title="Environment Configuration"
@@ -493,24 +479,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
               </p>
             )}
 
-            {/* Instance configurations mapping */}
-            {instanceEntries.map(([key, cfg]) => {
-              const instFields = cfg.sections?.flatMap((s: any) =>
-                s.fields?.map((f: any) => ({ name: f.name, label: f.label, sectionLabel: s.label })) ?? []
-              ) ?? []
-              return (
-                <MappingGroup
-                  key={key}
-                  title={`Instance: ${cfg.label ?? key}`}
-                  subtitle={key}
-                  fields={instFields}
-                  mapping={mappingParsed?.instance_configurations?.[key] ?? {}}
-                  onUpdate={(fieldName, tfVar) => updateInstMapping(key, fieldName, tfVar)}
-                />
-              )
-            })}
-
-            {expFields.length === 0 && instanceEntries.length === 0 && (
+            {expFields.length === 0 && (
               <div className="rounded-lg border border-dashed border-border p-4 text-center">
                 <p className="text-xs text-muted-foreground">
                   No fields from definition available. Define the environment configuration first, or use Raw JSON mode.

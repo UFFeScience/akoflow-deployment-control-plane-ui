@@ -47,7 +47,7 @@ export function defaultTfDraft(): TfDraft {
     outputs_tf: "",
     credential_env_keys: [],
     tfvars_mapping_json: JSON.stringify(
-      { environment_configuration: {}, instance_configurations: {} },
+      { environment_configuration: {} },
       null,
       2,
     ),
@@ -91,7 +91,6 @@ export function tfDraftIsConfigured(draft: TfDraft): boolean {
 
 interface MappingState {
   environment_configuration: Record<string, string>
-  instance_configurations: Record<string, Record<string, string>>
 }
 
 function toStringRecord(obj: unknown): Record<string, string> {
@@ -106,9 +105,6 @@ function parseMappingJson(raw: string): MappingState | null {
     const parsed = JSON.parse(raw)
     return {
       environment_configuration: toStringRecord(parsed.environment_configuration),
-      instance_configurations: Object.fromEntries(
-        Object.entries((parsed.instance_configurations ?? {}) as Record<string, unknown>).map(([k, v]) => [k, toStringRecord(v)]),
-      ),
     }
   } catch {
     return null
@@ -169,7 +165,6 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
     const updated = currentValue.map((draft) => {
       const m: MappingState = parseMappingJson(draft.tfvars_mapping_json) ?? {
         environment_configuration: {},
-        instance_configurations: {},
       }
       let changed = false
 
@@ -180,20 +175,6 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
         if (!m.environment_configuration[name]) {
           m.environment_configuration[name] = name
           changed = true
-        }
-      }
-
-      for (const [instanceKey, cfg] of Object.entries(definition.instance_configurations ?? {})) {
-        if (!m.instance_configurations[instanceKey]) {
-          m.instance_configurations[instanceKey] = {}
-        }
-        const instFieldNames =
-          (cfg as any).sections?.flatMap((s: any) => s.fields?.map((f: any) => f.name) ?? []) ?? []
-        for (const name of instFieldNames) {
-          if (!m.instance_configurations[instanceKey][name]) {
-            m.instance_configurations[instanceKey][name] = name
-            changed = true
-          }
         }
       }
 
@@ -210,26 +191,14 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
     definition?.environment_configuration?.sections?.flatMap((s) =>
       s.fields.map((f) => ({ sectionLabel: s.label, ...f })),
     ) ?? []
-  const instanceEntries = Object.entries(definition?.instance_configurations ?? {})
 
   const mappingParsed = parseMappingJson(current.tfvars_mapping_json)
 
   const updateExpMapping = (fieldName: string, tfVar: string) => {
     const m = parseMappingJson(current.tfvars_mapping_json) ?? {
       environment_configuration: {},
-      instance_configurations: {},
     }
     m.environment_configuration[fieldName] = tfVar
-    patchCurrent({ tfvars_mapping_json: mappingToJson(m) })
-  }
-
-  const updateInstMapping = (instanceKey: string, fieldName: string, tfVar: string) => {
-    const m = parseMappingJson(current.tfvars_mapping_json) ?? {
-      environment_configuration: {},
-      instance_configurations: {},
-    }
-    if (!m.instance_configurations[instanceKey]) m.instance_configurations[instanceKey] = {}
-    m.instance_configurations[instanceKey][fieldName] = tfVar
     patchCurrent({ tfvars_mapping_json: mappingToJson(m) })
   }
 
@@ -383,7 +352,7 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
               onChange={(e) => patchCurrent({ tfvars_mapping_json: e.target.value })}
               className="font-mono text-xs leading-relaxed min-h-[180px] resize-y bg-muted/20"
               spellCheck={false}
-              placeholder='{ "environment_configuration": {}, "instance_configurations": {} }'
+              placeholder='{ "environment_configuration": {} }'
             />
             {parseMappingJson(current.tfvars_mapping_json) === null && current.tfvars_mapping_json.trim() && (
               <p className="text-xs text-destructive flex items-center gap-1">
@@ -406,24 +375,7 @@ export function TerraformModuleStep({ definition, value, onChange }: Props) {
               </p>
             )}
 
-            {instanceEntries.map(([key, cfg]) => {
-              const instFields =
-                (cfg as any).sections?.flatMap((s: any) =>
-                  s.fields?.map((f: any) => ({ name: f.name, label: f.label, sectionLabel: s.label })) ?? [],
-                ) ?? []
-              return (
-                <MappingGroup
-                  key={key}
-                  title={`Instance: ${(cfg as any).label ?? key}`}
-                  subtitle={key}
-                  fields={instFields}
-                  mapping={mappingParsed?.instance_configurations?.[key] ?? {}}
-                  onUpdate={(fieldName, tfVar) => updateInstMapping(key, fieldName, tfVar)}
-                />
-              )
-            })}
-
-            {expFields.length === 0 && instanceEntries.length === 0 && (
+            {expFields.length === 0 && (
               <div className="rounded-lg border border-dashed border-border p-4 text-center">
                 <p className="text-xs text-muted-foreground">
                   No fields available from the definition. Add fields in the Definition step or switch to Raw JSON mode.

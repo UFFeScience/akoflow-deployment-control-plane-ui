@@ -19,7 +19,6 @@ import { DeploymentFormFields, type DeploymentFormData } from "./deployment-form
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
 import { EnvironmentConfigurationForm } from "@/components/form/environment-configuration-form"
-import { InstanceConfigurationForm } from "@/components/form/instance-configuration-form"
 import { LifecycleHooksForm } from "@/components/form/lifecycle-hooks-form"
 import { toast } from "sonner"
 
@@ -77,7 +76,6 @@ export function EnvironmentCreateFlow() {
   const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState<string | null>(null)
   const [isLoadingVersions, setIsLoadingVersions] = useState(false)
   const [environmentVariables, setEnvironmentVariables] = useState<Record<string, unknown>>({})
-  const [instanceVariables, setInstanceVariables] = useState<Record<string, unknown>>({})
   const [lifecycleHooks, setLifecycleHooks] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -184,24 +182,6 @@ export function EnvironmentCreateFlow() {
       }
     }
 
-    // Validate instance_configurations required fields
-    const instanceConfigs = (definition as any).instance_configurations
-    if (instanceConfigs) {
-      for (const [instanceKey, config] of Object.entries(instanceConfigs) as [string, any][]) {
-        for (const section of config.sections || []) {
-          for (const field of section.fields || []) {
-            if (field.required) {
-              const instanceVals = (instanceVariables[instanceKey] as Record<string, unknown>) || {}
-              const val = instanceVals[field.name] ?? field.default
-              if (val === undefined || val === null || val === "") {
-                errors[`${instanceKey}.${field.name}`] = `${field.label} is required`
-              }
-            }
-          }
-        }
-      }
-    }
-
     return errors
   }
 
@@ -234,9 +214,6 @@ export function EnvironmentCreateFlow() {
     const config: Record<string, unknown> = {}
     if (Object.keys(environmentVariables).length > 0) {
       config.environment_configuration = environmentVariables
-    }
-    if (Object.keys(instanceVariables).length > 0) {
-      config.instance_configurations = instanceVariables
     }
     if (Object.keys(lifecycleHooks).length > 0) {
       config.lifecycle_hooks = lifecycleHooks
@@ -489,17 +466,6 @@ export function EnvironmentCreateFlow() {
                     errors={configErrors}
                   />
                 )}
-
-                {/* Instance Configuration Section */}
-                {(definition as any).instance_configurations &&
-                  Object.keys((definition as any).instance_configurations).length > 0 && (
-                    <InstanceConfigurationForm
-                      definition={definition}
-                      values={instanceVariables}
-                      onChange={(v) => { setInstanceVariables(v); setShowConfigErrors(false) }}
-                      errors={configErrors}
-                    />
-                  )}
 
                 {/* Fallback to original DynamicForm for backward compatibility */}
                 {!(definition as any).environment_configuration &&

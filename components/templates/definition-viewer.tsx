@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ChevronRight, Hash, ToggleLeft, Type, AlignLeft, List, AlertCircle } from "lucide-react"
-import type { TemplateDefinition, FormSection, FormField } from "@/lib/api/types"
+import { ChevronDown, ChevronRight, Hash, ToggleLeft, Type, AlignLeft, List, AlertCircle, Server, Settings } from "lucide-react"
+import type { TemplateDefinition, FormSection, FormField, TemplateConfigGroup } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
 const FIELD_TYPE_ICON: Record<string, React.ReactNode> = {
@@ -27,6 +27,21 @@ const FIELD_TYPE_COLOR: Record<string, string> = {
   object:      "text-rose-500",
 }
 
+const GROUP_ICON: Record<string, React.ReactNode> = {
+  server:   <Server className="h-3.5 w-3.5" />,
+  settings: <Settings className="h-3.5 w-3.5" />,
+}
+
+const GROUP_COLOR: Record<string, string> = {
+  deploy: "border-sky-500/30 bg-sky-500/5",
+  nginx:  "border-emerald-500/30 bg-emerald-500/5",
+}
+
+const GROUP_BADGE_COLOR: Record<string, string> = {
+  deploy: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+  nginx:  "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+}
+
 interface Props {
   definition: TemplateDefinition
 }
@@ -42,38 +57,102 @@ export function DefinitionViewer({ definition }: Props) {
   }
 
   const expConfig = definition.environment_configuration
-  const instConfigs = definition.instance_configurations ?? {}
+  const groups = expConfig?.groups ?? []
+  const sections = expConfig?.sections ?? []
 
+  // When groups are defined, render sections bucketed by group
+  if (groups.length > 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        {groups.map((group) => {
+          const groupSections = sections.filter((s) => s.group === group.name)
+          return (
+            <div
+              key={group.name}
+              className={cn("rounded-lg border overflow-hidden", GROUP_COLOR[group.name] ?? "border-border bg-background")}
+            >
+              {/* Group header */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-inherit">
+                <span className="text-muted-foreground">
+                  {GROUP_ICON[group.icon ?? ""] ?? null}
+                </span>
+                <span className="text-sm font-semibold">{group.label}</span>
+                {group.description && (
+                  <span className="text-xs text-muted-foreground hidden sm:block">— {group.description}</span>
+                )}
+                <span className={cn("ml-auto rounded border px-1.5 py-0.5 text-[11px] font-medium", GROUP_BADGE_COLOR[group.name] ?? "bg-muted/40 text-muted-foreground border-border")}>
+                  {groupSections.reduce((sum, s) => sum + (s.fields?.length ?? 0), 0)} fields
+                </span>
+              </div>
+
+              {/* Sections inside the group */}
+              <div className="flex flex-col gap-0 divide-y divide-border/60 px-4 py-3">
+                {groupSections.map((section) => (
+                  <SectionRows key={section.name} section={section} />
+                ))}
+                {groupSections.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic py-1">No sections in this group.</p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Sections not assigned to any group */}
+        {sections.filter((s) => !s.group).map((section) => (
+          <ConfigSection
+            key={section.name}
+            title={section.label}
+            description={section.description}
+            badge="section"
+            badgeColor="bg-muted/40 text-muted-foreground border-border"
+            sections={[section]}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Default: flat list of sections (no groups)
   return (
     <div className="flex flex-col gap-3">
-      {/* Environment Configuration */}
       {expConfig && (
         <ConfigSection
           title={expConfig.label ?? "Environment Configuration"}
           description={expConfig.description}
           badge="environment"
           badgeColor="bg-blue-500/10 text-blue-600 border-blue-500/20"
-          sections={expConfig.sections ?? []}
+          sections={sections}
         />
       )}
-
-      {/* Instance Configurations */}
-      {Object.entries(instConfigs).map(([key, cfg], idx) => (
-        <ConfigSection
-          key={key}
-          title={cfg.label ?? key}
-          description={cfg.description}
-          badge={cfg.type ?? "instance"}
-          badgeColor="bg-purple-500/10 text-purple-600 border-purple-500/20"
-          sections={cfg.sections ?? []}
-          slug={key}
-          position={cfg.position ?? idx + 1}
-        />
-      ))}
-
-      {/* Empty state */}
-      {!expConfig && Object.keys(instConfigs).length === 0 && (
+      {!expConfig && (
         <p className="text-xs text-muted-foreground italic">Empty definition.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Inline section rows (used inside group panels) ────────────────────────────
+
+function SectionRows({ section }: { section: FormSection }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="py-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground mb-1"
+      >
+        {open
+          ? <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+        {section.label}
+        <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1 rounded ml-1">{section.name}</span>
+      </button>
+      {open && (
+        <div className="ml-4 flex flex-col gap-0.5">
+          {section.fields?.map((field) => <FieldRow key={field.name} field={field} />)}
+        </div>
       )}
     </div>
   )
@@ -207,3 +286,23 @@ function FieldCard({ field }: { field: FormField }) {
     </div>
   )
 }
+
+// ── FieldRow (compact variant used inside group SectionRows) ─────────────────
+
+function FieldRow({ field }: { field: FormField }) {
+  const icon = FIELD_TYPE_ICON[field.type] ?? <Type className="h-3 w-3" />
+  const color = FIELD_TYPE_COLOR[field.type] ?? "text-muted-foreground"
+
+  return (
+    <div className="flex items-center gap-2 py-0.5 text-xs">
+      <span className={cn("shrink-0", color)}>{icon}</span>
+      <span className="font-medium truncate">{field.label}</span>
+      <code className="text-[10px] text-muted-foreground font-mono">{field.name}</code>
+      {field.required && (
+        <span className="rounded bg-red-500/10 text-red-500 border border-red-500/20 px-1 py-0.5 text-[10px]">req</span>
+      )}
+      <span className="rounded bg-muted text-muted-foreground px-1 py-0.5 text-[10px] font-mono ml-auto">{field.type}</span>
+    </div>
+  )
+}
+

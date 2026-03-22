@@ -78,7 +78,7 @@ export interface Environment {
   /** ID of the EnvironmentTemplateVersion used when creating this environment */
   environmentTemplateVersionId?: string
   environment_template_version_id?: string
-  /** Filled-in template form values (environment_configuration + instance_configurations) */
+  /** Filled-in template form values (environment_configuration) */
   configurationJson?: Record<string, unknown>
   configuration_json?: Record<string, unknown>
   name: string
@@ -337,7 +337,6 @@ export interface TerraformModule {
   // Mapping definition fields → terraform variable names
   tfvars_mapping_json?: {
     environment_configuration?: Record<string, string>
-    instance_configurations?: Record<string, Record<string, string>>
   } | null
   // Declares which terraform outputs map to ProvisionedResource fields
   outputs_mapping_json?: {
@@ -364,7 +363,6 @@ export interface TemplateDefinition {
     allow_multiple_instance_groups?: boolean
   }
   environment_configuration?: TemplateEnvironmentConfiguration
-  instance_configurations?: Record<string, TemplateInstanceConfiguration>
   deployment_topology?: TemplateDeploymentTopology
   sections?: FormSection[]
   lifecycle_hooks?: LifecycleHook[]
@@ -374,15 +372,15 @@ export interface TemplateEnvironmentConfiguration {
   label?: string
   description?: string
   type?: string
+  groups?: TemplateConfigGroup[]
   sections: FormSection[]
 }
 
-export interface TemplateInstanceConfiguration {
+export interface TemplateConfigGroup {
+  name: string
   label: string
   description?: string
-  type?: string
-  position?: number
-  sections: FormSection[]
+  icon?: string
 }
 
 export interface TemplateDeploymentTopology {
@@ -404,6 +402,7 @@ export interface FormSection {
   name: string
   label: string
   description?: string
+  group?: string
   fields: FormField[]
 }
 

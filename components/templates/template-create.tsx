@@ -277,10 +277,8 @@ function Step3Terraform({
 function Step4Review({ info, draft, tfDrafts }: { info: BasicInfo; draft: DraftDefinition; tfDrafts: TfDraft[] }) {
   const definition = draftToDefinition(draft)
   const sectionsCount = definition.environment_configuration?.sections?.length ?? 0
-  const instancesCount = Object.keys(definition.instance_configurations ?? {}).length
   const totalFields = [
     ...(definition.environment_configuration?.sections ?? []).flatMap((s) => s.fields),
-    ...Object.values(definition.instance_configurations ?? {}).flatMap((i: any) => (i.sections ?? []).flatMap((s: any) => s.fields)),
   ].length
 
   return (
@@ -300,7 +298,6 @@ function Step4Review({ info, draft, tfDrafts }: { info: BasicInfo; draft: DraftD
 
       <div className="flex gap-4 rounded-lg bg-muted/50 p-4">
         <Stat label="Exp. Sections" value={sectionsCount} />
-        <Stat label="Instances" value={instancesCount} />
         <Stat label="Total Fields" value={totalFields} />
       </div>
 

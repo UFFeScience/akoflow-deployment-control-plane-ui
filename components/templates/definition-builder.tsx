@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useId } from "react"
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight } from "lucide-react"
+import { useState } from "react"
+import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { TemplateDefinition, FormField, FormSection } from "@/lib/api/types"
@@ -25,23 +24,12 @@ export interface DraftSection {
   fields: DraftField[]
 }
 
-export interface DraftInstanceConfig {
-  _id: string
-  key: string
-  label: string
-  description: string
-  type: string
-  position: number
-  sections: DraftSection[]
-}
-
 export interface DraftDefinition {
   environment_configuration: {
     label: string
     description: string
     sections: DraftSection[]
   }
-  instance_configurations: DraftInstanceConfig[]
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -58,14 +46,9 @@ function emptySection(): DraftSection {
   return { _id: uid(), name: "", label: "", description: "", fields: [emptyField()] }
 }
 
-function emptyInstance(): DraftInstanceConfig {
-  return { _id: uid(), key: "", label: "", description: "", type: "deployment", position: 1, sections: [emptySection()] }
-}
-
 export function emptyDraftDefinition(): DraftDefinition {
   return {
     environment_configuration: { label: "Environment Configuration", description: "", sections: [emptySection()] },
-    instance_configurations: [],
   }
 }
 
@@ -90,15 +73,6 @@ export function draftToDefinition(draft: DraftDefinition): TemplateDefinition {
       type: "environment",
       sections: expCfg.sections.map(cleanSection),
     },
-    instance_configurations: Object.fromEntries(
-      draft.instance_configurations.map(({ _id, key, sections, ...inst }) => [
-        key,
-        {
-          ...inst,
-          sections: sections.map(cleanSection),
-        },
-      ])
-    ),
   }
 }
 
@@ -116,15 +90,6 @@ export function definitionToDraft(def: TemplateDefinition): DraftDefinition {
       description: def.environment_configuration?.description ?? "",
       sections: (def.environment_configuration?.sections ?? []).map(draftSection),
     },
-    instance_configurations: Object.entries(def.instance_configurations ?? {}).map(([key, cfg], i) => ({
-      _id: uid(),
-      key,
-      label: cfg.label ?? key,
-      description: cfg.description ?? "",
-      type: cfg.type ?? "deployment",
-      position: cfg.position ?? i + 1,
-      sections: (cfg.sections ?? []).map(draftSection),
-    })),
   }
 }
 
@@ -139,24 +104,12 @@ const FIELD_TYPES = [
   { value: "multiselect", label: "Multi-select" },
 ]
 
-const INSTANCE_TYPES = [
-  { value: "deployment", label: "Deployment" },
-  { value: "compute", label: "Compute" },
-  { value: "storage", label: "Storage" },
-  { value: "database", label: "Database" },
-  { value: "other",   label: "Other" },
-]
-
 interface Props {
   value: DraftDefinition
   onChange: (draft: DraftDefinition) => void
 }
 
-type Tab = "environment" | "instances"
-
 export function DefinitionBuilder({ value, onChange }: Props) {
-  const [tab, setTab] = useState<Tab>("environment")
-
   // ── Environment configuration mutations ──────────────────────────────────
   const setExpLabel = (label: string) =>
     onChange({ ...value, environment_configuration: { ...value.environment_configuration, label } })
@@ -167,140 +120,22 @@ export function DefinitionBuilder({ value, onChange }: Props) {
   const setExpSections = (sections: DraftSection[]) =>
     onChange({ ...value, environment_configuration: { ...value.environment_configuration, sections } })
 
-  // ── Instance configuration mutations ────────────────────────────────────
-  const setInstances = (instance_configurations: DraftInstanceConfig[]) =>
-    onChange({ ...value, instance_configurations })
-
-  const addInstance = () =>
-    setInstances([...value.instance_configurations, emptyInstance()])
-
-  const removeInstance = (id: string) =>
-    setInstances(value.instance_configurations.filter((i) => i._id !== id))
-
-  const updateInstance = (id: string, patch: Partial<DraftInstanceConfig>) =>
-    setInstances(value.instance_configurations.map((i) => i._id === id ? { ...i, ...patch } : i))
-
   return (
     <div className="flex flex-col gap-4">
-      {/* Tab switcher */}
-      <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs">
-        {(["environment", "instances"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={cn(
-              "flex-1 py-1.5 font-medium transition-colors",
-              tab === t ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50",
-            )}
-          >
-            {t === "environment" ? "Environment Configuration" : `Instance Configurations (${value.instance_configurations.length})`}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs">Section Label</Label>
+          <Input className="h-8 text-xs" value={value.environment_configuration.label} onChange={(e) => setExpLabel(e.target.value)} placeholder="Environment Configuration" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs">Description</Label>
+          <Input className="h-8 text-xs" value={value.environment_configuration.description} onChange={(e) => setExpDescription(e.target.value)} placeholder="Optional description" />
+        </div>
       </div>
-
-      {/* Environment tab */}
-      {tab === "environment" && (
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Section Label</Label>
-              <Input className="h-8 text-xs" value={value.environment_configuration.label} onChange={(e) => setExpLabel(e.target.value)} placeholder="Environment Configuration" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Description</Label>
-              <Input className="h-8 text-xs" value={value.environment_configuration.description} onChange={(e) => setExpDescription(e.target.value)} placeholder="Optional description" />
-            </div>
-          </div>
-          <SectionsEditor
-            sections={value.environment_configuration.sections}
-            onChange={setExpSections}
-          />
-        </div>
-      )}
-
-      {/* Instances tab */}
-      {tab === "instances" && (
-        <div className="flex flex-col gap-3">
-          {value.instance_configurations.length === 0 && (
-            <p className="text-xs text-muted-foreground italic text-center py-4">
-              No instance configurations yet. Add one to define infrastructure components.
-            </p>
-          )}
-
-          {value.instance_configurations.map((inst, idx) => (
-            <InstanceBlock
-              key={inst._id}
-              instance={inst}
-              onUpdate={(patch) => updateInstance(inst._id, patch)}
-              onRemove={() => removeInstance(inst._id)}
-            />
-          ))}
-
-          <Button type="button" variant="outline" size="sm" className="h-8 text-xs w-full gap-1.5" onClick={addInstance}>
-            <Plus className="h-3.5 w-3.5" />Add Instance Configuration
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Instance block ───────────────────────────────────────────────────────────
-
-function InstanceBlock({ instance, onUpdate, onRemove }: {
-  instance: DraftInstanceConfig
-  onUpdate: (patch: Partial<DraftInstanceConfig>) => void
-  onRemove: () => void
-}) {
-  const [open, setOpen] = useState(true)
-
-  return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <div className="flex items-center gap-2 bg-muted/40 px-3 py-2">
-        <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 flex-1 text-left min-w-0">
-          {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-          <code className="text-xs font-mono font-semibold truncate">{instance.key || "(unnamed)"}</code>
-          <span className="text-xs text-muted-foreground truncate">{instance.label}</span>
-        </button>
-        <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {open && (
-        <div className="p-3 flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Key <span className="text-muted-foreground">(unique identifier)</span></Label>
-              <Input className="h-8 text-xs font-mono" value={instance.key} onChange={(e) => onUpdate({ key: e.target.value.toLowerCase().replace(/\s+/g, "-") })} placeholder="e.g. nvflare-server" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Label</Label>
-              <Input className="h-8 text-xs" value={instance.label} onChange={(e) => onUpdate({ label: e.target.value })} placeholder="e.g. NVFlare Server" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Type</Label>
-              <Select value={instance.type} onValueChange={(v) => onUpdate({ type: v })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {INSTANCE_TYPES.map((t) => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Description</Label>
-              <Input className="h-8 text-xs" value={instance.description} onChange={(e) => onUpdate({ description: e.target.value })} placeholder="Optional" />
-            </div>
-          </div>
-          <SectionsEditor
-            sections={instance.sections}
-            onChange={(sections) => onUpdate({ sections })}
-          />
-        </div>
-      )}
+      <SectionsEditor
+        sections={value.environment_configuration.sections}
+        onChange={setExpSections}
+      />
     </div>
   )
 }
