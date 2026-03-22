@@ -143,15 +143,15 @@ export interface EnvironmentMetadata {
 }
 
 export interface LogEntry {
-  id: string
+  id: number
+  terraform_run_id?: string | null
+  provisioned_resource_id?: string | null
+  environment_id?: string | null
   timestamp: string
-  environmentId?: string
-  environmentName?: string
-  instanceId?: string
-  provider?: "aws" | "gcp" | "hpc"
   level: "info" | "warning" | "error" | "debug"
   message: string
   source?: string
+  created_at?: string
 }
 
 export interface Provider {
@@ -459,7 +459,6 @@ export interface TerraformRun {
   workspace_path?: string
   tfvars?: Record<string, unknown>
   output?: Record<string, unknown>
-  logs?: string | null
   started_at?: string | null
   finished_at?: string | null
   created_at?: string
