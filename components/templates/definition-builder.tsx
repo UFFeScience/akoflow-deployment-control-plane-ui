@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import type { TemplateDefinition, FormField, FormSection } from "@/lib/api/types"
+import type { TemplateDefinition, FormField, FormSection, TemplateConfigGroup } from "@/lib/api/types"
 
 // ─── Internal working types (include id for React keys) ───────────────────────
 
@@ -16,11 +16,20 @@ export interface DraftField extends Omit<FormField, "type"> {
   type: FormField["type"] | string
 }
 
+export interface DraftGroup {
+  _id: string
+  name: string
+  label: string
+  description: string
+  icon: string
+}
+
 export interface DraftSection {
   _id: string
   name: string
   label: string
   description: string
+  group: string
   fields: DraftField[]
 }
 
@@ -28,6 +37,7 @@ export interface DraftDefinition {
   environment_configuration: {
     label: string
     description: string
+    groups: DraftGroup[]
     sections: DraftSection[]
   }
 }
@@ -42,13 +52,17 @@ function emptyField(): DraftField {
   return { _id: uid(), name: "", label: "", type: "string", required: false, default: "", description: "" }
 }
 
+function emptyGroup(): DraftGroup {
+  return { _id: uid(), name: "", label: "", description: "", icon: "" }
+}
+
 function emptySection(): DraftSection {
-  return { _id: uid(), name: "", label: "", description: "", fields: [emptyField()] }
+  return { _id: uid(), name: "", label: "", description: "", group: "", fields: [emptyField()] }
 }
 
 export function emptyDraftDefinition(): DraftDefinition {
   return {
-    environment_configuration: { label: "Environment Configuration", description: "", sections: [emptySection()] },
+    environment_configuration: { label: "Environment Configuration", description: "", groups: [], sections: [emptySection()] },
   }
 }
 
@@ -62,15 +76,25 @@ export function draftToDefinition(draft: DraftDefinition): TemplateDefinition {
 
   const cleanSection = ({ _id, ...s }: DraftSection): FormSection => ({
     ...s,
+    group: s.group || undefined,
     fields: s.fields.map(cleanField),
   })
 
+  const cleanGroup = ({ _id, ...g }: DraftGroup) => ({
+    name: g.name,
+    label: g.label,
+    description: g.description || undefined,
+    icon: g.icon || undefined,
+  })
+
   const expCfg = draft.environment_configuration
+  const groups = expCfg.groups.filter((g) => g.name).map(cleanGroup)
   return {
     environment_configuration: {
       label: expCfg.label || "Environment Configuration",
       description: expCfg.description,
       type: "environment",
+      groups: groups.length ? groups : undefined,
       sections: expCfg.sections.map(cleanSection),
     },
   }
@@ -80,14 +104,18 @@ export function draftToDefinition(draft: DraftDefinition): TemplateDefinition {
 export function definitionToDraft(def: TemplateDefinition): DraftDefinition {
   const draftField = (f: FormField): DraftField => ({ ...f, _id: uid() })
   const draftSection = (s: FormSection): DraftSection => ({
-    ...s, _id: uid(), description: s.description ?? "",
+    ...s, _id: uid(), description: s.description ?? "", group: s.group ?? "",
     fields: (s.fields ?? []).map(draftField),
+  })
+  const draftGroup = (g: TemplateConfigGroup): DraftGroup => ({
+    _id: uid(), name: g.name, label: g.label, description: g.description ?? "", icon: g.icon ?? "",
   })
 
   return {
     environment_configuration: {
       label: def.environment_configuration?.label ?? "Environment Configuration",
       description: def.environment_configuration?.description ?? "",
+      groups: (def.environment_configuration?.groups ?? []).map(draftGroup),
       sections: (def.environment_configuration?.sections ?? []).map(draftSection),
     },
   }
@@ -117,6 +145,9 @@ export function DefinitionBuilder({ value, onChange }: Props) {
   const setExpDescription = (description: string) =>
     onChange({ ...value, environment_configuration: { ...value.environment_configuration, description } })
 
+  const setExpGroups = (groups: DraftGroup[]) =>
+    onChange({ ...value, environment_configuration: { ...value.environment_configuration, groups } })
+
   const setExpSections = (sections: DraftSection[]) =>
     onChange({ ...value, environment_configuration: { ...value.environment_configuration, sections } })
 
@@ -132,17 +163,85 @@ export function DefinitionBuilder({ value, onChange }: Props) {
           <Input className="h-8 text-xs" value={value.environment_configuration.description} onChange={(e) => setExpDescription(e.target.value)} placeholder="Optional description" />
         </div>
       </div>
+      <GroupsEditor
+        groups={value.environment_configuration.groups}
+        onChange={setExpGroups}
+      />
       <SectionsEditor
         sections={value.environment_configuration.sections}
+        groups={value.environment_configuration.groups}
         onChange={setExpSections}
       />
     </div>
   )
 }
 
+// ─── Groups editor ───────────────────────────────────────────────────────────
+
+function GroupsEditor({ groups, onChange }: { groups: DraftGroup[]; onChange: (g: DraftGroup[]) => void }) {
+  const [open, setOpen] = useState(false)
+
+  const addGroup = () => onChange([...groups, emptyGroup()])
+  const removeGroup = (id: string) => onChange(groups.filter((g) => g._id !== id))
+  const updateGroup = (id: string, patch: Partial<DraftGroup>) =>
+    onChange(groups.map((g) => g._id === id ? { ...g, ...patch } : g))
+
+  return (
+    <div className="rounded border border-border/70 overflow-hidden">
+      <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 flex-1 text-left">
+          {open ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
+          <span className="text-xs font-semibold">Groups</span>
+          <span className="text-[11px] text-muted-foreground">({groups.length} defined)</span>
+        </button>
+        <Button type="button" variant="ghost" size="sm" className="h-6 text-[11px] gap-1 text-muted-foreground" onClick={addGroup}>
+          <Plus className="h-3 w-3" />Add Group
+        </Button>
+      </div>
+
+      {open && (
+        <div className="p-3 flex flex-col gap-2">
+          {groups.length === 0 && (
+            <p className="text-[11px] text-muted-foreground italic">No groups defined. Groups let you organise sections into tabs or collapsible panels.</p>
+          )}
+          {groups.map((group) => (
+            <div key={group._id} className="rounded border border-border/60 bg-background p-2.5 flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px]">Name <span className="text-muted-foreground">(key)</span></Label>
+                  <Input className="h-7 text-xs font-mono" value={group.name} onChange={(e) => updateGroup(group._id, { name: e.target.value.toLowerCase().replace(/\s+/g, "_") })} placeholder="e.g. network" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px]">Label</Label>
+                  <Input className="h-7 text-xs" value={group.label} onChange={(e) => updateGroup(group._id, { label: e.target.value })} placeholder="e.g. Network Configuration" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px]">Description</Label>
+                  <Input className="h-7 text-xs" value={group.description} onChange={(e) => updateGroup(group._id, { description: e.target.value })} placeholder="Optional description" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px]">Icon <span className="text-muted-foreground">(optional)</span></Label>
+                  <div className="flex gap-1.5">
+                    <Input className="h-7 text-xs flex-1" value={group.icon} onChange={(e) => updateGroup(group._id, { icon: e.target.value })} placeholder="e.g. network" />
+                    <button type="button" onClick={() => removeGroup(group._id)} className="text-muted-foreground hover:text-destructive transition-colors shrink-0 px-1">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Sections editor ──────────────────────────────────────────────────────────
 
-function SectionsEditor({ sections, onChange }: { sections: DraftSection[]; onChange: (s: DraftSection[]) => void }) {
+function SectionsEditor({ sections, groups, onChange }: { sections: DraftSection[]; groups: DraftGroup[]; onChange: (s: DraftSection[]) => void }) {
   const addSection = () => onChange([...sections, emptySection()])
   const removeSection = (id: string) => onChange(sections.filter((s) => s._id !== id))
   const updateSection = (id: string, patch: Partial<DraftSection>) =>
@@ -154,6 +253,7 @@ function SectionsEditor({ sections, onChange }: { sections: DraftSection[]; onCh
         <SectionEditor
           key={section._id}
           section={section}
+          groups={groups}
           onUpdate={(patch) => updateSection(section._id, patch)}
           onRemove={() => removeSection(section._id)}
         />
@@ -167,8 +267,9 @@ function SectionsEditor({ sections, onChange }: { sections: DraftSection[]; onCh
 
 // ─── Section editor ───────────────────────────────────────────────────────────
 
-function SectionEditor({ section, onUpdate, onRemove }: {
+function SectionEditor({ section, groups, onUpdate, onRemove }: {
   section: DraftSection
+  groups: DraftGroup[]
   onUpdate: (patch: Partial<DraftSection>) => void
   onRemove: () => void
 }) {
@@ -186,6 +287,10 @@ function SectionEditor({ section, onUpdate, onRemove }: {
           {open ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
           <span className="text-xs font-medium truncate">{section.label || "(unnamed section)"}</span>
           <code className="text-[10px] text-muted-foreground font-mono truncate">{section.name}</code>
+          {section.group && (() => {
+            const g = groups.find((gr) => gr.name === section.group)
+            return <span className="text-[10px] bg-primary/10 text-primary rounded px-1 py-0.5 shrink-0">{g?.label || section.group}</span>
+          })()}
         </button>
         <span className="text-[11px] text-muted-foreground shrink-0">{section.fields.length} fields</span>
         <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
@@ -205,9 +310,27 @@ function SectionEditor({ section, onUpdate, onRemove }: {
               <Input className="h-7 text-xs" value={section.label} onChange={(e) => onUpdate({ label: e.target.value })} placeholder="e.g. Google Cloud Platform" />
             </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px]">Description</Label>
-            <Input className="h-7 text-xs" value={section.description} onChange={(e) => onUpdate({ description: e.target.value })} placeholder="Optional section description" />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px]">Description</Label>
+              <Input className="h-7 text-xs" value={section.description} onChange={(e) => onUpdate({ description: e.target.value })} placeholder="Optional section description" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px]">Group <span className="text-muted-foreground">(optional)</span></Label>
+              <Select value={section.group || "__none__"} onValueChange={(v) => onUpdate({ group: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="No group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-xs text-muted-foreground">No group</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g._id} value={g.name || g._id} className="text-xs">
+                      {g.label || g.name || "(unnamed group)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Fields */}
