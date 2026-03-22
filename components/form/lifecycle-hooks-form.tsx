@@ -32,7 +32,7 @@ export function LifecycleHooksForm({ definition, values, onChange, errors = {} }
       <div>
         <h3 className="text-sm font-semibold text-foreground">Lifecycle Hooks</h3>
         <p className="text-xs text-muted-foreground mt-1">
-          Scripts to run before and after cluster provisioning
+          Scripts to run before and after deployment provisioning
         </p>
       </div>
       <Separator />

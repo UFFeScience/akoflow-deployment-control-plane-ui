@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react"
 import { FormDialog } from "@/components/form/form-dialog"
 import { DialogActions } from "@/components/form/dialog-actions"
 import { LoadingState } from "@/components/ui/loading-state"
-import { clustersApi } from "@/lib/api/clusters"
+import { clustersApi } from "@/lib/api/deployments"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
-import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
+import { ClusterFormFields, type ClusterFormData } from "./deployment-form-fields"
 import type { Environment, Provider, ProviderCredential } from "@/lib/api/types"
 import { toast } from "sonner"
 
@@ -132,11 +132,11 @@ export function CreateClusterDialog({
         providerId: form.providerId,
         credentialId: form.credentialId,
       })
-      toast.success("Cluster created successfully")
+      toast.success("Deployment created successfully")
       onOpenChange(false)
       await onSuccess?.()
     } catch {
-      toast.error("Failed to create cluster")
+      toast.error("Failed to create deployment")
     } finally {
       setIsSubmitting(false)
     }
@@ -147,21 +147,21 @@ export function CreateClusterDialog({
     Boolean(form.credentialId)
 
   const description = environment?.name
-    ? `Provision a new cluster for this environment. Environment: ${environment.name}`
-    : "Provision a new cluster for this environment."
+    ? `Provision a new deployment for this environment. Environment: ${environment.name}`
+    : "Provision a new deployment for this environment."
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Create Cluster"
+      title="Create Deployment"
       description={description}
       contentClassName="max-w-2xl max-h-[90vh] overflow-y-auto"
       footer={
         <DialogActions
           onCancel={() => onOpenChange(false)}
           onSubmit={handleCreate}
-          submitLabel="Create Cluster"
+          submitLabel="Create Deployment"
           isSubmitting={isSubmitting}
           isDisabled={isLoading || !canSubmit}
         />

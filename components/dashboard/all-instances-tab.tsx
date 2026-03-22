@@ -14,7 +14,7 @@ export function AllInstancesTab({ instances, isLoading }: AllInstancesTabProps) 
       <div>
         <h3 className="text-sm font-semibold">All Instances</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {instances.length} instance{instances.length !== 1 ? "s" : ""} across all clusters
+          {instances.length} instance{instances.length !== 1 ? "s" : ""} across all deployments
         </p>
       </div>
       <EnvironmentInstancesTable instances={instances} isLoading={isLoading} />

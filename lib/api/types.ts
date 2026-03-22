@@ -227,7 +227,7 @@ export interface InstanceType {
   updatedAt?: string
 }
 
-export interface Cluster {
+export interface Deployment {
   id: string
   environmentId: string
   name?: string

@@ -1,8 +1,8 @@
 import { request } from "./client"
-import type { Cluster, Instance } from "./types"
+import type { Deployment, Instance } from "./types"
 
 export const clustersApi = {
-  list: (environmentId: string) => request<Cluster[]>(`/environments/${environmentId}/clusters`),
+  list: (environmentId: string) => request<Deployment[]>(`/environments/${environmentId}/deployments`),
   create: (
     environmentId: string,
     data: {
@@ -39,14 +39,14 @@ export const clustersApi = {
       lifecycle_hooks: i.lifecycleHooks,
     }))
 
-    return request<Cluster>(`/environments/${environmentId}/clusters`, { method: "POST", body: payload })
+    return request<Deployment>(`/environments/${environmentId}/deployments`, { method: "POST", body: payload })
   },
   scale: (clusterId: string, data: { nodeCount: number }) =>
-    request<Cluster>(`/clusters/${clusterId}/scale`, { method: "POST", body: data }),
+    request<Deployment>(`/deployments/${clusterId}/scale`, { method: "POST", body: data }),
   updateNodes: (clusterId: string, data: { instanceGroups: { id: string; quantity: number }[] }) =>
-    request<Cluster>(`/clusters/${clusterId}/nodes`, { method: "PATCH", body: {
+    request<Deployment>(`/deployments/${clusterId}/nodes`, { method: "PATCH", body: {
       instance_groups: data.instanceGroups.map((g) => ({ id: g.id, quantity: g.quantity })),
     } }),
-  destroy: (clusterId: string) => request(`/clusters/${clusterId}`, { method: "DELETE" }),
-  instances: (clusterId: string) => request<Instance[]>(`/clusters/${clusterId}/instances`),
+  destroy: (clusterId: string) => request(`/deployments/${clusterId}`, { method: "DELETE" }),
+  instances: (clusterId: string) => request<Instance[]>(`/deployments/${clusterId}/instances`),
 }

@@ -3,16 +3,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Zap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
 import { calculateEnvironmentMetrics } from "@/lib/utils/dashboard"
-import type { Environment, Cluster } from "@/lib/api/types"
+import type { Environment, Deployment } from "@/lib/api/types"
 
 interface DashboardHealthProps {
   environments: Environment[]
-  clusters: Cluster[]
+  deployments: Deployment[]
 }
 
-export function DashboardHealth({ environments, clusters }: DashboardHealthProps) {
+export function DashboardHealth({ environments, deployments }: DashboardHealthProps) {
   const metrics = calculateEnvironmentMetrics(environments)
-  const totalClusters = clusters.length
+  const totalClusters = deployments.length
   
   // Calcular taxas
   const successRate = metrics.total > 0 
@@ -41,12 +41,12 @@ export function DashboardHealth({ environments, clusters }: DashboardHealthProps
       description: "Running right now",
     },
     {
-      label: "Active Clusters",
+      label: "Active Deployments",
       value: totalClusters,
       icon: CheckCircle2,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
-      description: "Clusters in operation",
+      description: "Deployments in operation",
     },
     {
       label: "Failure Rate",

@@ -54,7 +54,7 @@ export function InstanceConfigurationForm({
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-base">{config.label}</CardTitle>
                   <Badge variant="outline" className="text-xs">
-                    {config.type === "cluster" ? "GKE Cluster" : "Instance"}
+                    {config.type === "deployment" ? "GKE Deployment" : "Instance"}
                   </Badge>
                 </div>
                 {config.description && (

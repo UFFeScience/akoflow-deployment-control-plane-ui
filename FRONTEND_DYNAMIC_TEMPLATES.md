@@ -23,7 +23,7 @@ O novo fluxo divide a criação de experimento em 4 steps:
 - Suporte a lifecycle hooks (scripts pré/pós provisioning)
 - Validação de tipos customizada para cada campo
 
-### 4. **Cluster & Instances** (Infraestrutura)
+### 4. **Deployment & Instances** (Infraestrutura)
 - Seleção de provider
 - Configuração de região
 - Definição de instance groups
@@ -251,7 +251,7 @@ lifecycleHooks = {
 
 // Ao criar o experimento, envia:
 experimentsApi.create(projectId, {
-  name: "My K8s Cluster",
+  name: "My K8s Deployment",
   template_id: "abc123",
   terraform_variables: terraformVariables,
   lifecycle_hooks: lifecycleHooks,

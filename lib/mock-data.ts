@@ -58,7 +58,7 @@ export const mockTemplates: Template[] = [
   {
     id: "tmpl_3",
     name: "Custom HPC Template",
-    description: "High-performance computing workloads on on-premise GPU clusters with SLURM scheduling.",
+    description: "High-performance computing workloads on on-premise GPU deployments with SLURM scheduling.",
     executionMode: "manual",
     defaultInstances: [
       { provider: "hpc", region: "on-premise", instanceType: "hpc-node-large", quantity: 8, cpu: "64 vCPU", memory: "512 GB", gpu: "8x NVIDIA A100" },
@@ -116,7 +116,7 @@ export const mockLogs: LogEntry[] = [
   { id: "log_3", timestamp: "2026-02-21T09:55:30Z", environmentId: "exp_1", environmentName: "GPT Fine-tuning Run A", instanceId: "inst_1", provider: "aws", level: "warning", message: "GPU memory usage at 94%. Consider reducing batch size.", source: "monitor" },
   { id: "log_4", timestamp: "2026-02-21T09:50:00Z", environmentId: "exp_3", environmentName: "Transformer Benchmark", instanceId: "inst_8", provider: "gcp", level: "error", message: "CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has 0 bytes free.", source: "runtime" },
   { id: "log_5", timestamp: "2026-02-21T09:48:00Z", environmentId: "exp_5", environmentName: "Tide Pattern Analysis", instanceId: "inst_5", provider: "gcp", level: "info", message: "Data pipeline stage 3/5: Feature extraction completed. 1.2M records processed.", source: "pipeline" },
-  { id: "log_6", timestamp: "2026-02-21T09:45:00Z", environmentId: "exp_1", environmentName: "GPT Fine-tuning Run A", instanceId: "inst_3", provider: "aws", level: "info", message: "Instance provisioning complete. Joining training cluster.", source: "orchestrator" },
+  { id: "log_6", timestamp: "2026-02-21T09:45:00Z", environmentId: "exp_1", environmentName: "GPT Fine-tuning Run A", instanceId: "inst_3", provider: "aws", level: "info", message: "Instance provisioning complete. Joining training deployment.", source: "orchestrator" },
   { id: "log_7", timestamp: "2026-02-21T09:42:00Z", environmentId: "exp_5", environmentName: "Tide Pattern Analysis", instanceId: "inst_6", provider: "aws", level: "warning", message: "Network latency spike detected: 45ms avg (threshold: 20ms)", source: "monitor" },
   { id: "log_8", timestamp: "2026-02-21T09:40:00Z", environmentId: "exp_5", environmentName: "Tide Pattern Analysis", instanceId: "inst_7", provider: "gcp", level: "info", message: "Checkpoint saved: model_epoch_87.pt (size: 4.2 GB)", source: "checkpoint" },
   { id: "log_9", timestamp: "2026-02-21T09:35:00Z", environmentId: "exp_3", environmentName: "Transformer Benchmark", instanceId: "inst_8", provider: "gcp", level: "error", message: "Process terminated with exit code 137 (OOM Killed)", source: "system" },

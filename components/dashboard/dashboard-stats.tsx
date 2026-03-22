@@ -12,14 +12,14 @@ import {
 } from "lucide-react"
 import { StatCard } from "./stat-card"
 import { calculateInstanceMetrics, calculateEnvironmentMetrics } from "@/lib/utils/dashboard"
-import type { Cluster, Environment, Instance } from "@/lib/api/types"
+import type { Deployment, Environment, Instance } from "@/lib/api/types"
 
 type DashboardStatsProps = {
   totalProjects: number
   totalEnvironments: number
   runningInstances: number
   failedInstances: number
-  clusters: Cluster[]
+  deployments: Deployment[]
   instances: Instance[]
   environments: Environment[]
 }
@@ -29,7 +29,7 @@ export function DashboardStats({
   totalEnvironments, 
   runningInstances, 
   failedInstances,
-  clusters,
+  deployments,
   instances,
   environments
 }: DashboardStatsProps) {
@@ -37,7 +37,7 @@ export function DashboardStats({
   const instanceMetrics = calculateInstanceMetrics(instances)
   const environmentMetrics = calculateEnvironmentMetrics(environments)
   
-  const totalClusters = clusters.length
+  const totalClusters = deployments.length
 
   return (
     <div className="space-y-6">
@@ -60,7 +60,7 @@ export function DashboardStats({
         />
         
         <StatCard
-          title="Active Clusters"
+          title="Active Deployments"
           value={totalClusters}
           icon={GitBranch}
           description={`${instanceMetrics.total} instances total`}

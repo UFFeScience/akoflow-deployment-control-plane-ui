@@ -30,7 +30,7 @@ export const environmentsApi = {
       execution_mode?: "manual" | "auto" | "scheduled"
       environment_template_version_id?: string
       configuration_json?: Record<string, unknown>
-      cluster?: {
+      deployment?: {
         provider_id: string
         region?: string
         cluster_template_id?: string
@@ -46,7 +46,7 @@ export const environmentsApi = {
         }>
       }
     }
-  ) => request<Environment & { cluster?: unknown }>(`/projects/${projectId}/environments/provision`, { method: "POST", body: data }),
+  ) => request<Environment & { deployment?: unknown }>(`/projects/${projectId}/environments/provision`, { method: "POST", body: data }),
   get: (projectId: string, environmentId: string) =>
     request<Environment>(`/projects/${projectId}/environments/${environmentId}`),
   update: (projectId: string, environmentId: string, data: Partial<Environment>) =>

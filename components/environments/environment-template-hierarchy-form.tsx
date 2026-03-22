@@ -97,7 +97,7 @@ const EnvironmentTemplateHierarchyForm: FC<EnvironmentTemplateHierarchyFormProps
       <Card>
         <CardHeader>
           <CardTitle>Select Environment Template</CardTitle>
-          <CardDescription>Choose a template to configure your AkoFlow cluster</CardDescription>
+          <CardDescription>Choose a template to configure your AkoFlow deployment</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div>

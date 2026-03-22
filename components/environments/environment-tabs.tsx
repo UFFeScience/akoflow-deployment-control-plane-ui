@@ -3,24 +3,24 @@
 import { useMemo, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TopologyTab } from "@/components/environments/topology-tab"
-import { ClustersTab } from "@/components/environments/clusters-tab"
+import { ClustersTab } from "@/components/environments/deployments-tab"
 import { InstancesTab } from "@/components/environments/instances-tab"
 import { ScalingTab } from "@/components/environments/scaling-tab"
 import { LogsTab } from "@/components/environments/logs-tab"
 import { ConfigurationTab } from "@/components/environments/configuration-tab"
-import type { Cluster, Environment, Instance, InstanceType, Provider, Template } from "@/lib/api/types"
+import type { Deployment, Environment, Instance, InstanceType, Provider, Template } from "@/lib/api/types"
 
 interface EnvironmentTabsProps {
   environmentId: string
   projectId: string
   environment: Environment | null
-  clusters: Cluster[]
+  deployments: Deployment[]
   instancesByCluster: Record<string, Instance[]>
   providers: Provider[]
   instanceTypes: InstanceType[]
   templates: Template[]
   isLoadingClusters?: boolean
-  onClustersChange: (clusters: Cluster[]) => void
+  onClustersChange: (deployments: Deployment[]) => void
   onRefreshClusters: () => Promise<void>
 }
 
@@ -28,7 +28,7 @@ export function EnvironmentTabs({
   environmentId,
   projectId,
   environment,
-  clusters,
+  deployments,
   instancesByCluster,
   providers,
   instanceTypes,
@@ -54,8 +54,8 @@ export function EnvironmentTabs({
         <TabsTrigger value="topology" className="text-xs h-6 px-3">
           Topology
         </TabsTrigger>
-        <TabsTrigger value="clusters" className="text-xs h-6 px-3">
-          Clusters
+        <TabsTrigger value="deployments" className="text-xs h-6 px-3">
+          Deployments
         </TabsTrigger>
         <TabsTrigger value="instances" className="text-xs h-6 px-3">
           Instances
@@ -75,15 +75,15 @@ export function EnvironmentTabs({
 
       <TabsContent value="topology" className="mt-3">
         {environment && (
-          <TopologyTab environment={environment} clusters={clusters} instancesByCluster={instancesByCluster} />
+          <TopologyTab environment={environment} deployments={deployments} instancesByCluster={instancesByCluster} />
         )}
       </TabsContent>
 
-      <TabsContent value="clusters" className="mt-3">
+      <TabsContent value="deployments" className="mt-3">
         <ClustersTab
           environmentId={environmentId}
           environment={environment}
-          clusters={clusters}
+          deployments={deployments}
           isLoading={isLoadingClusters}
           onClustersChange={onClustersChange}
           onRefresh={onRefreshClusters}
@@ -93,7 +93,7 @@ export function EnvironmentTabs({
 
       <TabsContent value="instances" className="mt-3">
         <InstancesTab
-          clusters={clusters}
+          deployments={deployments}
           instancesByCluster={instancesByCluster}
           isLoading={isLoadingClusters}
           onRefresh={onRefreshClusters}
@@ -101,7 +101,7 @@ export function EnvironmentTabs({
       </TabsContent>
 
       <TabsContent value="scaling" className="mt-3">
-        <ScalingTab clusters={clusters} onClustersChange={onClustersChange} />
+        <ScalingTab deployments={deployments} onClustersChange={onClustersChange} />
       </TabsContent>
 
       <TabsContent value="logs" className="mt-3">

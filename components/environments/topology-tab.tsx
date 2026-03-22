@@ -2,37 +2,37 @@
 
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
-import type { Cluster, Environment, Instance } from "@/lib/api/types"
-import { ClusterCard } from "./cluster-card"
+import type { Deployment, Environment, Instance } from "@/lib/api/types"
+import { ClusterCard } from "./deployment-card"
 
 interface TopologyTabProps {
   environment: Environment
-  clusters: Cluster[]
+  deployments: Deployment[]
   instancesByCluster: Record<string, Instance[]>
 }
 
 const toStatus = (value: unknown, fallback = "pending") =>
   typeof value === "string" && value.trim() ? value.toLowerCase() : fallback
 
-/* ClusterCard extracted to components/environments/cluster-card.tsx */
+/* ClusterCard extracted to components/environments/deployment-card.tsx */
 
-export function TopologyTab({ environment, clusters, instancesByCluster }: TopologyTabProps) {
+export function TopologyTab({ environment, deployments, instancesByCluster }: TopologyTabProps) {
   const grouped = useMemo(() => {
-    const map: Record<string, { label: string; clusters: Cluster[] }> = {}
-    clusters.forEach((c) => {
+    const map: Record<string, { label: string; deployments: Deployment[] }> = {}
+    deployments.forEach((c) => {
       const key = c.providerId
       if (!map[key]) {
-        map[key] = { label: c.providerName || c.providerId, clusters: [] }
+        map[key] = { label: c.providerName || c.providerId, deployments: [] }
       }
-      map[key].clusters.push(c)
+      map[key].deployments.push(c)
     })
     return Object.entries(map)
-  }, [clusters])
+  }, [deployments])
 
-  if (clusters.length === 0) {
+  if (deployments.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed border-border py-12 text-xs text-muted-foreground">
-        No clusters provisioned for this environment yet.
+        No deployments provisioned for this environment yet.
       </div>
     )
   }
@@ -50,14 +50,14 @@ export function TopologyTab({ environment, clusters, instancesByCluster }: Topol
           <div key={providerId} className={cn("flex flex-col gap-3 rounded-lg border p-4 bg-muted/20")}>            
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{group.label}</span>
-              <span className="text-[10px] text-muted-foreground">{group.clusters.length} cluster(s)</span>
+              <span className="text-[10px] text-muted-foreground">{group.deployments.length} deployment(s)</span>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {group.clusters.map((cluster) => (
+              {group.deployments.map((deployment) => (
                 <ClusterCard
-                  key={cluster.id}
-                  cluster={cluster}
-                  instances={instancesByCluster[cluster.id] || []}
+                  key={deployment.id}
+                  deployment={deployment}
+                  instances={instancesByCluster[deployment.id] || []}
                 />
               ))}
             </div>

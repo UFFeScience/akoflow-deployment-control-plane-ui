@@ -31,7 +31,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             Multi-cloud control plane for scientific environments
           </h1>
           <p className="mt-4 text-base text-primary-foreground/70 leading-relaxed">
-            Orchestrate environments across AWS, GCP, and HPC clusters. Scale instances, manage templates, and monitor infrastructure from a single pane.
+            Orchestrate environments across AWS, GCP, and HPC deployments. Scale instances, manage templates, and monitor infrastructure from a single pane.
           </p>
         </div>
         <p className="text-sm text-primary-foreground/50">AkôFlow</p>

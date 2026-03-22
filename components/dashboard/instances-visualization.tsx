@@ -17,10 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Cluster, Instance, InstanceGroup } from "@/lib/api/types"
+import type { Deployment, Instance, InstanceGroup } from "@/lib/api/types"
 
 interface InstancesVisualizationProps {
-  clusters: Cluster[]
+  deployments: Deployment[]
   instancesByCluster: Record<string, Instance[]>
   isLoading?: boolean
 }
@@ -31,19 +31,19 @@ interface GroupedInstances {
 }
 
 export function InstancesVisualization({ 
-  clusters, 
+  deployments, 
   instancesByCluster, 
   isLoading = false 
 }: InstancesVisualizationProps) {
   const [selectedCluster, setSelectedCluster] = useState<string>("instances")
 
   useEffect(() => {
-    if (clusters.length > 0 && !selectedCluster) {
+    if (deployments.length > 0 && !selectedCluster) {
       setSelectedCluster("all")
     }
-  }, [clusters, selectedCluster])
+  }, [deployments, selectedCluster])
 
-  const shouldUseDropdown = clusters.length > 5
+  const shouldUseDropdown = deployments.length > 5
   
   // Get all instances for overview
   const allInstances = Object.values(instancesByCluster).flat()
@@ -56,13 +56,13 @@ export function InstancesVisualization({
     )
   }
 
-  if (clusters.length === 0) {
+  if (deployments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <Server className="h-12 w-12 text-muted-foreground mb-4" />
-        <p className="text-sm font-medium">No clusters found</p>
+        <p className="text-sm font-medium">No deployments found</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Create a cluster to provision instances
+          Create a deployment to provision instances
         </p>
       </div>
     )
@@ -70,12 +70,12 @@ export function InstancesVisualization({
 
   return (
     <div className="w-full space-y-6">
-      {/* Cluster Selector - Dropdown or Tabs */}
+      {/* Deployment Selector - Dropdown or Tabs */}
       {shouldUseDropdown ? (
         <div className="flex items-center gap-3">
           <Select value={selectedCluster} onValueChange={setSelectedCluster}>
             <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Select cluster" />
+              <SelectValue placeholder="Select deployment" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="instances">
@@ -90,19 +90,19 @@ export function InstancesVisualization({
               <SelectItem value="all">
                 <div className="flex items-center gap-2">
                   <LayoutGrid className="h-4 w-4" />
-                  <span>All Clusters</span>
+                  <span>All Deployments</span>
                   <Badge variant="secondary" className="ml-1 text-xs">
                     {allInstances.length}
                   </Badge>
                 </div>
               </SelectItem>
-              {clusters.map((cluster) => {
-                const instances = instancesByCluster[cluster.id] || []
+              {deployments.map((deployment) => {
+                const instances = instancesByCluster[deployment.id] || []
                 return (
-                  <SelectItem key={cluster.id} value={cluster.id}>
+                  <SelectItem key={deployment.id} value={deployment.id}>
                     <div className="flex items-center gap-2">
                       <Server className="h-4 w-4" />
-                      <span>{cluster.name || `Cluster ${String(cluster.id).slice(0, 8)}`}</span>
+                      <span>{deployment.name || `Deployment ${String(deployment.id).slice(0, 8)}`}</span>
                       <Badge variant="secondary" className="ml-1 text-xs">
                         {instances.length}
                       </Badge>
@@ -125,22 +125,22 @@ export function InstancesVisualization({
             </TabsTrigger>
             <TabsTrigger value="all" className="flex items-center gap-2 flex-shrink-0">
               <LayoutGrid className="h-3.5 w-3.5" />
-              <span>All Clusters</span>
+              <span>All Deployments</span>
               <Badge variant="secondary" className="ml-1 text-xs">
                 {allInstances.length}
               </Badge>
             </TabsTrigger>
-            {clusters.map((cluster) => {
-              const instances = instancesByCluster[cluster.id] || []
+            {deployments.map((deployment) => {
+              const instances = instancesByCluster[deployment.id] || []
               
               return (
                 <TabsTrigger 
-                  key={cluster.id} 
-                  value={cluster.id}
+                  key={deployment.id} 
+                  value={deployment.id}
                   className="flex items-center gap-2 flex-shrink-0"
                 >
                   <Server className="h-3.5 w-3.5" />
-                  <span>{cluster.name || `Cluster ${String(cluster.id).slice(0, 8)}`}</span>
+                  <span>{deployment.name || `Deployment ${String(deployment.id).slice(0, 8)}`}</span>
                   <Badge variant="secondary" className="ml-1 text-xs">
                     {instances.length}
                   </Badge>
@@ -157,26 +157,26 @@ export function InstancesVisualization({
           <AllInstancesTab instances={allInstances} />
         ) : selectedCluster === "all" ? (
           <>
-            <OverviewStats clusters={clusters} instancesByCluster={instancesByCluster} />
+            <OverviewStats deployments={deployments} instancesByCluster={instancesByCluster} />
             <InstanceGraph 
               instances={allInstances} 
               clusterId="all"
-              clusterName="All Clusters Overview"
-              clusters={clusters}
+              clusterName="All Deployments Overview"
+              deployments={deployments}
             />
-            <ClustersList clusters={clusters} instancesByCluster={instancesByCluster} />
+            <ClustersList deployments={deployments} instancesByCluster={instancesByCluster} />
           </>
         ) : (
-          clusters.filter(c => c.id === selectedCluster).map((cluster) => {
-            const instances = instancesByCluster[cluster.id] || []
+          deployments.filter(c => c.id === selectedCluster).map((deployment) => {
+            const instances = instancesByCluster[deployment.id] || []
             
             return (
-              <div key={cluster.id} className="space-y-6">
-                <ClusterOverview cluster={cluster} instances={instances} />
+              <div key={deployment.id} className="space-y-6">
+                <ClusterOverview deployment={deployment} instances={instances} />
                 <InstanceGraph 
                   instances={instances} 
-                  clusterId={cluster.id}
-                  clusterName={cluster.name || `Cluster ${String(cluster.id).slice(0, 8)}`}
+                  clusterId={deployment.id}
+                  clusterName={deployment.name || `Deployment ${String(deployment.id).slice(0, 8)}`}
                 />
                 <InstancesList instances={instances} />
               </div>
@@ -189,10 +189,10 @@ export function InstancesVisualization({
 }
 
 function OverviewStats({ 
-  clusters, 
+  deployments, 
   instancesByCluster 
 }: { 
-  clusters: Cluster[]; 
+  deployments: Deployment[]; 
   instancesByCluster: Record<string, Instance[]>; 
 }) {
   const allInstances = Object.values(instancesByCluster).flat()
@@ -201,11 +201,11 @@ function OverviewStats({
   const runningInstances = allInstances.filter((i) => i.status === "running").length
   const failedInstances = allInstances.filter((i) => i.status === "failed").length
   const pendingInstances = allInstances.filter((i) => i.status === "pending").length
-  const totalClusters = clusters.length
+  const totalClusters = deployments.length
 
   const metrics = [
     {
-      label: "Total Clusters",
+      label: "Total Deployments",
       value: totalClusters,
       icon: Server,
       color: "text-purple-500",
@@ -266,24 +266,24 @@ function OverviewStats({
 }
 
 function ClustersList({ 
-  clusters, 
+  deployments, 
   instancesByCluster 
 }: { 
-  clusters: Cluster[]; 
+  deployments: Deployment[]; 
   instancesByCluster: Record<string, Instance[]>; 
 }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Clusters Overview</CardTitle>
+        <CardTitle className="text-base">Deployments Overview</CardTitle>
         <CardDescription>
-          Distribution of instances across {clusters.length} clusters
+          Distribution of instances across {deployments.length} deployments
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {clusters.map((cluster) => {
-            const instances = instancesByCluster[cluster.id] || []
+          {deployments.map((deployment) => {
+            const instances = instancesByCluster[deployment.id] || []
             const total = instances.length
             const running = instances.filter((i) => i.status === "running").length
             const failed = instances.filter((i) => i.status === "failed").length
@@ -294,7 +294,7 @@ function ClustersList({
             
             return (
               <div 
-                key={cluster.id}
+                key={deployment.id}
                 className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center justify-between mb-3">
@@ -304,7 +304,7 @@ function ClustersList({
                     </div>
                     <div>
                       <p className="font-semibold text-sm">
-                        {cluster.name || `Cluster ${String(cluster.id).slice(0, 8)}`}
+                        {deployment.name || `Deployment ${String(deployment.id).slice(0, 8)}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {total} instances
@@ -356,7 +356,7 @@ function ClustersList({
   )
 }
 
-function ClusterOverview({ cluster, instances }: { cluster: Cluster; instances: Instance[] }) {
+function ClusterOverview({ deployment, instances }: { deployment: Deployment; instances: Instance[] }) {
   const totalInstances = instances.length
   const runningInstances = instances.filter((i) => i.status === "running").length
   const failedInstances = instances.filter((i) => i.status === "failed").length
@@ -417,7 +417,7 @@ function ClusterOverview({ cluster, instances }: { cluster: Cluster; instances: 
   )
 }
 
-function InstanceGroupsView({ cluster, instances }: { cluster: Cluster; instances: Instance[] }) {
+function InstanceGroupsView({ deployment, instances }: { deployment: Deployment; instances: Instance[] }) {
   // Group instances by instanceGroupId or role
   const groupedInstances = instances.reduce((acc, instance) => {
     const groupKey = instance.instanceGroupId || instance.role || "default"

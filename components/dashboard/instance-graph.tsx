@@ -2,16 +2,16 @@
 
 import { useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Instance, Cluster } from "@/lib/api/types"
+import type { Instance, Deployment } from "@/lib/api/types"
 
 interface InstanceGraphProps {
   instances: Instance[]
   clusterId: string
   clusterName: string
-  clusters?: Cluster[]
+  deployments?: Deployment[]
 }
 
-export function InstanceGraph({ instances, clusterId, clusterName, clusters }: InstanceGraphProps) {
+export function InstanceGraph({ instances, clusterId, clusterName, deployments }: InstanceGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const networkRef = useRef<any>(null)
 
@@ -43,15 +43,15 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
         networkRef.current.destroy()
       }
     }
-  }, [instances, clusterId, clusters])
+  }, [instances, clusterId, deployments])
 
   const initializeGraph = () => {
     if (!containerRef.current || !(window as any).vis) return
 
     const vis = (window as any).vis
 
-    // Check if this is the "all clusters" view
-    const isAllClustersView = clusterId === "all" && clusters && clusters.length > 0
+    // Check if this is the "all deployments" view
+    const isAllClustersView = clusterId === "all" && deployments && deployments.length > 0
 
     // Create nodes and edges
     const nodes: any[] = []
@@ -61,7 +61,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
       // Create a central "overview" node
       nodes.push({
         id: 'overview',
-        label: 'All Clusters',
+        label: 'All Deployments',
         shape: 'box',
         color: {
           background: '#8b5cf6',
@@ -73,7 +73,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
         level: 0
       })
 
-      // Group instances by cluster
+      // Group instances by deployment
       const instancesByCluster = instances.reduce((acc, instance) => {
         const clusterKey = instance.clusterId || 'unknown'
         if (!acc[clusterKey]) {
@@ -85,10 +85,10 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
 
       console.log(instancesByCluster);
 
-      // Add cluster nodes
+      // Add deployment nodes
       Object.entries(instancesByCluster).forEach(([clusterKey, clusterInstances]) => {
-        const cluster = clusters?.find(c => c.id === clusterKey)
-        const clusterName = cluster?.name || `Cluster ${String(clusterKey).slice(0, 8)}`
+        const deployment = deployments?.find(c => c.id === clusterKey)
+        const clusterName = deployment?.name || `Deployment ${String(clusterKey).slice(0, 8)}`
         const running = clusterInstances.filter(i => i.status === "running").length
         const total = clusterInstances.length
         const healthPercent = total > 0 ? (running / total) * 100 : 0
@@ -97,7 +97,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
         if (healthPercent < 50) clusterColor = '#ef4444'
         else if (healthPercent < 80) clusterColor = '#f59e0b'
 
-        const clusterNodeId = `cluster-${clusterKey}`
+        const clusterNodeId = `deployment-${clusterKey}`
         nodes.push({
           id: clusterNodeId,
           label: `${clusterName}\n(${total} instances)`,
@@ -204,9 +204,9 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
         })
       })
     } else {
-      // Single cluster view (original logic)
+      // Single deployment view (original logic)
       nodes.push({
-        id: `cluster-${clusterId}`,
+        id: `deployment-${clusterId}`,
         label: clusterName,
         shape: 'box',
         color: {
@@ -255,7 +255,7 @@ export function InstanceGraph({ instances, clusterId, clusterName, clusters }: I
         })
 
         edges.push({
-          from: `cluster-${clusterId}`,
+          from: `deployment-${clusterId}`,
           to: groupId,
           arrows: 'to',
           color: { color: '#94a3b8' },

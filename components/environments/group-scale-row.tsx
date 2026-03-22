@@ -2,7 +2,7 @@
 
 import { Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { Cluster } from "@/lib/api/types"
+import type { Deployment } from "@/lib/api/types"
 
 type GroupScaleRowProps = {
   group: any

@@ -2,17 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
-import type { Cluster, Instance } from "@/lib/api/types"
+import type { Deployment, Instance } from "@/lib/api/types"
 import { InstancesVisualization } from "@/components/dashboard/instances-visualization"
 
 interface InstancesTabProps {
-  clusters: Cluster[]
+  deployments: Deployment[]
   instancesByCluster: Record<string, Instance[]>
   isLoading?: boolean
   onRefresh?: () => Promise<void>
 }
 
-export function InstancesTab({ clusters, instancesByCluster, isLoading = false, onRefresh }: InstancesTabProps) {
+export function InstancesTab({ deployments, instancesByCluster, isLoading = false, onRefresh }: InstancesTabProps) {
   const totalInstances = Object.values(instancesByCluster).flat().length
 
   return (
@@ -21,7 +21,7 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
         <div>
           <h2 className="text-sm font-semibold text-foreground">Instances</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {totalInstances} instance{totalInstances !== 1 ? 's' : ''} across {clusters.length} cluster{clusters.length !== 1 ? 's' : ''}
+            {totalInstances} instance{totalInstances !== 1 ? 's' : ''} across {deployments.length} deployment{deployments.length !== 1 ? 's' : ''}
           </p>
         </div>
         <Button
@@ -37,7 +37,7 @@ export function InstancesTab({ clusters, instancesByCluster, isLoading = false, 
       </div>
 
       <InstancesVisualization 
-        clusters={clusters}
+        deployments={deployments}
         instancesByCluster={instancesByCluster}
         isLoading={isLoading}
       />

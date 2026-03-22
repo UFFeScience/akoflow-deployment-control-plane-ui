@@ -4,14 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { TrendingUp, Database, Cpu } from "lucide-react"
 import { calculateInstanceMetrics } from "@/lib/utils/dashboard"
-import type { Instance, Cluster } from "@/lib/api/types"
+import type { Instance, Deployment } from "@/lib/api/types"
 
 interface DashboardResourcesProps {
   instances: Instance[]
-  clusters: Cluster[]
+  deployments: Deployment[]
 }
 
-export function DashboardResources({ instances, clusters }: DashboardResourcesProps) {
+export function DashboardResources({ instances, deployments }: DashboardResourcesProps) {
   const metrics = calculateInstanceMetrics(instances)
   
   // Distribuição por provider

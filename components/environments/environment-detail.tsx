@@ -6,12 +6,12 @@ import { EnvironmentHeader } from "@/components/environments/environment-header"
 import { EnvironmentTabs } from "@/components/environments/environment-tabs"
 import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
-import { clustersApi } from "@/lib/api/clusters"
+import { clustersApi } from "@/lib/api/deployments"
 import { providersApi } from "@/lib/api/providers"
 import { instanceTypesApi } from "@/lib/api/instance-types"
 import { templatesApi } from "@/lib/api/templates"
 import type {
-  Cluster,
+  Deployment,
   Environment,
   Instance,
   InstanceType,
@@ -26,8 +26,8 @@ function normalizeStatus(value: unknown, fallback: string): string {
   return fallback
 }
 
-function normalizeCluster(raw: any): Cluster {
-  const status = normalizeStatus(raw?.status, "creating") as Cluster["status"]
+function normalizeCluster(raw: any): Deployment {
+  const status = normalizeStatus(raw?.status, "creating") as Deployment["status"]
   const groups = (raw?.instance_groups || raw?.instanceGroups || []).map((g: any) => ({
     id: g?.id?.toString?.() ?? g?.id,
     clusterId: g?.cluster_id ?? g?.clusterId ?? raw?.id,
@@ -60,19 +60,19 @@ function normalizeCluster(raw: any): Cluster {
   }
 }
 
-function normalizeInstance(raw: any, cluster?: Cluster): Instance {
+function normalizeInstance(raw: any, deployment?: Deployment): Instance {
   const status = normalizeStatus(raw?.status, "pending") as Instance["status"]
   const health = normalizeStatus(raw?.health ?? raw?.health_status, "")
-  const provider = raw?.provider ?? raw?.provider_id ?? raw?.cloud_provider ?? cluster?.providerId ?? cluster?.providerName
+  const provider = raw?.provider ?? raw?.provider_id ?? raw?.cloud_provider ?? deployment?.providerId ?? deployment?.providerName
 
   return {
     ...raw,
     id: raw?.id?.toString?.() ?? raw?.id,
-    environmentId: raw?.environmentId ?? raw?.environment_id ?? cluster?.environmentId,
-    clusterId: raw?.clusterId ?? raw?.cluster_id ?? cluster?.id,
+    environmentId: raw?.environmentId ?? raw?.environment_id ?? deployment?.environmentId,
+    clusterId: raw?.clusterId ?? raw?.cluster_id ?? deployment?.id,
     instanceGroupId: raw?.instance_group_id ?? raw?.instanceGroupId,
     provider: typeof provider === "string" ? provider.toLowerCase() : provider,
-    region: raw?.region ?? cluster?.region,
+    region: raw?.region ?? deployment?.region,
     role: raw?.role ?? raw?.instance_role ?? raw?.kind,
     status,
     health,
@@ -89,7 +89,7 @@ export function EnvironmentDetailView() {
   const { currentOrg } = useAuth()
   const [environment, setEnvironment] = useState<Environment | null>(null)
   const [project, setProject] = useState<Project | null>(null)
-  const [clusters, setClusters] = useState<Cluster[]>([])
+  const [deployments, setClusters] = useState<Deployment[]>([])
   const [instancesByCluster, setInstancesByCluster] = useState<Record<string, Instance[]>>({})
   const [providers, setProviders] = useState<Provider[]>([])
   const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
@@ -107,12 +107,12 @@ export function EnvironmentDetailView() {
     [instancesByCluster]
   )
 
-  const loadInstances = useCallback(async (targetClusters: Cluster[], withLoading = true) => {
+  const loadInstances = useCallback(async (targetClusters: Deployment[], withLoading = true) => {
     if (withLoading) setIsLoadingClusters(true)
     const entries = await Promise.all(
-      targetClusters.map(async (cluster) => {
-        const inst = await clustersApi.instances(cluster.id).catch(() => [])
-        return [cluster.id, inst.map((item: any) => normalizeInstance(item, cluster))] as const
+      targetClusters.map(async (deployment) => {
+        const inst = await clustersApi.instances(deployment.id).catch(() => [])
+        return [deployment.id, inst.map((item: any) => normalizeInstance(item, deployment))] as const
       })
     )
     const map = Object.fromEntries(entries) as Record<string, Instance[]>
@@ -247,7 +247,7 @@ export function EnvironmentDetailView() {
         environmentId={environmentId}
         projectId={projectId}
         environment={environment}
-        clusters={clusters}
+        deployments={deployments}
         instancesByCluster={instancesByCluster}
         providers={providers}
         instanceTypes={instanceTypes}

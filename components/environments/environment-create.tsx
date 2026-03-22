@@ -15,7 +15,7 @@ import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
 import type { Provider, ProviderCredential, Template, TemplateVersion } from "@/lib/api/types"
-import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
+import { ClusterFormFields, type ClusterFormData } from "./deployment-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
 import { EnvironmentConfigurationForm } from "@/components/form/environment-configuration-form"
@@ -40,8 +40,8 @@ const steps = [
     description: "Template variables and lifecycle hooks",
   },
   {
-    id: "cluster",
-    title: "Cluster & instances",
+    id: "deployment",
+    title: "Deployment",
     description: "Provider and region",
   },
 ] as const
@@ -267,7 +267,7 @@ export function EnvironmentCreateFlow() {
         environment_template_version_id: selectedTemplateVersionId ?? activeVersionId ?? undefined,
         ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         ...(hasCluster && {
-          cluster: {
+          deployment: {
             provider_id: clusterForm.providerId,
             credential_id: clusterForm.credentialId,
           },
@@ -400,7 +400,7 @@ export function EnvironmentCreateFlow() {
                   {environmentTemplateId === "none" && <Check className="h-4 w-4 text-primary" />}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Start from scratch and configure clusters manually.
+                  Start from scratch and configure deployments manually.
                 </p>
               </button>
               {templates.map((template) => (
@@ -545,7 +545,7 @@ export function EnvironmentCreateFlow() {
 
             {environmentTemplateId === "none" && (
               <div className="text-sm text-muted-foreground">
-                No template selected. Proceed to cluster configuration or select a template.
+                No template selected. Proceed to deployment configuration or select a template.
               </div>
             )}
 
@@ -565,11 +565,11 @@ export function EnvironmentCreateFlow() {
           </div>
         )}
 
-        {activeStep === "cluster" && (
+        {activeStep === "deployment" && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Cluster & instances</h2>
-              <p className="text-xs text-muted-foreground">Select provider and credentials. Region and instance configuration are defined in the Terraform template.</p>
+              <h2 className="text-sm font-semibold text-foreground">Deployment </h2>
+              <p className="text-xs text-muted-foreground">Select provider and credentials. Region and instance configuration are defined in the template.</p>
             </div>
 
             <ClusterFormFields
@@ -593,7 +593,7 @@ export function EnvironmentCreateFlow() {
               Back
             </Button>
           )}
-          {activeStep !== "cluster" && (
+          {activeStep !== "deployment" && (
             <Button
               size="sm"
               className="text-xs"
@@ -604,12 +604,12 @@ export function EnvironmentCreateFlow() {
               <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
           )}
-          {activeStep === "cluster" && (
+          {activeStep === "deployment" && (
             <Button
               size="sm"
               className="text-xs"
               onClick={handleFinish}
-              disabled={isSubmitting || !canProceed("cluster")}
+              disabled={isSubmitting || !canProceed("deployment")}
             >
               {isSubmitting ? (
                 <>

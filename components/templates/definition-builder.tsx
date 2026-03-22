@@ -59,7 +59,7 @@ function emptySection(): DraftSection {
 }
 
 function emptyInstance(): DraftInstanceConfig {
-  return { _id: uid(), key: "", label: "", description: "", type: "cluster", position: 1, sections: [emptySection()] }
+  return { _id: uid(), key: "", label: "", description: "", type: "deployment", position: 1, sections: [emptySection()] }
 }
 
 export function emptyDraftDefinition(): DraftDefinition {
@@ -121,7 +121,7 @@ export function definitionToDraft(def: TemplateDefinition): DraftDefinition {
       key,
       label: cfg.label ?? key,
       description: cfg.description ?? "",
-      type: cfg.type ?? "cluster",
+      type: cfg.type ?? "deployment",
       position: cfg.position ?? i + 1,
       sections: (cfg.sections ?? []).map(draftSection),
     })),
@@ -140,7 +140,7 @@ const FIELD_TYPES = [
 ]
 
 const INSTANCE_TYPES = [
-  { value: "cluster", label: "Cluster" },
+  { value: "deployment", label: "Deployment" },
   { value: "compute", label: "Compute" },
   { value: "storage", label: "Storage" },
   { value: "database", label: "Database" },

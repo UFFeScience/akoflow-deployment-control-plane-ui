@@ -13,15 +13,15 @@ import { InstancesVisualization } from "./instances-visualization"
 import { RecentEnvironments } from "./recent-environments"
 import { environmentsApi } from "@/lib/api/environments"
 import { projectsApi } from "@/lib/api/projects"
-import { clustersApi } from "@/lib/api/clusters"
-import type { Cluster, Environment, Instance, Project } from "@/lib/api/types"
+import { clustersApi } from "@/lib/api/deployments"
+import type { Deployment, Environment, Instance, Project } from "@/lib/api/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export function DashboardScreen() {
   const { currentOrg } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
-  const [clusters, setClusters] = useState<Cluster[]>([])
+  const [deployments, setClusters] = useState<Deployment[]>([])
   const [instances, setInstances] = useState<Instance[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -77,7 +77,7 @@ export function DashboardScreen() {
         setClusters(clusterData)
 
         const instanceLists = await Promise.all(
-          clusterData.map((cluster) => clustersApi.instances(cluster.id).catch(() => []))
+          clusterData.map((deployment) => clustersApi.instances(deployment.id).catch(() => []))
         )
         if (!active) return
         setInstances(instanceLists.flat())
@@ -137,7 +137,7 @@ export function DashboardScreen() {
         totalEnvironments={totalEnvironments}
         runningInstances={runningInstances}
         failedInstances={failedInstances}
-        clusters={clusters}
+        deployments={deployments}
         instances={instances}
         environments={environments}
       />

@@ -6,10 +6,10 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Provider, ProviderCredential } from "@/lib/api/types"
-import { clustersApi } from "@/lib/api/clusters"
+import { clustersApi } from "@/lib/api/deployments"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
-import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
+import { ClusterFormFields, type ClusterFormData } from "./deployment-form-fields"
 import { toast } from "sonner"
 
 export function CreateClusterForm() {
@@ -95,10 +95,10 @@ export function CreateClusterForm() {
         providerId: form.providerId,
         credentialId: form.credentialId,
       })
-      toast.success("Cluster created successfully")
+      toast.success("Deployment created successfully")
       router.push(`/projects/${projectId}/environments/${environmentId}`)
     } catch (error) {
-      toast.error("Failed to create cluster")
+      toast.error("Failed to create deployment")
       console.error(error)
     } finally {
       setIsSaving(false)
@@ -140,7 +140,7 @@ export function CreateClusterForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Create New Cluster</CardTitle>
+          <CardTitle>Create New Deployment</CardTitle>
           <CardDescription>
             Select provider and credentials. Region and instance configuration are defined in the Terraform template.
           </CardDescription>
@@ -160,7 +160,7 @@ export function CreateClusterForm() {
               disabled={isSaving || !form.providerId || !form.credentialId}
               className="min-w-[120px]"
             >
-              {isSaving ? "Creating..." : "Create Cluster"}
+              {isSaving ? "Creating..." : "Create Deployment"}
             </Button>
             <Button
               variant="outline"
