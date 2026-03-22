@@ -7,13 +7,23 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useEnvironmentTemplates, useEnvironmentTemplateActive } from "@/hooks/use-environment-templates"
 import TemplateHierarchyForm from "./template-hierarchy-form"
-import type { ClusterFormData } from "./cluster-form-fields"
+
+interface InstanceGroupItem {
+  id: string
+  instanceTypeId: string
+  instanceGroupTemplateId?: string
+  role: string
+  quantity: number
+  metadata: string
+  terraformVariables?: Record<string, unknown>
+  lifecycleHooks?: Record<string, string>
+}
 
 interface EnvironmentTemplateSelectProps {
   onTemplateSelected: (data: {
     environmentTemplateVersionId: string
     environmentLevelVariables: Record<string, unknown>
-    instanceGroups: ClusterFormData["instanceGroups"]
+    instanceGroups: InstanceGroupItem[]
   }) => void
   instanceTypes: Array<{ id: string; name: string }>
 }
@@ -77,7 +87,7 @@ export function EnvironmentTemplateSelect({
     if (!template) return
 
     // Get instance groups from template
-    const instanceGroups: ClusterFormData["instanceGroups"] = []
+    const instanceGroups: InstanceGroupItem[] = []
     const topologyGroups = template.definition_json?.cluster_topology?.instance_groups || []
 
     for (const group of topologyGroups) {
@@ -126,7 +136,7 @@ export function EnvironmentTemplateSelect({
               size="sm"
               onClick={() => {
                 setIsConfirmed(false)
-                setEnvironmentVariables({})
+                setTemplateValues({})
               }}
             >
               Change

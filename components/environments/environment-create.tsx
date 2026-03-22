@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react"
@@ -14,9 +14,7 @@ import { environmentsApi } from "@/lib/api/environments"
 import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
-import { instanceTypesApi } from "@/lib/api/instance-types"
-import { instanceGroupTemplatesApi } from "@/lib/api/instance-group-templates"
-import type { InstanceType, Provider, ProviderCredential, Template, TemplateVersion } from "@/lib/api/types"
+import type { Provider, ProviderCredential, Template, TemplateVersion } from "@/lib/api/types"
 import { ClusterFormFields, type ClusterFormData } from "./cluster-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
@@ -44,7 +42,7 @@ const steps = [
   {
     id: "cluster",
     title: "Cluster & instances",
-    description: "Template, provider, and groups",
+    description: "Provider and region",
   },
 ] as const
 
@@ -59,8 +57,6 @@ export function EnvironmentCreateFlow() {
   const [activeStep, setActiveStep] = useState<StepId>("basics")
   const [templates, setTemplates] = useState<Template[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
-  const [instanceTypes, setInstanceTypes] = useState<InstanceType[]>([])
-  const [instanceGroupTemplates, setInstanceGroupTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([])
   const [credentials, setCredentials] = useState<ProviderCredential[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -111,48 +107,8 @@ export function EnvironmentCreateFlow() {
   
   const [clusterForm, setClusterForm] = useState<ClusterFormData>({
     providerId: "",
-    region: "",
-    instanceGroups: [
-      {
-        id: crypto.randomUUID(),
-        instanceTypeId: "",
-        role: "",
-        quantity: 1,
-        metadata: "",
-      },
-    ],
+    credentialId: "",
   })
-
-  const instanceGroupTemplatesBySlug = useMemo(() => {
-    const map: Record<string, string> = {}
-    instanceGroupTemplates.forEach((tpl) => {
-      map[tpl.slug] = tpl.id
-    })
-    return map
-  }, [instanceGroupTemplates])
-
-  const instanceTypesByProvider = useMemo(() => {
-    const map: Record<string, InstanceType[]> = {}
-    instanceTypes.forEach((type) => {
-      const pid = (type as any).providerId || (type as any).provider_id || (type as any).providerId || type.providerId
-      if (pid) {
-        if (!map[pid]) map[pid] = []
-        map[pid].push(type)
-      }
-    })
-    return map
-  }, [instanceTypes])
-
-  const buildDefaultsFromSections = (sections: Array<{ fields?: Array<{ name: string; default?: unknown }> }> = []) => {
-    return sections.reduce<Record<string, unknown>>((acc, section) => {
-      section.fields?.forEach((field) => {
-        if (field.default !== undefined) {
-          acc[field.name] = field.default
-        }
-      })
-      return acc
-    }, {})
-  }
 
   useEffect(() => {
     let active = true
@@ -160,17 +116,13 @@ export function EnvironmentCreateFlow() {
     async function load() {
       setIsLoadingData(true)
       try {
-        const [templateData, providerData, instanceTypeData, instanceGroupTemplateData] = await Promise.all([
+        const [templateData, providerData] = await Promise.all([
           templatesApi.list().catch(() => []),
           (currentOrg ? providersApi.list(String(currentOrg.id)) : Promise.resolve([])).catch(() => []),
-          instanceTypesApi.list().catch(() => []),
-          instanceGroupTemplatesApi.list().catch(() => []),
         ])
         if (!active) return
         setTemplates(templateData)
         setProviders(providerData)
-        setInstanceTypes(instanceTypeData)
-        setInstanceGroupTemplates(instanceGroupTemplateData.map((t) => ({ id: t.id, name: t.name, slug: t.slug })))
 
         const firstHealthy = providerData.find((p) => p.status !== "DOWN")
         const defaultProvider = firstHealthy || providerData[0]
@@ -186,8 +138,6 @@ export function EnvironmentCreateFlow() {
         if (active) {
           setTemplates([])
           setProviders([])
-          setInstanceTypes([])
-          setInstanceGroupTemplates([])
         }
       } finally {
         if (active) setIsLoadingData(false)
@@ -214,55 +164,6 @@ export function EnvironmentCreateFlow() {
       .catch(() => { if (active) setCredentials([]) })
     return () => { active = false }
   }, [clusterForm.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Prefill cluster form from environment template topology (e.g., AkoFlow + GKE)
-  useEffect(() => {
-    if (environmentTemplateId === "none") return
-    if (!definition?.cluster_topology?.instance_groups) return
-
-    // Avoid overriding if user already configured groups with templates
-    const hasConfiguredGroups = clusterForm.instanceGroups.some(
-      (g) => g.instanceGroupTemplateId || g.instanceTypeId
-    )
-    if (hasConfiguredGroups) return
-
-    // Choose provider: prefer GCP for akoflow-gke, else first available
-    const gcpProvider = providers.find((p) => p.name?.toUpperCase() === "GCP")
-    const provider = gcpProvider || providers[0]
-    if (!provider) return
-
-    const regionFromVars = (environmentVariables as any)?.gcp_region || "us-central1"
-    const providerTypes = instanceTypesByProvider[provider.id] || instanceTypes
-
-    const groups = definition.cluster_topology.instance_groups.map((group: any) => {
-      const slug = group.instance_group_template_slug || group.instance_group_template_id || group.name
-      const templateId = instanceGroupTemplatesBySlug[slug] || ""
-      const instanceTypeId = providerTypes[0]?.id || ""
-      const cfg = (definition as any).instance_configurations?.[slug]
-      const cfgDefaults = cfg ? buildDefaultsFromSections(cfg.sections || []) : {}
-      const terraformDefaults = {
-        ...cfgDefaults,
-        ...(group.default_terraform_variables || {}),
-      }
-      return {
-        id: crypto.randomUUID(),
-        instanceTypeId,
-        instanceGroupTemplateId: templateId,
-        role: group.name,
-        quantity: group.quantity || 1,
-        metadata: "",
-        terraformVariables: terraformDefaults,
-        lifecycleHooks: {},
-      }
-    })
-
-    setClusterForm((prev) => ({
-      ...prev,
-      providerId: provider.id,
-      region: regionFromVars,
-      instanceGroups: groups,
-    }))
-  }, [environmentTemplateId, definition, providers, instanceTypes, instanceTypesByProvider, instanceGroupTemplatesBySlug, environmentVariables, clusterForm.instanceGroups])
 
   function validateConfigFields(): Record<string, string> {
     const errors: Record<string, string> = {}
@@ -346,12 +247,8 @@ export function EnvironmentCreateFlow() {
   function canProceed(step: StepId) {
     if (step === "basics") return basics.name.trim().length > 0
     if (step === "template") return true
-    if (step === "config") {
-      // Config step is always allowed (fields are optional if template is "none")
-      return true
-    }
-    const hasGroups = clusterForm.instanceGroups.some((g) => g.instanceTypeId && g.quantity > 0)
-    return Boolean(clusterForm.providerId && clusterForm.region && hasGroups)
+    if (step === "config") return true
+    return Boolean(clusterForm.providerId && clusterForm.credentialId)
   }
 
   async function handleFinish() {
@@ -361,41 +258,7 @@ export function EnvironmentCreateFlow() {
     try {
       const configurationJson = buildConfigurationJson()
 
-      // Build instance groups, validating metadata JSON along the way
-      const instanceGroupsPayload: Array<{
-        instance_type_id: string
-        instance_group_template_id?: string
-        role?: string
-        quantity: number
-        metadata?: Record<string, unknown>
-        terraform_variables?: Record<string, unknown>
-        lifecycle_hooks?: Record<string, string>
-      }> = []
-
-      for (const group of clusterForm.instanceGroups.filter((g) => g.instanceTypeId && g.quantity > 0)) {
-        let metadata: Record<string, unknown> | undefined
-        if (group.metadata.trim()) {
-          try {
-            metadata = JSON.parse(group.metadata)
-          } catch {
-            toast.error(`Invalid metadata JSON in group ${group.role || group.instanceTypeId}`)
-            setIsSubmitting(false)
-            return
-          }
-        }
-
-        instanceGroupsPayload.push({
-          instance_type_id: group.instanceTypeId,
-          instance_group_template_id: group.instanceGroupTemplateId || undefined,
-          role: group.role || undefined,
-          quantity: group.quantity,
-          metadata,
-          ...(group.terraformVariables && Object.keys(group.terraformVariables).length > 0 && { terraform_variables: group.terraformVariables }),
-          ...(group.lifecycleHooks && Object.keys(group.lifecycleHooks).length > 0 && { lifecycle_hooks: group.lifecycleHooks }),
-        })
-      }
-
-      const hasCluster = instanceGroupsPayload.length > 0 && Boolean(clusterForm.providerId) && Boolean(clusterForm.region)
+      const hasCluster = Boolean(clusterForm.providerId) && Boolean(clusterForm.credentialId)
 
       const payload = {
         name: basics.name.trim(),
@@ -406,9 +269,7 @@ export function EnvironmentCreateFlow() {
         ...(hasCluster && {
           cluster: {
             provider_id: clusterForm.providerId,
-            region: clusterForm.region,
-            node_count: instanceGroupsPayload.reduce((sum, g) => sum + g.quantity, 0),
-            instance_groups: instanceGroupsPayload,
+            credential_id: clusterForm.credentialId,
           },
         }),
       }
@@ -708,7 +569,7 @@ export function EnvironmentCreateFlow() {
           <div className="flex flex-col gap-4">
             <div>
               <h2 className="text-sm font-semibold text-foreground">Cluster & instances</h2>
-              <p className="text-xs text-muted-foreground">Define provider, template, region, and instance groups.</p>
+              <p className="text-xs text-muted-foreground">Select provider and credentials. Region and instance configuration are defined in the Terraform template.</p>
             </div>
 
             <ClusterFormFields
@@ -716,8 +577,6 @@ export function EnvironmentCreateFlow() {
               onFormChange={setClusterForm}
               providers={providers}
               credentials={credentials}
-              instanceTypes={instanceTypes}
-              instanceGroupTemplates={instanceGroupTemplates}
               isCompact={true}
             />
           </div>

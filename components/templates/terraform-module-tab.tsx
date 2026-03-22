@@ -130,10 +130,10 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
     setLoadingProviders(true)
     try {
       const list = await providersApi.list(String(currentOrg.id))
-      const cloudProviders = (list as Provider[]).filter((p) => p.type === "CLOUD")
-      setProviders(cloudProviders)
-      if (!activeProvider && cloudProviders.length) {
-        setActiveProvider(cloudProviders[0].slug as TerraformProviderType)
+      const allProviders = list as Provider[]
+      setProviders(allProviders)
+      if (!activeProvider && allProviders.length) {
+        setActiveProvider(allProviders[0].slug as TerraformProviderType)
       }
     } finally {
       setLoadingProviders(false)

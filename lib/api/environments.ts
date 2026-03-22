@@ -32,7 +32,7 @@ export const environmentsApi = {
       configuration_json?: Record<string, unknown>
       cluster?: {
         provider_id: string
-        region: string
+        region?: string
         cluster_template_id?: string
         node_count?: number
         instance_groups?: Array<{

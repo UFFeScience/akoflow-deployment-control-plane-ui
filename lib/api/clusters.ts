@@ -9,7 +9,7 @@ export const clustersApi = {
       templateId?: string
       providerId: string
       credentialId: string
-      region: string
+      region?: string
       instanceTypeId?: string
       role?: string
       nodeCount?: number
@@ -20,10 +20,11 @@ export const clustersApi = {
     const payload: Record<string, unknown> = {
       provider_id: data.providerId,
       provider_credential_id: data.credentialId,
-      region: data.region,
       cluster_template_id: data.templateId ?? undefined,
       environment_type: 'CLOUD',
     }
+
+    if (data.region) payload['region'] = data.region
 
     if (data.role) payload['role'] = data.role
     if (data.nodeCount) payload['node_count'] = data.nodeCount
