@@ -26,6 +26,8 @@ interface EnvironmentConfigurationFormProps {
   values: Record<string, unknown>
   onChange: (values: Record<string, unknown>) => void
   errors?: Record<string, string>
+  /** When set, only show sections/fields tagged for this provider (or untagged). */
+  activeProvider?: string
 }
 
 export function EnvironmentConfigurationForm({
@@ -33,6 +35,7 @@ export function EnvironmentConfigurationForm({
   values,
   onChange,
   errors = {},
+  activeProvider,
 }: EnvironmentConfigurationFormProps) {
   const environmentConfig = (definition as any).environment_configuration
 
@@ -51,34 +54,45 @@ export function EnvironmentConfigurationForm({
   const groups: any[] = environmentConfig.groups ?? []
   const sections: any[] = environmentConfig.sections
 
-  const renderSection = (section: any, sectionIdx: number, total: number) => (
-    <div key={section.name}>
-      {sectionIdx > 0 && <Separator className="my-2" />}
-      <div className="flex flex-col gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{section.label}</h3>
-          {section.description && (
-            <p className="text-xs text-muted-foreground mt-1">{section.description}</p>
-          )}
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {section.fields.map((field: any) => (
-            <div
-              key={field.name}
-              className={field.type === "text" || field.type === "script" ? "md:col-span-2" : ""}
-            >
-              <FormFieldComponent
-                field={field}
-                value={values[field.name]}
-                onChange={(value) => handleFieldChange(field.name, value)}
-                error={errors[field.name]}
-              />
-            </div>
-          ))}
+  /** Returns true if the item should be shown for the currently selected provider. */
+  const isVisibleForProvider = (itemProviders: string[] | undefined) => {
+    if (!activeProvider || !itemProviders || itemProviders.length === 0) return true
+    return itemProviders.includes(activeProvider)
+  }
+
+  const renderSection = (section: any, sectionIdx: number) => {
+    if (!isVisibleForProvider(section.providers)) return null
+    const visibleFields = section.fields.filter((f: any) => isVisibleForProvider(f.providers))
+    if (visibleFields.length === 0) return null
+    return (
+      <div key={section.name}>
+        {sectionIdx > 0 && <Separator className="my-2" />}
+        <div className="flex flex-col gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{section.label}</h3>
+            {section.description && (
+              <p className="text-xs text-muted-foreground mt-1">{section.description}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {visibleFields.map((field: any) => (
+              <div
+                key={field.name}
+                className={field.type === "text" || field.type === "script" ? "md:col-span-2" : ""}
+              >
+                <FormFieldComponent
+                  field={field}
+                  value={values[field.name]}
+                  onChange={(value) => handleFieldChange(field.name, value)}
+                  error={errors[field.name]}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,42 +108,50 @@ export function EnvironmentConfigurationForm({
         <div className="flex flex-col gap-4">
           {groups.map((group) => {
             const groupSections = sections.filter((s) => s.group === group.name)
-            return (
-              <div
-                key={group.name}
-                className={cn("rounded-lg border p-4 flex flex-col gap-4", GROUP_STYLE[group.name] ?? "border-border bg-muted/30")}
-              >
-                <div className="flex items-center gap-2">
-                  <span className={cn(GROUP_HEADER_STYLE[group.name] ?? "text-foreground")}>
-                    {GROUP_ICON[group.icon ?? ""] ?? null}
-                  </span>
-                  <div>
-                    <h3 className={cn("text-sm font-semibold", GROUP_HEADER_STYLE[group.name] ?? "text-foreground")}>
-                      {group.label}
-                    </h3>
-                    {group.description && (
-                      <p className="text-xs text-muted-foreground">{group.description}</p>
-                    )}
+                const visibleGroupSections = groupSections.filter(
+                  (s: any) =>
+                    isVisibleForProvider(s.providers) &&
+                    s.fields.some((f: any) => isVisibleForProvider(f.providers))
+                )
+                if (visibleGroupSections.length === 0) return null
+                return (
+                  <div
+                    key={group.name}
+                    className={cn("rounded-lg border p-4 flex flex-col gap-4", GROUP_STYLE[group.name] ?? "border-border bg-muted/30")}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={cn(GROUP_HEADER_STYLE[group.name] ?? "text-foreground")}>
+                        {GROUP_ICON[group.icon ?? ""] ?? null}
+                      </span>
+                      <div>
+                        <h3 className={cn("text-sm font-semibold", GROUP_HEADER_STYLE[group.name] ?? "text-foreground")}>
+                          {group.label}
+                        </h3>
+                        {group.description && (
+                          <p className="text-xs text-muted-foreground">{group.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      {visibleGroupSections.map((section, idx) => renderSection(section, idx))}
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-col gap-4">
-                  {groupSections.map((section, idx) => renderSection(section, idx, groupSections.length))}
-                </div>
-              </div>
-            )
+                )
           })}
 
           {/* Ungrouped sections fallback */}
-          {sections.filter((s) => !s.group).length > 0 && (
+          {sections.filter((s: any) => !s.group && isVisibleForProvider(s.providers) && s.fields.some((f: any) => isVisibleForProvider(f.providers))).length > 0 && (
             <div className="rounded-lg border border-border bg-muted/30 p-4 flex flex-col gap-4">
-              {sections.filter((s) => !s.group).map((section, idx, arr) => renderSection(section, idx, arr.length))}
+              {sections
+                .filter((s: any) => !s.group && isVisibleForProvider(s.providers) && s.fields.some((f: any) => isVisibleForProvider(f.providers)))
+                .map((section: any, idx: number) => renderSection(section, idx))}
             </div>
           )}
         </div>
       ) : (
         // Flat layout (no groups)
         <div className="rounded-lg border border-border bg-muted/30 p-4 flex flex-col gap-4">
-          {sections.map((section, idx) => renderSection(section, idx, sections.length))}
+          {sections.map((section: any, idx: number) => renderSection(section, idx))}
         </div>
       )}
     </div>

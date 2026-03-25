@@ -201,6 +201,24 @@ export function EnvironmentDetailView() {
     )
   }
 
+  // Derive which providers are actually configured for this environment from its deployments
+  const seen = new Set<string>()
+  const activeProviders: Array<{ id: string; slug: string; name: string }> = []
+  for (const d of deployments) {
+    const creds = d.provider_credentials ?? []
+    for (const cred of creds) {
+      const pid = String(cred.provider_id ?? "")
+      if (!pid || seen.has(pid)) continue
+      seen.add(pid)
+      const match = providers.find((p) => String(p.id) === pid)
+      activeProviders.push({
+        id: pid,
+        slug: cred.provider_slug ?? match?.slug ?? match?.type?.toLowerCase() ?? pid,
+        name: match?.name ?? pid,
+      })
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <EnvironmentHeader
@@ -212,6 +230,7 @@ export function EnvironmentDetailView() {
         lastUpdatedAt={lastRefreshedAt}
         onDestroyEnvironment={handleDestroyEnvironment}
         isDestroying={isDestroyingEnv}
+        activeProviders={activeProviders}
       />
 
       <EnvironmentTabs
@@ -222,6 +241,7 @@ export function EnvironmentDetailView() {
         resourcesByDeployment={resourcesByDeployment}
         providers={providers}
         templates={templates}
+        activeProviders={activeProviders}
         isLoadingResources={isLoadingResources}
         onDeploymentsChange={(next) => {
           const normalized = next.map((c: any) => normalizeDeployment(c))

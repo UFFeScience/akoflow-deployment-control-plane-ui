@@ -6,6 +6,7 @@ import type { Environment } from "@/lib/api/types"
 
 interface ConfigurationTabProps {
   environment: Environment
+  activeProviders?: Array<{ id: string; slug: string; name: string }>
 }
 
 function ValueDisplay({ value }: { value: unknown }) {
@@ -45,7 +46,7 @@ function SectionFields({
   )
 }
 
-export function ConfigurationTab({ environment }: ConfigurationTabProps) {
+export function ConfigurationTab({ environment, activeProviders }: ConfigurationTabProps) {
   const configJson: Record<string, unknown> =
     (environment as any).configuration_json || {}
 
@@ -72,6 +73,35 @@ export function ConfigurationTab({ environment }: ConfigurationTabProps) {
             {templateName}
           </Badge>
         </div>
+      )}
+
+      {/* Configured providers — from actual deployments */}
+      {activeProviders && activeProviders.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Configured Providers</CardTitle>
+            <CardDescription className="text-xs">
+              Cloud providers selected when this environment was created.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {activeProviders.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-2"
+                >
+                  <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+                    {p.slug || p.name}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5 text-muted-foreground">
+                    {p.name}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Environment-level configuration */}

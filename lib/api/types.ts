@@ -227,18 +227,22 @@ export interface InstanceType {
   updatedAt?: string
 }
 
+export interface DeploymentProviderCredential {
+  id: string
+  provider_id: string
+  provider_slug?: string | null
+  provider_credential_id?: string | null
+}
+
 export interface Deployment {
   id: string
   // snake_case from API
   environment_id?: string
-  provider_id?: string
-  provider_credential_id?: string | null
+  provider_credentials?: DeploymentProviderCredential[]
   deployment_template_id?: string | null
   environment_type?: string
   // camelCase normalized
   environmentId?: string
-  providerId?: string
-  providerName?: string
   region?: string | null
   name?: string
   status: string
@@ -358,6 +362,22 @@ export interface TerraformModule {
 }
 
 export interface TemplateDefinition {
+  /**
+   * All provider slugs this template supports.
+   * Drives the credential selectors and the config-step provider tabs.
+   */
+  providers?: string[]
+  /**
+   * Subset of `providers` that are mandatory for every deployment.
+   * The user may additionally enable optional providers from the `providers` list.
+   * When absent, all listed providers are treated as optional (user picks which to use).
+   */
+  required_providers?: string[]
+  /**
+   * Minimum number of providers the user must select for a deployment.
+   * Defaults to 1 when providers are defined.
+   */
+  min_providers?: number
   deployment_defaults?: Record<string, unknown>
   ui?: {
     allow_multiple_instance_groups?: boolean
@@ -403,6 +423,12 @@ export interface FormSection {
   label: string
   description?: string
   group?: string
+  /**
+   * When set, this entire section is only relevant for the listed provider slugs.
+   * The UI can use this to show/hide or annotate the section.
+   * Examples: ["aws"], ["gcp"], ["aws", "gcp"]
+   */
+  providers?: string[]
   fields: FormField[]
 }
 
@@ -421,6 +447,11 @@ export interface FormField {
   max?: number
   step?: number
   options?: { label: string; value: string }[]
+  /**
+   * When set, this field is only relevant for the listed provider slugs.
+   * Examples: ["aws"], ["gcp"]
+   */
+  providers?: string[]
 }
 
 export interface LifecycleHook {

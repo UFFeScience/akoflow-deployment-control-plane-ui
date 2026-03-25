@@ -18,6 +18,7 @@ interface EnvironmentTabsProps {
   resourcesByDeployment: Record<string, ProvisionedResource[]>
   providers: Provider[]
   templates: Template[]
+  activeProviders?: Array<{ id: string; slug: string; name: string }>
   isLoadingResources?: boolean
   onDeploymentsChange: (deployments: Deployment[]) => void
   onRefreshDeployments: () => Promise<void>
@@ -31,6 +32,7 @@ export function EnvironmentTabs({
   resourcesByDeployment,
   providers,
   templates,
+  activeProviders,
   isLoadingResources = false,
   onDeploymentsChange,
   onRefreshDeployments,
@@ -112,7 +114,7 @@ export function EnvironmentTabs({
       </TabsContent>
 
       <TabsContent value="configuration" className="mt-3">
-        {environment && <ConfigurationTab environment={environment} />}
+        {environment && <ConfigurationTab environment={environment} activeProviders={activeProviders} />}
       </TabsContent>
 
       <TabsContent value="preview" className="mt-3">

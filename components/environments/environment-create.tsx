@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Cloud, Sparkles } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-state"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,7 @@ import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
 import { useAuth } from "@/contexts/auth-context"
 import type { Provider, ProviderCredential, Template, TemplateVersion } from "@/lib/api/types"
-import { DeploymentFormFields, type DeploymentFormData } from "./deployment-form-fields"
+import { DeploymentFormFields, multiFormToPayload, type DeploymentFormData, type MultiProviderFormData } from "./deployment-form-fields"
 import { useTemplateDefinition } from "@/hooks/use-template-definition"
 import { DynamicForm } from "@/components/form/dynamic-form"
 import { EnvironmentConfigurationForm } from "@/components/form/environment-configuration-form"
@@ -36,12 +36,12 @@ const steps = [
   {
     id: "config",
     title: "Configuration",
-    description: "Template variables and lifecycle hooks",
+    description: "Provider, template variables and lifecycle hooks",
   },
   {
     id: "deployment",
     title: "Deployment",
-    description: "Provider and region",
+    description: "Credentials for selected providers",
   },
 ] as const
 
@@ -102,11 +102,27 @@ export function EnvironmentCreateFlow() {
     environmentTemplateId === "none" ? null : environmentTemplateId,
     selectedTemplateVersionId,
   )
-  
+
+  // Derived from template definition
+  const availableSlugs = definition?.providers ?? []
+  const mandatorySlugs = definition?.required_providers ?? []
+  const minProviders = definition?.min_providers ?? (availableSlugs.length > 0 ? 1 : 0)
+  const isMultiProvider = availableSlugs.length > 0
+
   const [deploymentForm, setDeploymentForm] = useState<DeploymentFormData>({
     providerId: "",
     credentialId: "",
   })
+  const [multiDeploymentForm, setMultiDeploymentForm] = useState<MultiProviderFormData>({ providerCredentials: {} })
+  const [credentialsBySlug, setCredentialsBySlug] = useState<Record<string, ProviderCredential[]>>({})
+  const [activeConfigProvider, setActiveConfigProvider] = useState<string>("")
+  // Which optional providers the user has toggled on (required ones are always active)
+  const [selectedOptionalSlugs, setSelectedOptionalSlugs] = useState<string[]>([])
+
+  // Slugs that will actually be used in this deployment
+  const activeSlugs = isMultiProvider
+    ? [...new Set([...mandatorySlugs, ...selectedOptionalSlugs.filter((s) => availableSlugs.includes(s))])]
+    : []
 
   useEffect(() => {
     let active = true
@@ -162,6 +178,73 @@ export function EnvironmentCreateFlow() {
       .catch(() => { if (active) setCredentials([]) })
     return () => { active = false }
   }, [deploymentForm.providerId, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync the active config-step provider tab when the template changes
+  useEffect(() => {
+    if (definition?.providers && definition.providers.length > 0) {
+      const slugs = definition.providers
+      const mandatory = definition.required_providers ?? []
+      // If only one provider available, pre-select it even if optional
+      const preselectedOptional =
+        slugs.length === 1 && !mandatory.includes(slugs[0]) ? [slugs[0]] : []
+      setSelectedOptionalSlugs(preselectedOptional)
+      // Keep active tab if still valid, otherwise clear (form shows after selection)
+      setActiveConfigProvider((prev) => (prev && slugs.includes(prev) ? prev : ""))
+    } else {
+      setActiveConfigProvider("")
+      setSelectedOptionalSlugs([])
+    }
+  }, [definition])
+
+  // Keep active config tab valid when activeSlugs changes
+  useEffect(() => {
+    if (activeSlugs.length === 1) {
+      // Auto-select the sole remaining provider
+      setActiveConfigProvider(activeSlugs[0])
+    } else if (activeSlugs.length > 1 && activeConfigProvider && !activeSlugs.includes(activeConfigProvider)) {
+      // Active tab was deselected — clear so empty state shows
+      setActiveConfigProvider("")
+    } else if (activeSlugs.length === 0) {
+      setActiveConfigProvider("")
+    }
+  }, [activeSlugs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // For multi-provider templates, load credentials for every active slug
+  useEffect(() => {
+    if (!isMultiProvider || !currentOrg || !providers.length) {
+      setCredentialsBySlug({})
+      return
+    }
+    let active = true
+    Promise.all(
+      availableSlugs.map(async (slug) => {
+        const match = providers.find(
+          (p) => p.slug === slug || p.type?.toLowerCase() === slug.toLowerCase()
+        )
+        if (!match) return [slug, [] as ProviderCredential[]] as const
+        const creds = await providersApi
+          .listCredentials(String(currentOrg.id), String(match.id))
+          .catch(() => [] as ProviderCredential[])
+        return [slug, creds] as const
+      })
+    ).then((results) => {
+      if (!active) return
+      setCredentialsBySlug(Object.fromEntries(results))
+      setMultiDeploymentForm((prev) => {
+        const updated = { ...prev.providerCredentials }
+        for (const slug of availableSlugs) {
+          if (!updated[slug]?.providerId) {
+            const match = providers.find(
+              (p) => p.slug === slug || p.type?.toLowerCase() === slug.toLowerCase()
+            )
+            if (match) updated[slug] = { providerId: String(match.id), credentialId: "" }
+          }
+        }
+        return { providerCredentials: updated }
+      })
+    })
+    return () => { active = false }
+  }, [isMultiProvider, definition, providers, currentOrg]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function validateConfigFields(): Record<string, string> {
     const errors: Record<string, string> = {}
@@ -224,7 +307,18 @@ export function EnvironmentCreateFlow() {
   function canProceed(step: StepId) {
     if (step === "basics") return basics.name.trim().length > 0
     if (step === "template") return true
-    if (step === "config") return true
+    if (step === "config") {
+      if (isMultiProvider && activeSlugs.length < minProviders) return false
+      return true
+    }
+    if (isMultiProvider) {
+      const allFilled = activeSlugs.every(
+        (slug) =>
+          Boolean(multiDeploymentForm.providerCredentials[slug]?.providerId) &&
+          Boolean(multiDeploymentForm.providerCredentials[slug]?.credentialId)
+      )
+      return allFilled
+    }
     return Boolean(deploymentForm.providerId && deploymentForm.credentialId)
   }
 
@@ -235,7 +329,15 @@ export function EnvironmentCreateFlow() {
     try {
       const configurationJson = buildConfigurationJson()
 
-      const hasDeployment = Boolean(deploymentForm.providerId) && Boolean(deploymentForm.credentialId)
+      const providerCredentials = isMultiProvider
+        ? multiFormToPayload(multiDeploymentForm).filter((e) => activeSlugs.some((s) => {
+            const match = providers.find((p) => p.slug === s || p.type?.toLowerCase() === s.toLowerCase())
+            return match && String(match.id) === e.provider_id
+          }))
+        : deploymentForm.providerId
+          ? [{ provider_id: deploymentForm.providerId, credential_id: deploymentForm.credentialId || null }]
+          : []
+      const hasDeployment = Boolean(providerCredentials.length)
 
       const payload = {
         name: basics.name.trim(),
@@ -245,8 +347,7 @@ export function EnvironmentCreateFlow() {
         ...(Object.keys(configurationJson).length > 0 && { configuration_json: configurationJson }),
         ...(hasDeployment && {
           deployment: {
-            provider_id: deploymentForm.providerId,
-            provider_credential_id: deploymentForm.credentialId,
+            provider_credentials: providerCredentials,
           },
         }),
       }
@@ -457,48 +558,154 @@ export function EnvironmentCreateFlow() {
 
             {definition && (
               <div className="flex flex-col gap-6">
-                {/* Environment Configuration Section */}
-                {(definition as any).environment_configuration && (
-                  <EnvironmentConfigurationForm
-                    definition={definition}
-                    values={environmentVariables}
-                    onChange={(v) => { setEnvironmentVariables(v); setShowConfigErrors(false) }}
-                    errors={configErrors}
-                  />
-                )}
-
-                {/* Fallback to original DynamicForm for backward compatibility */}
-                {!(definition as any).environment_configuration &&
-                  !(definition as any).instance_configurations &&
-                  definition.sections &&
-                  definition.sections.length > 0 && (
-                    <div>
-                      <DynamicForm
-                        definition={definition}
-                        values={environmentVariables}
-                        onChange={setEnvironmentVariables}
-                      />
+                {/* Provider selection — required/optional */}
+                {isMultiProvider && availableSlugs.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold text-foreground">Cloud providers</p>
+                    {minProviders > 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Required providers are always included. Enable optional ones you also want to deploy to.
+                        {activeSlugs.length < minProviders && (
+                          <span className="ml-1 text-amber-600 font-medium">
+                            At least {minProviders} provider{minProviders > 1 ? "s" : ""} must be selected
+                            {` (${activeSlugs.length}/${minProviders} selected)`}.
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    <div className="flex flex-col gap-1.5">
+                      {availableSlugs.map((slug) => {
+                        const isMandatory = mandatorySlugs.includes(slug)
+                        const isSelected = isMandatory || selectedOptionalSlugs.includes(slug)
+                        return (
+                          <label
+                            key={slug}
+                            className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
+                              isSelected ? "border-primary/50 bg-primary/5" : "border-border bg-background"
+                            } ${isMandatory ? "cursor-default" : "cursor-pointer"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-primary"
+                              checked={isSelected}
+                              disabled={isMandatory}
+                              onChange={() => {
+                                if (isMandatory) return
+                                setSelectedOptionalSlugs((prev) =>
+                                  prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+                                )
+                              }}
+                            />
+                            <span className="flex-1">
+                              <span className="text-xs font-semibold uppercase tracking-wide">{slug}</span>
+                            </span>
+                            {isMandatory && (
+                              <span className="text-[11px] rounded border border-amber-500/30 bg-amber-500/10 text-amber-600 px-1.5 py-0.5 font-medium">required</span>
+                            )}
+                            {!isMandatory && (
+                              <span className="text-[11px] text-muted-foreground">optional</span>
+                            )}
+                          </label>
+                        )
+                      })}
                     </div>
-                  )}
-
-                {definition.lifecycle_hooks && definition.lifecycle_hooks.length > 0 && (
-                  <div>
-                    <LifecycleHooksForm
-                      definition={definition}
-                      values={lifecycleHooks}
-                      onChange={setLifecycleHooks}
-                    />
                   </div>
                 )}
 
-                {!(definition as any).environment_configuration &&
-                  !(definition as any).instance_configurations &&
-                  (!definition.sections || definition.sections.length === 0) &&
-                  (!definition.lifecycle_hooks || definition.lifecycle_hooks.length === 0) && (
-                    <div className="text-sm text-muted-foreground">
-                      This template has no additional configuration options.
+                {/* Provider tabs — filter config fields by active (selected) providers */}
+                {activeSlugs.length > 0 && (
+                  <div className="flex items-center gap-0 border-b border-border">
+                    {activeSlugs.map((slug) => (
+                      <button
+                        key={slug}
+                        type="button"
+                        onClick={() => setActiveConfigProvider(slug)}
+                        className={`relative px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                          activeConfigProvider === slug
+                            ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-t"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {slug}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty state — no provider selected yet */}
+                {isMultiProvider && activeSlugs.length === 0 && (
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/10 py-12">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Cloud className="h-6 w-6 text-muted-foreground" />
                     </div>
-                  )}
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground">No provider selected</p>
+                      <p className="text-xs text-muted-foreground mt-1">Select at least one cloud provider above to configure its settings.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty state — provider selected but no tab active */}
+                {isMultiProvider && activeSlugs.length > 0 && !activeConfigProvider && (
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/10 py-12">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Cloud className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground">Choose a provider tab</p>
+                      <p className="text-xs text-muted-foreground mt-1">Select a provider tab above to configure its specific settings.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form — only shown when a provider tab is active */}
+                {(!isMultiProvider || activeConfigProvider) && (
+                  <>
+                    {/* Environment Configuration Section */}
+                    {(definition as any).environment_configuration && (
+                      <EnvironmentConfigurationForm
+                        definition={definition}
+                        values={environmentVariables}
+                        onChange={(v) => { setEnvironmentVariables(v); setShowConfigErrors(false) }}
+                        errors={configErrors}
+                        activeProvider={activeConfigProvider || undefined}
+                      />
+                    )}
+
+                    {/* Fallback to original DynamicForm for backward compatibility */}
+                    {!(definition as any).environment_configuration &&
+                      !(definition as any).instance_configurations &&
+                      definition.sections &&
+                      definition.sections.length > 0 && (
+                        <div>
+                          <DynamicForm
+                            definition={definition}
+                            values={environmentVariables}
+                            onChange={setEnvironmentVariables}
+                          />
+                        </div>
+                      )}
+
+                    {definition.lifecycle_hooks && definition.lifecycle_hooks.length > 0 && (
+                      <div>
+                        <LifecycleHooksForm
+                          definition={definition}
+                          values={lifecycleHooks}
+                          onChange={setLifecycleHooks}
+                        />
+                      </div>
+                    )}
+
+                    {!(definition as any).environment_configuration &&
+                      !(definition as any).instance_configurations &&
+                      (!definition.sections || definition.sections.length === 0) &&
+                      (!definition.lifecycle_hooks || definition.lifecycle_hooks.length === 0) && (
+                        <div className="text-sm text-muted-foreground">
+                          This template has no additional configuration options.
+                        </div>
+                      )}
+                  </>
+                )}
               </div>
             )}
 
@@ -534,17 +741,29 @@ export function EnvironmentCreateFlow() {
         {activeStep === "deployment" && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Deployment </h2>
-              <p className="text-xs text-muted-foreground">Select provider and credentials. Region and instance configuration are defined in the template.</p>
+              <h2 className="text-sm font-semibold text-foreground">Deployment credentials</h2>
+              <p className="text-xs text-muted-foreground">Select credentials for each provider chosen in the configuration step.</p>
             </div>
 
-            <DeploymentFormFields
-              form={deploymentForm}
-              onFormChange={setDeploymentForm}
-              providers={providers}
-              credentials={credentials}
-              isCompact={true}
-            />
+            {isMultiProvider ? (
+              <DeploymentFormFields
+                mode="multi"
+                requiredProviderSlugs={activeSlugs}
+                form={multiDeploymentForm}
+                onFormChange={setMultiDeploymentForm}
+                providers={providers}
+                credentialsBySlug={credentialsBySlug}
+                isCompact={true}
+              />
+            ) : (
+              <DeploymentFormFields
+                form={deploymentForm}
+                onFormChange={setDeploymentForm}
+                providers={providers}
+                credentials={credentials}
+                isCompact={true}
+              />
+            )}
           </div>
         )}
       </div>

@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react"
+import { Plus, Trash2, ChevronDown, ChevronRight, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { TemplateDefinition, FormField, FormSection, TemplateConfigGroup } from "@/lib/api/types"
 
@@ -30,10 +31,18 @@ export interface DraftSection {
   label: string
   description: string
   group: string
+  /** Provider slugs this section is scoped to (empty = all providers). */
+  providers?: string[]
   fields: DraftField[]
 }
 
 export interface DraftDefinition {
+  /** All provider slugs this template supports (e.g. ["aws", "gcp"]) */
+  providers: string[]
+  /** Subset that are mandatory for every deployment */
+  required_providers: string[]
+  /** Minimum number of providers the user must select */
+  min_providers: number
   environment_configuration: {
     label: string
     description: string
@@ -57,11 +66,14 @@ function emptyGroup(): DraftGroup {
 }
 
 function emptySection(): DraftSection {
-  return { _id: uid(), name: "", label: "", description: "", group: "", fields: [emptyField()] }
+  return { _id: uid(), name: "", label: "", description: "", group: "", providers: [], fields: [emptyField()] }
 }
 
 export function emptyDraftDefinition(): DraftDefinition {
   return {
+    providers: [],
+    required_providers: [],
+    min_providers: 1,
     environment_configuration: { label: "Environment Configuration", description: "", groups: [], sections: [emptySection()] },
   }
 }
@@ -72,11 +84,13 @@ export function draftToDefinition(draft: DraftDefinition): TemplateDefinition {
     ...f as any,
     type: f.type as FormField["type"],
     options: f.options?.filter((o) => o.label || o.value),
+    providers: f.providers && f.providers.length > 0 ? f.providers : undefined,
   })
 
   const cleanSection = ({ _id, ...s }: DraftSection): FormSection => ({
     ...s,
     group: s.group || undefined,
+    providers: s.providers && s.providers.length > 0 ? s.providers : undefined,
     fields: s.fields.map(cleanField),
   })
 
@@ -90,6 +104,9 @@ export function draftToDefinition(draft: DraftDefinition): TemplateDefinition {
   const expCfg = draft.environment_configuration
   const groups = expCfg.groups.filter((g) => g.name).map(cleanGroup)
   return {
+    providers: draft.providers.length > 0 ? draft.providers : undefined,
+    required_providers: draft.required_providers.length > 0 ? draft.required_providers : undefined,
+    min_providers: draft.min_providers > 1 ? draft.min_providers : undefined,
     environment_configuration: {
       label: expCfg.label || "Environment Configuration",
       description: expCfg.description,
@@ -105,6 +122,7 @@ export function definitionToDraft(def: TemplateDefinition): DraftDefinition {
   const draftField = (f: FormField): DraftField => ({ ...f, _id: uid() })
   const draftSection = (s: FormSection): DraftSection => ({
     ...s, _id: uid(), description: s.description ?? "", group: s.group ?? "",
+    providers: s.providers ? [...s.providers] : [],
     fields: (s.fields ?? []).map(draftField),
   })
   const draftGroup = (g: TemplateConfigGroup): DraftGroup => ({
@@ -112,6 +130,9 @@ export function definitionToDraft(def: TemplateDefinition): DraftDefinition {
   })
 
   return {
+    providers: (def.providers ?? []).slice(),
+    required_providers: (def.required_providers ?? []).slice(),
+    min_providers: def.min_providers ?? 1,
     environment_configuration: {
       label: def.environment_configuration?.label ?? "Environment Configuration",
       description: def.environment_configuration?.description ?? "",
@@ -138,6 +159,11 @@ interface Props {
 }
 
 export function DefinitionBuilder({ value, onChange }: Props) {
+  // ── Providers mutations ───────────────────────────────────────────────────
+  const setProviders = (providers: string[], required_providers: string[]) =>
+    onChange({ ...value, providers, required_providers })
+  const setMinProviders = (min_providers: number) => onChange({ ...value, min_providers })
+
   // ── Environment configuration mutations ──────────────────────────────────
   const setExpLabel = (label: string) =>
     onChange({ ...value, environment_configuration: { ...value.environment_configuration, label } })
@@ -153,6 +179,13 @@ export function DefinitionBuilder({ value, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      <ProvidersEditor
+        providers={value.providers}
+        requiredProviders={value.required_providers}
+        minProviders={value.min_providers}
+        onChangeProviders={setProviders}
+        onChangeMin={setMinProviders}
+      />
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs">Section Label</Label>
@@ -170,8 +203,144 @@ export function DefinitionBuilder({ value, onChange }: Props) {
       <SectionsEditor
         sections={value.environment_configuration.sections}
         groups={value.environment_configuration.groups}
+        availableProviders={value.providers}
         onChange={setExpSections}
       />
+    </div>
+  )
+}
+
+// ─── Providers editor ─────────────────────────────────────────────────────────
+
+const KNOWN_PROVIDERS = [
+  { slug: "aws",     label: "Amazon Web Services (AWS)" },
+  { slug: "gcp",     label: "Google Cloud Platform (GCP)" },
+  { slug: "azure",   label: "Microsoft Azure" },
+  { slug: "on_prem", label: "On-Premises" },
+  { slug: "hpc",     label: "HPC" },
+]
+
+function ProvidersEditor({
+  providers,
+  requiredProviders,
+  minProviders,
+  onChangeProviders,
+  onChangeMin,
+}: {
+  providers: string[]
+  requiredProviders: string[]
+  minProviders: number
+  onChangeProviders: (providers: string[], requiredProviders: string[]) => void
+  onChangeMin: (min: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  const addProvider = (slug: string) => {
+    if (!providers.includes(slug)) onChangeProviders([...providers, slug], requiredProviders)
+  }
+  const removeProvider = (slug: string) =>
+    onChangeProviders(
+      providers.filter((p) => p !== slug),
+      requiredProviders.filter((p) => p !== slug),
+    )
+  const toggleRequired = (slug: string) => {
+    const isReq = requiredProviders.includes(slug)
+    onChangeProviders(providers, isReq ? requiredProviders.filter((p) => p !== slug) : [...requiredProviders, slug])
+  }
+
+  const available = KNOWN_PROVIDERS.filter((p) => !providers.includes(p.slug))
+
+  return (
+    <div className="rounded border border-border/70 overflow-hidden">
+      <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 flex-1 text-left">
+          {open ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
+          <span className="text-xs font-semibold">Providers</span>
+          <span className="text-[11px] text-muted-foreground">
+            {providers.length === 0 ? "(none — single-provider deployment)" : `(${providers.map((s) => s.toUpperCase()).join(", ")})`}
+          </span>
+        </button>
+      </div>
+
+      {open && (
+        <div className="p-3 flex flex-col gap-3">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Define which cloud providers this template supports. Mark providers as <strong>required</strong> to force them on every deployment; optional providers can be toggled on/off per environment.
+          </p>
+
+          {providers.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {providers.map((slug) => {
+                const isReq = requiredProviders.includes(slug)
+                return (
+                  <div key={slug} className="flex items-center justify-between rounded border border-border/60 bg-background px-2.5 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs uppercase">{slug}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleRequired(slug)}
+                        className={`text-[11px] rounded border px-2 py-0.5 transition-colors font-medium ${
+                          isReq
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                            : "bg-muted text-muted-foreground border-transparent hover:border-border"
+                        }`}
+                      >
+                        {isReq ? "required" : "optional"}
+                      </button>
+                      <button type="button" onClick={() => removeProvider(slug)} className="text-muted-foreground hover:text-destructive transition-colors p-0.5">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {available.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Select onValueChange={addProvider} value="">
+                <SelectTrigger className="h-7 text-xs flex-1">
+                  <SelectValue placeholder="Add provider…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {available.map((p) => (
+                    <SelectItem key={p.slug} value={p.slug} className="text-xs">
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {providers.length === 0 && (
+            <p className="text-[11px] text-amber-600 italic">
+              No providers selected — deployments will use a single provider/credential selector.
+            </p>
+          )}
+
+          {providers.length > 0 && (
+            <div className="flex items-center gap-3">
+              <Label className="text-[11px] shrink-0">Min providers required</Label>
+              <input
+                type="number"
+                min={1}
+                max={providers.length}
+                value={minProviders}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 1 && v <= providers.length) onChangeMin(v)
+                }}
+                className="h-7 w-16 rounded border border-border bg-background px-2 text-xs text-center"
+              />
+              <span className="text-[11px] text-muted-foreground">of {providers.length} available</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -241,7 +410,7 @@ function GroupsEditor({ groups, onChange }: { groups: DraftGroup[]; onChange: (g
 
 // ─── Sections editor ──────────────────────────────────────────────────────────
 
-function SectionsEditor({ sections, groups, onChange }: { sections: DraftSection[]; groups: DraftGroup[]; onChange: (s: DraftSection[]) => void }) {
+function SectionsEditor({ sections, groups, availableProviders, onChange }: { sections: DraftSection[]; groups: DraftGroup[]; availableProviders: string[]; onChange: (s: DraftSection[]) => void }) {
   const addSection = () => onChange([...sections, emptySection()])
   const removeSection = (id: string) => onChange(sections.filter((s) => s._id !== id))
   const updateSection = (id: string, patch: Partial<DraftSection>) =>
@@ -254,6 +423,7 @@ function SectionsEditor({ sections, groups, onChange }: { sections: DraftSection
           key={section._id}
           section={section}
           groups={groups}
+          availableProviders={availableProviders}
           onUpdate={(patch) => updateSection(section._id, patch)}
           onRemove={() => removeSection(section._id)}
         />
@@ -267,9 +437,10 @@ function SectionsEditor({ sections, groups, onChange }: { sections: DraftSection
 
 // ─── Section editor ───────────────────────────────────────────────────────────
 
-function SectionEditor({ section, groups, onUpdate, onRemove }: {
+function SectionEditor({ section, groups, availableProviders, onUpdate, onRemove }: {
   section: DraftSection
   groups: DraftGroup[]
+  availableProviders: string[]
   onUpdate: (patch: Partial<DraftSection>) => void
   onRemove: () => void
 }) {
@@ -333,12 +504,41 @@ function SectionEditor({ section, groups, onUpdate, onRemove }: {
             </div>
           </div>
 
+          {availableProviders.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px]">Show for providers <span className="text-muted-foreground font-normal">(empty = all)</span></Label>
+              <div className="flex flex-wrap gap-1">
+                {availableProviders.map((slug) => {
+                  const isActive = (section.providers ?? []).includes(slug)
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      onClick={() => {
+                        const current = section.providers ?? []
+                        onUpdate({ providers: isActive ? current.filter((p) => p !== slug) : [...current, slug] })
+                      }}
+                      className={`text-[11px] rounded border px-2 py-0.5 uppercase font-mono transition-colors ${
+                        isActive
+                          ? "bg-primary/10 text-primary border-primary/30"
+                          : "bg-muted text-muted-foreground border-transparent hover:border-border"
+                      }`}
+                    >
+                      {slug}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Fields */}
           <div className="flex flex-col gap-1.5">
             {section.fields.map((field) => (
               <FieldEditor
                 key={field._id}
                 field={field}
+                availableProviders={availableProviders}
                 onUpdate={(patch) => updateField(field._id, patch)}
                 onRemove={() => removeField(field._id)}
               />
@@ -355,8 +555,9 @@ function SectionEditor({ section, groups, onUpdate, onRemove }: {
 
 // ─── Field editor ─────────────────────────────────────────────────────────────
 
-function FieldEditor({ field, onUpdate, onRemove }: {
+function FieldEditor({ field, availableProviders, onUpdate, onRemove }: {
   field: DraftField
+  availableProviders: string[]
   onUpdate: (patch: Partial<DraftField>) => void
   onRemove: () => void
 }) {
@@ -422,6 +623,34 @@ function FieldEditor({ field, onUpdate, onRemove }: {
             <Label className="text-[11px]">Description</Label>
             <Input className="h-7 text-xs" value={field.description ?? ""} onChange={(e) => onUpdate({ description: e.target.value })} placeholder="Help text" />
           </div>
+
+          {availableProviders.length > 0 && (
+            <div className="col-span-2 flex flex-col gap-1">
+              <Label className="text-[11px]">Show for providers <span className="text-muted-foreground font-normal">(empty = all)</span></Label>
+              <div className="flex flex-wrap gap-1.5">
+                {availableProviders.map((slug) => {
+                  const isActive = (field.providers ?? []).includes(slug)
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      onClick={() => {
+                        const current = field.providers ?? []
+                        onUpdate({ providers: isActive ? current.filter((p) => p !== slug) : [...current, slug] })
+                      }}
+                      className={`text-[11px] rounded border px-2 py-0.5 uppercase font-mono transition-colors ${
+                        isActive
+                          ? "bg-primary/10 text-primary border-primary/30"
+                          : "bg-muted text-muted-foreground border-transparent hover:border-border"
+                      }`}
+                    >
+                      {slug}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {(field.type === "number") && (
             <>

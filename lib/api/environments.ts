@@ -31,8 +31,7 @@ export const environmentsApi = {
       environment_template_version_id?: string
       configuration_json?: Record<string, unknown>
       deployment?: {
-        provider_id: string
-        provider_credential_id?: string | null
+        provider_credentials: Array<{ provider_id: string; credential_id?: string | null }>
         region?: string
         deployment_template_id?: string
         name?: string

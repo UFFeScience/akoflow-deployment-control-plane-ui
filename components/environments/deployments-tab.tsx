@@ -93,7 +93,18 @@ export function DeploymentsTab({
                       {deployment.name || deployment.id}
                     </TableCell>
                     <TableCell className="py-1.5">
-                      <StatusBadge type="provider" value={(deployment.providerId ?? deployment.provider_id ?? "").toString().toLowerCase()} />
+                      <div className="flex flex-wrap gap-1">
+                        {(deployment.provider_credentials ?? []).length > 0
+                          ? (deployment.provider_credentials ?? []).map((cred) => (
+                              <StatusBadge
+                                key={cred.id}
+                                type="provider"
+                                value={(cred.provider_slug ?? cred.provider_id ?? "").toLowerCase()}
+                              />
+                            ))
+                          : <span className="text-[11px] text-muted-foreground">—</span>
+                        }
+                      </div>
                     </TableCell>
                     <TableCell className="py-1.5 text-[11px] text-muted-foreground">
                       {deployment.region ?? "—"}
@@ -143,6 +154,7 @@ export function DeploymentsTab({
         onOpenChange={setCreateOpen}
         environmentId={environmentId}
         environment={environment}
+        existingDeployments={deployments}
         onSuccess={async () => { await onRefresh?.() }}
       />
     </div>

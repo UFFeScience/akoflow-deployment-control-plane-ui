@@ -14,6 +14,7 @@ interface EnvironmentHeaderProps {
   lastUpdatedAt?: Date | null
   onDestroyEnvironment?: () => Promise<void>
   isDestroying?: boolean
+  activeProviders?: Array<{ id: string; slug: string; name: string }>
 }
 
 export function EnvironmentHeader({
@@ -23,6 +24,7 @@ export function EnvironmentHeader({
   resourcesCount,
   isRefreshing = false,
   lastUpdatedAt,
+  activeProviders,
 }: EnvironmentHeaderProps) {
   const lastUpdatedLabel = lastUpdatedAt
     ? new Intl.DateTimeFormat(undefined, {
@@ -67,6 +69,21 @@ export function EnvironmentHeader({
             {isRefreshing && <LoadingSpinner size="sm" className="text-muted-foreground" />}
             <span>Refreshing every 5s</span>
             {lastUpdatedLabel && <span className="text-[9px]">Last update {lastUpdatedLabel}</span>}
+          </div>
+        )}
+
+        {/* Configured providers — derived from actual deployments */}
+        {activeProviders && activeProviders.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">Providers:</span>
+            {activeProviders.map((p) => (
+              <span
+                key={p.id}
+                className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border border-border bg-muted/50 text-muted-foreground"
+              >
+                {p.slug || p.name}
+              </span>
+            ))}
           </div>
         )}
       </div>

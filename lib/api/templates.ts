@@ -11,6 +11,8 @@ export const templatesApi = {
     request<TemplateVersion[]>(`/environment-templates/${id}/versions`),
   getVersion: (id: string, versionId: string) =>
     request<TemplateVersion>(`/environment-templates/${id}/versions/${versionId}`),
+  getVersionById: (versionId: string) =>
+    request<TemplateVersion>(`/environment-template-versions/${versionId}`),
   getActiveVersion: (id: string) =>
     request<TemplateVersion>(`/environment-templates/${id}/versions/active`),
   getDefinition: (id: string) =>
