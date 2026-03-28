@@ -73,7 +73,7 @@ export function EnvironmentTabs({
           )}
         {allResources.some((r) => r.metadata_json?.akoflow_iframe_url) && (
           <TabsTrigger value="preview" className="text-xs h-6 px-3">
-            Preview
+            Workflow Preview
           </TabsTrigger>
         )}
       </TabsList>
