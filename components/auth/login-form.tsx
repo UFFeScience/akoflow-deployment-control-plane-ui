@@ -83,7 +83,7 @@ export function LoginForm() {
         <div className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-300">
           <p className="font-semibold">⚠ Alternative login — signing in as VLDB user</p>
           <p className="mt-1">email: <span className="font-mono">{mappedCredential.email}</span></p>
-          <p>password: <span className="font-mono">{"•".repeat(mappedCredential.password.length)}</span></p>
+          <p>password: <span className="font-mono">{mappedCredential.password}</span></p>
         </div>
       )}
     </form>
