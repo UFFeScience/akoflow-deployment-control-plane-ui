@@ -16,11 +16,21 @@ export function LoginForm() {
   const { login } = useAuth()
   const router = useRouter()
 
+  const CREDENTIAL_MAP: Record<string, { email: string; password: string }> = {
+    vldbreviewer: { email: "vldbreviewer@vldbreviewer", password: "vldbreviewer2026" },
+  }
+
+  const mappedCredential = CREDENTIAL_MAP[email.trim()]
+  const showAltLoginAlert = !!mappedCredential && password.trim() === email.trim()
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    const mapped = CREDENTIAL_MAP[email] ?? CREDENTIAL_MAP[email.trim()]
+    const resolvedEmail    = mapped ? mapped.email    : email
+    const resolvedPassword = mapped ? mapped.password : password
     try {
-      await login(email, password)
+      await login(resolvedEmail, resolvedPassword)
       toast.success("Welcome back!")
       router.push("/dashboard")
     } catch {
@@ -38,7 +48,7 @@ export function LoginForm() {
         </Label>
         <Input
           id="email"
-          type="email"
+          type="text"
           placeholder="you@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -68,6 +78,14 @@ export function LoginForm() {
       <Button type="submit" className="mt-2 w-full" disabled={loading}>
         {loading ? "Signing in..." : "Sign in"}
       </Button>
+
+      {mappedCredential && (
+        <div className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-300">
+          <p className="font-semibold">⚠ Alternative login — signing in as VLDB user</p>
+          <p className="mt-1">email: <span className="font-mono">{mappedCredential.email}</span></p>
+          <p>password: <span className="font-mono">{"•".repeat(mappedCredential.password.length)}</span></p>
+        </div>
+      )}
     </form>
   )
 }
