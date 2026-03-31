@@ -32,3 +32,5 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://cloud.akoflow.com/api
