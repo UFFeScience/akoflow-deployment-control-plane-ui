@@ -51,7 +51,7 @@ export function UserSettings() {
       updateUser(updated)
       toast.success("Perfil atualizado")
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao atualizar perfil"
+      const message = error instanceof Error ? error.message : "fail to update profile"
       toast.error(message)
     } finally {
       setIsSavingProfile(false)
@@ -73,7 +73,7 @@ export function UserSettings() {
       setConfirmPassword("")
       toast.success("Senha atualizada")
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao atualizar senha"
+      const message = error instanceof Error ? error.message : "fail to update password"
       toast.error(message)
     } finally {
       setIsSavingPassword(false)

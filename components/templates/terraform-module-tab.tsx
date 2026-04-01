@@ -200,7 +200,7 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
       setForm(defaultForm(created))
       setMissingModule(false)
     } catch (e: any) {
-      setSaveError(e?.message ?? "Falha ao criar o template HCL")
+      setSaveError(e?.message ?? "Failed to create HCL template")
     } finally {
       setCreating(false)
     }
@@ -374,11 +374,11 @@ export function TerraformModuleTab({ templateId, versionId, version }: Props) {
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-amber-800">
             <AlertTriangle className="h-4 w-4" />
-            <span>Template HCL para {activeProvider.toUpperCase()} não encontrado. Crie para habilitar o provisionamento.</span>
+            <span>Template HCL to {activeProvider.toUpperCase()} not found. Create it to enable provisioning.</span>
           </div>
           <Button size="sm" variant="outline" className="gap-1" onClick={createMissingModule} disabled={creating}>
             {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Criar Template HCL
+            Create HCL Template
           </Button>
         </div>
       )}

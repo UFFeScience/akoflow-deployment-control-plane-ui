@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import WelcomeModal from "@/components/welcome-modal"
+import ReviewerTutorialModal from "@/components/reviewer-tutorial-modal"
 import { DashboardStats } from "./dashboard-stats"
 import { DashboardActivity } from "./dashboard-activity"
 import { DashboardResources } from "./dashboard-resources"
@@ -18,7 +19,7 @@ import type { Deployment, Environment, Project, ProvisionedResource } from "@/li
 import { useAuth } from "@/contexts/auth-context"
 
 export function DashboardScreen() {
-  const { currentOrg } = useAuth()
+  const { currentOrg, user } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
   const [deployments, setDeployments] = useState<Deployment[]>([])
@@ -26,6 +27,7 @@ export function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const search = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
+  const [reviewerTutorialDismissed, setReviewerTutorialDismissed] = useState(false)
 
   useEffect(() => {
     const welcome = search?.get("welcome")
@@ -36,6 +38,8 @@ export function DashboardScreen() {
       window.history.replaceState({}, "", url.toString())
     }
   }, [search])
+
+  const showReviewerTutorial = !reviewerTutorialDismissed && !!user && user.email === "vldbreviewer@vldbreviewer"
 
   useEffect(() => {
     let active = true
@@ -111,6 +115,7 @@ export function DashboardScreen() {
 
   const totalProjects = projects.length
   const totalEnvironments = environments.length
+
   const runningInstances = resources.filter((r) => r.status === "RUNNING").length
   const failedInstances = resources.filter((r) => r.status === "ERROR").length
 
@@ -124,6 +129,7 @@ export function DashboardScreen() {
   }, {} as Record<string, ProvisionedResource[]>)
 
   return (
+
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
@@ -131,7 +137,7 @@ export function DashboardScreen() {
       </div>
 
       <WelcomeModal visible={showWelcome} onClose={() => setShowWelcome(false)} />
-
+      <ReviewerTutorialModal visible={showReviewerTutorial} onClose={() => setReviewerTutorialDismissed(true)} />
 
       <DashboardStats
         totalProjects={totalProjects}

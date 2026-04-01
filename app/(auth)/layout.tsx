@@ -28,7 +28,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div>
           <h1 className="text-3xl font-bold text-primary-foreground text-balance">
-            Multi-cloud control plane for scientific environments
+            AkôFlow: One Workflow. Multiple Platforms
           </h1>
           <p className="mt-4 text-base text-primary-foreground/70 leading-relaxed">
             Orchestrate environments across AWS, GCP, and HPC deployments. Scale instances, manage templates, and monitor infrastructure from a single pane.
