@@ -1,7 +1,8 @@
 import { request } from "./client"
-import type { LogEntry, TerraformRun } from "./types"
+import type { LogEntry, TerraformRun, AnsibleRun } from "./types"
 
 export const TERRAFORM_RUN_SELECTOR = "__terraform_run__"
+export const ANSIBLE_RUN_SELECTOR   = "__ansible_run__"
 
 // ── API shape returned by the new /logs endpoints ────────────────────────────
 
@@ -83,5 +84,31 @@ export const logsApi = {
     const data = await request<RunLogApiEntry[]>(url)
     return { entries: data.map(toLogEntry), runId: resolvedRunId }
   },
-}
 
+  /**
+   * Fetch logs for the latest Ansible run of an environment.
+   */
+  ansibleRunLogs: async (
+    projectId: string,
+    environmentId: string,
+    runId?: string | null,
+    afterId?: number | null,
+  ): Promise<{ entries: LogEntry[]; runId: string | null }> => {
+    let resolvedRunId = runId ?? null
+
+    if (!resolvedRunId) {
+      const runs = await request<AnsibleRun[]>(
+        `/projects/${projectId}/environments/${environmentId}/ansible-runs`
+      )
+      if (!runs || runs.length === 0) return { entries: [], runId: null }
+      resolvedRunId = runs[0].id
+    }
+
+    const url = afterId
+      ? `/projects/${projectId}/environments/${environmentId}/ansible-runs/${resolvedRunId}/logs?after_id=${afterId}`
+      : `/projects/${projectId}/environments/${environmentId}/ansible-runs/${resolvedRunId}/logs`
+
+    const raw = await request<RunLogApiEntry[]>(url)
+    return { entries: raw.map(toLogEntry), runId: resolvedRunId }
+  },
+}

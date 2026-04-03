@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { ProvisionedResource } from "@/lib/api/types"
-import { TERRAFORM_RUN_SELECTOR } from "@/lib/api/logs"
+import { TERRAFORM_RUN_SELECTOR, ANSIBLE_RUN_SELECTOR } from "@/lib/api/logs"
 
 type LogsFiltersProps = {
   filterLevel: string
@@ -48,7 +48,10 @@ export function LogsFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={TERRAFORM_RUN_SELECTOR} className="text-xs">
-            Terraform Run
+            Terraform · Provision
+          </SelectItem>
+          <SelectItem value={ANSIBLE_RUN_SELECTOR} className="text-xs">
+            Ansible · Configure
           </SelectItem>
           {resources.map((r) => {
             const name = r.name || r.provider_resource_id || `resource-${r.id}`

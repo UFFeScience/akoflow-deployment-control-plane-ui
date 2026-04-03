@@ -3,400 +3,60 @@
 import { useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Instance, Deployment } from "@/lib/api/types"
+import { buildAllDeploymentsGraph, buildSingleDeploymentGraph, GRAPH_OPTIONS } from "./instance-graph/graph-builder"
+import { GraphLegend } from "./instance-graph/legend"
 
-interface InstanceGraphProps {
+interface Props {
   instances: Instance[]
   deploymentId: string
   deploymentName: string
   deployments?: Deployment[]
 }
 
-export function InstanceGraph({ instances, deploymentId, deploymentName, deployments }: InstanceGraphProps) {
+export function InstanceGraph({ instances, deploymentId, deploymentName, deployments }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const networkRef = useRef<any>(null)
+  const networkRef   = useRef<any>(null)
 
   useEffect(() => {
-    // Load vis-network dynamically
-    const loadVisNetwork = async () => {
-      if (typeof window === 'undefined' || !containerRef.current) return
-
-      // Check if vis is already loaded
+    const load = async () => {
+      if (typeof window === "undefined" || !containerRef.current) return
       if (!(window as any).vis) {
-        const script = document.createElement('script')
-        script.src = 'https://unpkg.com/vis-network/standalone/umd/vis-network.min.js'
+        const script = document.createElement("script")
+        script.src = "https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"
         script.async = true
-        
         await new Promise<void>((resolve, reject) => {
           script.onload = () => resolve()
           script.onerror = reject
           document.body.appendChild(script)
         })
       }
-
-      initializeGraph()
+      initGraph()
     }
-
-    loadVisNetwork()
-
-    return () => {
-      if (networkRef.current) {
-        networkRef.current.destroy()
-      }
-    }
+    load()
+    return () => { networkRef.current?.destroy() }
   }, [instances, deploymentId, deployments])
 
-  const initializeGraph = () => {
+  const initGraph = () => {
     if (!containerRef.current || !(window as any).vis) return
-
     const vis = (window as any).vis
+    const isAll = deploymentId === "all" && deployments && deployments.length > 0
+    const { nodes, edges } = isAll
+      ? buildAllDeploymentsGraph(instances, deployments!)
+      : buildSingleDeploymentGraph(instances, deploymentId, deploymentName)
 
-    // Check if this is the "all deployments" view
-    const isAllDeploymentsView = deploymentId === "all" && deployments && deployments.length > 0
-
-    // Create nodes and edges
-    const nodes: any[] = []
-    const edges: any[] = []
-
-    if (isAllDeploymentsView) {
-      // Create a central "overview" node
-      nodes.push({
-        id: 'overview',
-        label: 'All Deployments',
-        shape: 'box',
-        color: {
-          background: '#8b5cf6',
-          border: '#7c3aed',
-          highlight: { background: '#7c3aed', border: '#6d28d9' }
-        },
-        font: { color: '#ffffff', size: 18, bold: true },
-        size: 35,
-        level: 0
-      })
-
-      // Group instances by deployment
-      const instancesByDeployment = instances.reduce((acc, instance) => {
-        const deploymentKey = instance.deploymentId || 'unknown'
-        if (!acc[deploymentKey]) {
-          acc[deploymentKey] = []
-        }
-        acc[deploymentKey].push(instance)
-        return acc
-      }, {} as Record<string, Instance[]>)
-
-      console.log(instancesByDeployment);
-
-      // Add deployment nodes
-      Object.entries(instancesByDeployment).forEach(([deploymentKey, deploymentInstances]) => {
-        const deployment = deployments?.find(c => c.id === deploymentKey)
-        const deploymentName = deployment?.name || `Deployment ${String(deploymentKey).slice(0, 8)}`
-        const running = deploymentInstances.filter(i => i.status === "running").length
-        const total = deploymentInstances.length
-        const healthPercent = total > 0 ? (running / total) * 100 : 0
-
-        let deploymentColor = '#10b981'
-        if (healthPercent < 50) deploymentColor = '#ef4444'
-        else if (healthPercent < 80) deploymentColor = '#f59e0b'
-
-        const deploymentNodeId = `deployment-${deploymentKey}`
-        nodes.push({
-          id: deploymentNodeId,
-          label: `${deploymentName}\n(${total} instances)`,
-          shape: 'box',
-          color: {
-            background: deploymentColor,
-            border: deploymentColor,
-            highlight: { background: deploymentColor, border: deploymentColor }
-          },
-          font: { color: '#ffffff', size: 14, bold: true },
-          size: 28,
-          level: 1
-        })
-
-        edges.push({
-          from: 'overview',
-          to: deploymentNodeId,
-          arrows: 'to',
-          color: { color: '#94a3b8' },
-          width: 2
-        })
-
-        // Group instances by instance group
-        const groupedInstances = deploymentInstances.reduce((acc, instance) => {
-          const groupKey = instance.instanceGroupId || instance.role || "default"
-          if (!acc[groupKey]) {
-            acc[groupKey] = []
-          }
-          acc[groupKey].push(instance)
-          return acc
-        }, {} as Record<string, Instance[]>)
-
-        // Add instance group nodes
-        Object.entries(groupedInstances).forEach(([groupKey, groupInstances]) => {
-          const groupId = `group-${deploymentKey}-${groupKey}`
-          const groupName = groupInstances[0]?.role || groupKey
-          
-          const running = groupInstances.filter(i => i.status === "running").length
-          const total = groupInstances.length
-          const healthPercent = total > 0 ? (running / total) * 100 : 0
-          
-          let groupColor = '#10b981'
-          if (healthPercent < 50) groupColor = '#ef4444'
-          else if (healthPercent < 80) groupColor = '#f59e0b'
-
-          nodes.push({
-            id: groupId,
-            label: `${groupName}\n(${total})`,
-            shape: 'ellipse',
-            color: {
-              background: groupColor,
-              border: groupColor,
-              highlight: { background: groupColor, border: groupColor }
-            },
-            font: { color: '#ffffff', size: 12 },
-            size: 20,
-            level: 2
-          })
-
-          edges.push({
-            from: deploymentNodeId,
-            to: groupId,
-            arrows: 'to',
-            color: { color: '#cbd5e1' },
-            width: 1.5
-          })
-
-          // Add instance nodes (limit to avoid overcrowding)
-          groupInstances.slice(0, 3).forEach((instance) => {
-            const instanceId = `instance-${instance.id}`
-            
-            let instanceColor = '#94a3b8'
-            if (instance.status === 'running') instanceColor = '#10b981'
-            else if (instance.status === 'failed') instanceColor = '#ef4444'
-            else if (instance.status === 'pending') instanceColor = '#f59e0b'
-            else if (instance.status === 'stopped') instanceColor = '#6b7280'
-
-            const instanceLabel = instance.environmentName || 
-                                 `${String(instance.id).slice(0, 8)}`
-
-            nodes.push({
-              id: instanceId,
-              label: instanceLabel,
-              shape: 'dot',
-              color: {
-                background: instanceColor,
-                border: instanceColor,
-                highlight: { background: instanceColor, border: instanceColor }
-              },
-              font: { color: '#1f2937', size: 9 },
-              size: 12,
-              level: 3
-            })
-
-            edges.push({
-              from: groupId,
-              to: instanceId,
-              arrows: 'to',
-              color: { color: '#e2e8f0' },
-              width: 1,
-              dashes: true
-            })
-          })
-        })
-      })
-    } else {
-      // Single deployment view (original logic)
-      nodes.push({
-        id: `deployment-${deploymentId}`,
-        label: deploymentName,
-        shape: 'box',
-        color: {
-          background: '#3b82f6',
-          border: '#2563eb',
-          highlight: { background: '#2563eb', border: '#1d4ed8' }
-        },
-        font: { color: '#ffffff', size: 16, bold: true },
-        size: 30,
-        level: 0
-      })
-
-      const groupedInstances = instances.reduce((acc, instance) => {
-        const groupKey = instance.instanceGroupId || instance.role || "default"
-        if (!acc[groupKey]) {
-          acc[groupKey] = []
-        }
-        acc[groupKey].push(instance)
-        return acc
-      }, {} as Record<string, Instance[]>)
-
-      Object.entries(groupedInstances).forEach(([groupKey, groupInstances]) => {
-        const groupId = `group-${groupKey}`
-        const groupName = groupInstances[0]?.role || groupKey
-        
-        const running = groupInstances.filter(i => i.status === "running").length
-        const total = groupInstances.length
-        const healthPercent = total > 0 ? (running / total) * 100 : 0
-        
-        let groupColor = '#10b981'
-        if (healthPercent < 50) groupColor = '#ef4444'
-        else if (healthPercent < 80) groupColor = '#f59e0b'
-
-        nodes.push({
-          id: groupId,
-          label: `${groupName}\n(${total} instances)`,
-          shape: 'ellipse',
-          color: {
-            background: groupColor,
-            border: groupColor,
-            highlight: { background: groupColor, border: groupColor }
-          },
-          font: { color: '#ffffff', size: 14 },
-          size: 25,
-          level: 1
-        })
-
-        edges.push({
-          from: `deployment-${deploymentId}`,
-          to: groupId,
-          arrows: 'to',
-          color: { color: '#94a3b8' },
-          width: 2
-        })
-
-        groupInstances.forEach((instance) => {
-          const instanceId = `instance-${instance.id}`
-          
-          let instanceColor = '#94a3b8'
-          if (instance.status === 'running') instanceColor = '#10b981'
-          else if (instance.status === 'failed') instanceColor = '#ef4444'
-          else if (instance.status === 'pending') instanceColor = '#f59e0b'
-          else if (instance.status === 'stopped') instanceColor = '#6b7280'
-
-          const instanceLabel = instance.environmentName || 
-                               `Instance ${String(instance.id).slice(0, 8)}`
-          
-          const provider = instance.provider ? String(instance.provider).toUpperCase() : ''
-          const region = instance.region || ''
-
-          nodes.push({
-            id: instanceId,
-            label: `${instanceLabel}\n${instance.status}${provider ? `\n${provider}` : ''}${region ? ` · ${region}` : ''}`,
-            shape: 'dot',
-            color: {
-              background: instanceColor,
-              border: instanceColor,
-              highlight: { background: instanceColor, border: instanceColor }
-            },
-            font: { color: '#1f2937', size: 10 },
-            size: 15,
-            level: 2
-          })
-
-          edges.push({
-            from: groupId,
-            to: instanceId,
-            arrows: 'to',
-            color: { color: '#cbd5e1' },
-            width: 1
-          })
-        })
-      })
-    }
-
-    // Create network
-    const data = { nodes, edges }
-    
-    const options = {
-      layout: {
-        hierarchical: {
-          direction: 'UD',
-          sortMethod: 'directed',
-          nodeSpacing: 150,
-          levelSeparation: 200,
-          treeSpacing: 200
-        }
-      },
-      physics: {
-        enabled: true,
-        hierarchicalRepulsion: {
-          centralGravity: 0.0,
-          springLength: 200,
-          springConstant: 0.01,
-          nodeDistance: 150,
-          damping: 0.09
-        },
-        solver: 'hierarchicalRepulsion'
-      },
-      interaction: {
-        dragNodes: true,
-        dragView: true,
-        zoomView: true,
-        hover: true,
-        tooltipDelay: 100
-      },
-      nodes: {
-        borderWidth: 2,
-        borderWidthSelected: 3
-      },
-      edges: {
-        smooth: {
-          type: 'cubicBezier',
-          forceDirection: 'vertical',
-          roundness: 0.4
-        }
-      }
-    }
-
-    // Destroy previous network if exists
-    if (networkRef.current) {
-      networkRef.current.destroy()
-    }
-
-    // Create new network
-    networkRef.current = new vis.Network(containerRef.current, data, options)
-
-    // Add event listeners
-    networkRef.current.on('click', (params: any) => {
-      if (params.nodes.length > 0) {
-        const nodeId = params.nodes[0]
-        console.log('Clicked node:', nodeId)
-      }
-    })
+    networkRef.current?.destroy()
+    networkRef.current = new vis.Network(containerRef.current, { nodes, edges }, GRAPH_OPTIONS)
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Instance Groups Topology</CardTitle>
-        <CardDescription>
-          Interactive graph visualization of {instances.length} instances
-        </CardDescription>
+        <CardDescription>Interactive graph visualization of {instances.length} instances</CardDescription>
       </CardHeader>
       <CardContent>
-        <div 
-          ref={containerRef} 
-          className="w-full bg-muted/30 rounded-lg border"
-          style={{ height: '600px' }}
-        />
-        
-        {/* Legend */}
-        <div className="mt-4 flex flex-wrap gap-4 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-green-500" />
-            <span>Running</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-yellow-500" />
-            <span>Pending</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-gray-500" />
-            <span>Stopped</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-red-500" />
-            <span>Failed</span>
-          </div>
-        </div>
+        <div ref={containerRef} className="w-full bg-muted/30 rounded-lg border" style={{ height: "600px" }} />
+        <GraphLegend />
       </CardContent>
     </Card>
   )

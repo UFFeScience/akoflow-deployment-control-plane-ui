@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import type { ProvisionedResource, LogEntry } from "@/lib/api/types"
-import { logsApi, TERRAFORM_RUN_SELECTOR } from "@/lib/api/logs"
+import { logsApi, TERRAFORM_RUN_SELECTOR, ANSIBLE_RUN_SELECTOR } from "@/lib/api/logs"
 import { LogsFilters } from "./logs-filters"
 import { LogRow } from "./log-row"
 
@@ -26,6 +26,7 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
   const runIdRef  = useRef<string | null>(null)  // resolved terraform run id
 
   const isTerraformRun = selectedInstance === TERRAFORM_RUN_SELECTOR
+  const isAnsibleRun   = selectedInstance === ANSIBLE_RUN_SELECTOR
 
   // ── Reset when the selected source changes ──────────────────────────────────
   useEffect(() => {
@@ -56,6 +57,20 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
     [selectedInstance],
   )
 
+  const fetchAnsibleLogs = useCallback(
+    async (afterId: number | null): Promise<LogEntry[]> => {
+      const { entries, runId } = await logsApi.ansibleRunLogs(
+        projectId,
+        environmentId,
+        runIdRef.current,
+        afterId,
+      )
+      if (runId) runIdRef.current = runId
+      return entries
+    },
+    [projectId, environmentId],
+  )
+
   // ── Initial full load + polling ─────────────────────────────────────────────
   useEffect(() => {
     if (!selectedInstance) return
@@ -66,6 +81,8 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
       try {
         const entries = isTerraformRun
           ? await fetchTerraformLogs(afterId)
+          : isAnsibleRun
+          ? await fetchAnsibleLogs(afterId)
           : await fetchResourceLogs(afterId)
 
         if (!active) return
@@ -99,7 +116,7 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
       active = false
       clearInterval(intervalId)
     }
-  }, [selectedInstance, isTerraformRun, fetchTerraformLogs, fetchResourceLogs])
+  }, [selectedInstance, isTerraformRun, isAnsibleRun, fetchTerraformLogs, fetchAnsibleLogs, fetchResourceLogs])
 
   // ── Filtered view ───────────────────────────────────────────────────────────
   const displayLogs = logs.filter(
@@ -122,13 +139,14 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement("a")
     a.href     = url
-    a.download = isTerraformRun ? "terraform-run-logs.txt" : "logs.txt"
+    a.download = isTerraformRun ? "terraform-provision-logs.txt" : isAnsibleRun ? "ansible-configure-logs.txt" : "logs.txt"
     a.click()
     URL.revokeObjectURL(url)
   }
 
   function getTerminalTitle(): string {
-    if (isTerraformRun) return "Terraform Run · latest"
+    if (isTerraformRun) return "Terraform Run · Provision · latest"
+    if (isAnsibleRun)   return "Ansible Run · Configure Environment · latest"
     if (!selectedInstance) return "No resource selected"
     const res  = resources.find(r => r.id === selectedInstance)
     const name = res?.name ?? res?.provider_resource_id ?? `resource-${res?.id ?? "?"}`

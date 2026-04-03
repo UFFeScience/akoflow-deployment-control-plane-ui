@@ -323,26 +323,23 @@ export interface TemplateVersion {
   metadata?: Record<string, unknown>
   definition_json?: TemplateDefinition
   terraform_modules?: TerraformModule[]
+  provider_configurations?: ProviderConfiguration[]
 }
 
 export type TerraformProviderType = string
 
 export interface TerraformModule {
   id: string
-  template_version_id: string
+  provider_configuration_id: string
   module_slug?: string | null
-  provider_type: TerraformProviderType
   is_built_in?: boolean
   has_custom_hcl?: boolean
-  // HCL files (only returned by the single-resource show endpoint)
   main_tf?: string | null
   variables_tf?: string | null
   outputs_tf?: string | null
-  // Mapping definition fields → terraform variable names
   tfvars_mapping_json?: {
     environment_configuration?: Record<string, string>
   } | null
-  // Declares which terraform outputs map to ProvisionedResource fields
   outputs_mapping_json?: {
     resources?: Array<{
       name: string
@@ -361,6 +358,56 @@ export interface TerraformModule {
   updated_at?: string
 }
 
+export interface AnsiblePlaybook {
+  id: string
+  provider_configuration_id: string
+  provider_type?: string
+  playbook_slug?: string | null
+  is_built_in?: boolean
+  has_custom_playbook?: boolean
+  playbook_yaml?: string | null
+  inventory_template?: string | null
+  vars_mapping_json?: {
+    environment_configuration?: Record<string, string>
+    instance_configurations?: Record<string, Record<string, string>>
+  } | null
+  outputs_mapping_json?: {
+    resources?: Array<{
+      name: string
+      ansible_resource_type?: string
+      outputs: {
+        provider_resource_id?: string
+        public_ip?: string
+        private_ip?: string
+        iframe_url?: string
+        metadata?: Record<string, string>
+      }
+    }>
+  } | null
+  credential_env_keys?: string[]
+  roles_json?: Array<{ name: string; version?: string } | string> | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ProviderConfiguration {
+  id: string
+  template_version_id: string
+  name: string
+  applies_to_providers: string[]
+  terraform_module?: TerraformModule | null
+  ansible_playbook?: AnsiblePlaybook | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface TemplateDefinitionProviderConfig {
+  label: string
+  providers: string[]
+  tool?: "terraform" | "ansible"
+  required?: boolean
+}
+
 export interface TemplateDefinition {
   /**
    * All provider slugs this template supports.
@@ -369,15 +416,17 @@ export interface TemplateDefinition {
   providers?: string[]
   /**
    * Subset of `providers` that are mandatory for every deployment.
-   * The user may additionally enable optional providers from the `providers` list.
-   * When absent, all listed providers are treated as optional (user picks which to use).
    */
   required_providers?: string[]
   /**
    * Minimum number of providers the user must select for a deployment.
-   * Defaults to 1 when providers are defined.
    */
   min_providers?: number
+  /**
+   * Named provider configurations. Each entry describes one supported
+   * combination of cloud providers and deployment tool (Terraform / Ansible).
+   */
+  provider_configurations?: TemplateDefinitionProviderConfig[]
   deployment_defaults?: Record<string, unknown>
   ui?: {
     allow_multiple_instance_groups?: boolean
@@ -488,6 +537,22 @@ export interface TerraformRun {
   provider_type?: string
   workspace_path?: string
   tfvars?: Record<string, unknown>
+  output?: Record<string, unknown>
+  started_at?: string | null
+  finished_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AnsibleRun {
+  id: string
+  deployment_id: string
+  action: string
+  /** INITIALIZING | RUNNING | COMPLETED | FAILED */
+  status: string
+  provider_type?: string
+  workspace_path?: string
+  extra_vars?: Record<string, unknown>
   output?: Record<string, unknown>
   started_at?: string | null
   finished_at?: string | null

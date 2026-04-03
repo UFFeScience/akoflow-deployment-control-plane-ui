@@ -1,5 +1,5 @@
 import { request } from "./client"
-import type { Template, TemplateVersion, TemplateDefinition, TerraformModule, TerraformProviderType } from "./types"
+import type { Template, TemplateVersion, TemplateDefinition, TerraformModule, TerraformProviderType, AnsiblePlaybook, ProviderConfiguration } from "./types"
 
 export const templatesApi = {
   list: () => request<Template[]>("/environment-templates"),
@@ -24,12 +24,53 @@ export const templatesApi = {
       method: "PATCH",
     }),
 
+  // Provider configurations
+  listProviderConfigurations: (id: string, versionId: string) =>
+    request<ProviderConfiguration[]>(`/environment-templates/${id}/versions/${versionId}/provider-configurations`),
+  getProviderConfiguration: (id: string, versionId: string, configId: string) =>
+    request<ProviderConfiguration>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}`),
+  createProviderConfiguration: (id: string, versionId: string, data: { name: string; applies_to_providers: string[] }) =>
+    request<ProviderConfiguration>(`/environment-templates/${id}/versions/${versionId}/provider-configurations`, {
+      method: "POST",
+      body: data,
+    }),
+  updateProviderConfiguration: (id: string, versionId: string, configId: string, data: { name: string; applies_to_providers: string[] }) =>
+    request<ProviderConfiguration>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}`, {
+      method: "PUT",
+      body: data,
+    }),
+  deleteProviderConfiguration: (id: string, versionId: string, configId: string) =>
+    request<void>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}`, {
+      method: "DELETE",
+    }),
+  upsertProviderConfigTerraform: (id: string, versionId: string, configId: string, data: Record<string, unknown>) =>
+    request<ProviderConfiguration>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/terraform`, {
+      method: "PUT",
+      body: data,
+    }),
+  upsertProviderConfigAnsible: (id: string, versionId: string, configId: string, data: Record<string, unknown>) =>
+    request<ProviderConfiguration>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/ansible`, {
+      method: "PUT",
+      body: data,
+    }),
+
+  // Legacy endpoints kept for compatibility
   listTerraformModules: (id: string, versionId: string) =>
     request<TerraformModule[]>(`/environment-templates/${id}/versions/${versionId}/terraform-modules`),
   getTerraformModule: (id: string, versionId: string, providerType: TerraformProviderType) =>
     request<TerraformModule>(`/environment-templates/${id}/versions/${versionId}/terraform-modules/${providerType}`),
   upsertTerraformModule: (id: string, versionId: string, providerType: TerraformProviderType, data: Omit<Partial<TerraformModule>, "provider_type">) =>
     request<TerraformModule>(`/environment-templates/${id}/versions/${versionId}/terraform-modules/${providerType}`, {
+      method: "PUT",
+      body: data,
+    }),
+
+  listAnsiblePlaybooks: (id: string, versionId: string) =>
+    request<AnsiblePlaybook[]>(`/environment-templates/${id}/versions/${versionId}/ansible-playbooks`),
+  getAnsiblePlaybook: (id: string, versionId: string, providerType: string) =>
+    request<AnsiblePlaybook>(`/environment-templates/${id}/versions/${versionId}/ansible-playbooks/${providerType}`),
+  upsertAnsiblePlaybook: (id: string, versionId: string, providerType: string, data: Omit<Partial<AnsiblePlaybook>, "provider_type">) =>
+    request<AnsiblePlaybook>(`/environment-templates/${id}/versions/${versionId}/ansible-playbooks/${providerType}`, {
       method: "PUT",
       body: data,
     }),

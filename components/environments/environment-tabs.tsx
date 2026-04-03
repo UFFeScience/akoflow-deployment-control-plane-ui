@@ -73,7 +73,7 @@ export function EnvironmentTabs({
           )}
         {allResources.some((r) => r.metadata_json?.akoflow_iframe_url) && (
           <TabsTrigger value="preview" className="text-xs h-6 px-3">
-            Workflow Preview
+            Workflow Engine
           </TabsTrigger>
         )}
       </TabsList>
@@ -91,6 +91,7 @@ export function EnvironmentTabs({
       <TabsContent value="deployments" className="mt-3">
         <DeploymentsTab
           environmentId={environmentId}
+          projectId={projectId}
           environment={environment}
           deployments={deployments}
           resourcesByDeployment={resourcesByDeployment}

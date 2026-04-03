@@ -1,5 +1,5 @@
 import { request } from "./client"
-import type { Environment } from "./types"
+import type { AnsibleRun, Environment, TerraformRun } from "./types"
 
 export const environmentsApi = {
   listAll: (orgId: string) => request<Environment[]>(`/organizations/${orgId}/environments`),
@@ -46,4 +46,24 @@ export const environmentsApi = {
     request(`/projects/${projectId}/environments/${environmentId}`, { method: "DELETE" }),
   terraformDestroy: (projectId: string, environmentId: string) =>
     request(`/projects/${projectId}/environments/${environmentId}/terraform-runs/destroy`, { method: "POST" }),
+
+  // ── Phase run history ──────────────────────────────────────────────────────
+  listTerraformRuns: (projectId: string, environmentId: string) =>
+    request<TerraformRun[]>(`/projects/${projectId}/environments/${environmentId}/terraform-runs`),
+
+  listAnsibleRuns: (projectId: string, environmentId: string) =>
+    request<AnsibleRun[]>(`/projects/${projectId}/environments/${environmentId}/ansible-runs`),
+
+  // ── Retry actions ──────────────────────────────────────────────────────────
+  retryProvision: (projectId: string, environmentId: string, deploymentId?: string) =>
+    request<{ message: string }>(`/projects/${projectId}/environments/${environmentId}/terraform-runs`, {
+      method: "POST",
+      body: deploymentId ? { deployment_id: deploymentId } : {},
+    }),
+
+  retryConfigure: (projectId: string, environmentId: string, deploymentId?: string) =>
+    request<{ message: string }>(`/projects/${projectId}/environments/${environmentId}/ansible-runs`, {
+      method: "POST",
+      body: deploymentId ? { deployment_id: deploymentId } : {},
+    }),
 }

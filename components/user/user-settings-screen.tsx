@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ShieldCheck, UserRound, KeyRound } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
 import { UserSettingsHeader } from "@/components/user/user-settings-header"
 import { UserProfileForm } from "@/components/user/user-profile-form"
 import { UserPasswordForm } from "@/components/user/user-password-form"
