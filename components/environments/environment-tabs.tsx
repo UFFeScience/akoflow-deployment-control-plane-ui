@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TopologyTab } from "@/components/environments/topology-tab"
 import { DeploymentsTab } from "@/components/environments/deployments-tab"
@@ -9,6 +9,8 @@ import { LogsTab } from "@/components/environments/logs-tab"
 import { ConfigurationTab } from "@/components/environments/configuration-tab"
 import { IframeTab } from "@/components/environments/iframe-tab"
 import { RunbooksTab } from "@/components/environments/runbooks-tab"
+import { environmentsApi } from "@/lib/api/environments"
+import type { RunbookRunOption } from "@/components/environments/logs-filters"
 import type { Deployment, Environment, Provider, ProvisionedResource, Template } from "@/lib/api/types"
 
 interface EnvironmentTabsProps {
@@ -38,9 +40,25 @@ export function EnvironmentTabs({
   onDeploymentsChange,
   onRefreshDeployments,
 }: EnvironmentTabsProps) {
-  const [activeTab, setActiveTab] = useState<string>("topology")
+  const [activeTab, setActiveTab]         = useState<string>("topology")
+  const [runbookRuns, setRunbookRuns]     = useState<RunbookRunOption[]>([])
 
   const allResources = Object.values(resourcesByDeployment).flat()
+
+  // Load runbook runs once — used to populate the Logs tab selector
+  useEffect(() => {
+    environmentsApi
+      .listRunbookRuns(projectId, environmentId)
+      .then((runs) => {
+        setRunbookRuns(
+          runs.map((r) => ({
+            id: String(r.id),
+            label: `${r.runbook_name ?? "Runbook"} · ${r.created_at ? new Date(r.created_at).toLocaleString() : String(r.id)}`,
+          }))
+        )
+      })
+      .catch(() => {})
+  }, [projectId, environmentId])
 
   // Resolve template IDs — the API may omit templateId, fall back to matching by name
   const resolvedTemplateId: string | null = (() => {
@@ -144,7 +162,7 @@ export function EnvironmentTabs({
       </TabsContent>
 
       <TabsContent value="logs" className="mt-3">
-        <LogsTab resources={allResources} projectId={projectId} environmentId={environmentId} />
+        <LogsTab resources={allResources} projectId={projectId} environmentId={environmentId} runbookRuns={runbookRuns} />
       </TabsContent>
 
       <TabsContent value="configuration" className="mt-3">

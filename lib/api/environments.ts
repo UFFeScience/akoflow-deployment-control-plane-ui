@@ -72,7 +72,7 @@ export const environmentsApi = {
     request<RunbookRun[]>(`/projects/${projectId}/environments/${environmentId}/runbook-runs`),
 
   triggerRunbookRun: (projectId: string, environmentId: string, runbookId: string, deploymentId?: string) =>
-    request<{ message: string; runbook_name?: string; deployment_id?: string }>(
+    request<RunbookRun>(
       `/projects/${projectId}/environments/${environmentId}/runbook-runs`,
       { method: "POST", body: { runbook_id: runbookId, ...(deploymentId ? { deployment_id: deploymentId } : {}) } },
     ),

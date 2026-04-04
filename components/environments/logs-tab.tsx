@@ -2,19 +2,21 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import type { ProvisionedResource, LogEntry } from "@/lib/api/types"
-import { logsApi, TERRAFORM_RUN_SELECTOR, ANSIBLE_RUN_SELECTOR } from "@/lib/api/logs"
+import { logsApi, TERRAFORM_RUN_SELECTOR, ANSIBLE_RUN_SELECTOR, RUNBOOK_RUN_SELECTOR_PREFIX, parseRunbookRunSelector } from "@/lib/api/logs"
 import { LogsFilters } from "./logs-filters"
-import { LogRow } from "./log-row"
+import type { RunbookRunOption } from "./logs-filters"
+import { LogTerminal } from "./log-terminal"
 
 interface LogsTabProps {
   resources: ProvisionedResource[]
   projectId: string
   environmentId: string
+  runbookRuns?: RunbookRunOption[]
 }
 
 const POLL_INTERVAL_MS = 5_000
 
-export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
+export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] }: LogsTabProps) {
   const [logs, setLogs]                         = useState<LogEntry[]>([])
   const [filterLevel, setFilterLevel]           = useState<string>("all")
   const [selectedInstance, setSelectedInstance] = useState<string>(TERRAFORM_RUN_SELECTOR)
@@ -27,6 +29,7 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
 
   const isTerraformRun = selectedInstance === TERRAFORM_RUN_SELECTOR
   const isAnsibleRun   = selectedInstance === ANSIBLE_RUN_SELECTOR
+  const isRunbookRun   = selectedInstance.startsWith(RUNBOOK_RUN_SELECTOR_PREFIX)
 
   // ── Reset when the selected source changes ──────────────────────────────────
   useEffect(() => {
@@ -71,6 +74,15 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
     [projectId, environmentId],
   )
 
+  const fetchRunbookRunLogs = useCallback(
+    async (afterId: number | null): Promise<LogEntry[]> => {
+      const runId = parseRunbookRunSelector(selectedInstance)
+      if (!runId) return []
+      return logsApi.runbookRunLogs(projectId, environmentId, runId, afterId)
+    },
+    [projectId, environmentId, selectedInstance],
+  )
+
   // ── Initial full load + polling ─────────────────────────────────────────────
   useEffect(() => {
     if (!selectedInstance) return
@@ -83,6 +95,8 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
           ? await fetchTerraformLogs(afterId)
           : isAnsibleRun
           ? await fetchAnsibleLogs(afterId)
+          : isRunbookRun
+          ? await fetchRunbookRunLogs(afterId)
           : await fetchResourceLogs(afterId)
 
         if (!active) return
@@ -116,7 +130,7 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
       active = false
       clearInterval(intervalId)
     }
-  }, [selectedInstance, isTerraformRun, isAnsibleRun, fetchTerraformLogs, fetchAnsibleLogs, fetchResourceLogs])
+  }, [selectedInstance, isTerraformRun, isAnsibleRun, isRunbookRun, fetchTerraformLogs, fetchAnsibleLogs, fetchAnsibleLogs, fetchRunbookRunLogs, fetchResourceLogs])
 
   // ── Filtered view ───────────────────────────────────────────────────────────
   const displayLogs = logs.filter(
@@ -147,6 +161,11 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
   function getTerminalTitle(): string {
     if (isTerraformRun) return "Terraform Run · Provision · latest"
     if (isAnsibleRun)   return "Ansible Run · Configure Environment · latest"
+    if (isRunbookRun) {
+      const runId = parseRunbookRunSelector(selectedInstance)
+      const opt   = runbookRuns.find(r => r.id === runId)
+      return opt?.label ?? `Runbook Run · ${runId}`
+    }
     if (!selectedInstance) return "No resource selected"
     const res  = resources.find(r => r.id === selectedInstance)
     const name = res?.name ?? res?.provider_resource_id ?? `resource-${res?.id ?? "?"}`
@@ -165,6 +184,7 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
         setAutoScroll={setAutoScroll}
         handleDownload={handleDownload}
         resources={resources}
+        runbookRuns={runbookRuns}
         isLoading={isLoading}
       />
 
@@ -173,6 +193,10 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
         <span className="text-[10px] font-medium text-muted-foreground">
           {isTerraformRun
             ? "Terraform Run Logs"
+            : isAnsibleRun
+            ? "Ansible Run Logs"
+            : isRunbookRun
+            ? "Runbook Run Logs"
             : selectedInstance
             ? "Resource Logs"
             : "Select a resource"}{" "}
@@ -182,33 +206,15 @@ export function LogsTab({ resources, projectId, environmentId }: LogsTabProps) {
       </div>
 
       {/* Terminal */}
-      <div className="flex flex-col rounded-lg border border-border bg-[#0d1117] overflow-hidden">
-        <div className="flex items-center gap-1.5 border-b border-[#21262d] bg-[#161b22] px-3 py-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
-          <span className="ml-2 text-[10px] text-gray-500 font-mono">{getTerminalTitle()}</span>
-        </div>
-        <div
-          ref={scrollRef}
-          className="overflow-y-auto p-3 font-mono text-[11px] leading-5 max-h-[420px] min-h-[200px]"
-        >
-          {displayLogs.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-gray-600">
-              {isLoading ? "Fetching logs..." : "No log entries"}
-            </div>
-          ) : (
-            displayLogs.map(log => (
-              <LogRow
-                key={log.id}
-                log={log}
-                resources={resources}
-                selectedResource={isTerraformRun ? undefined : selectedInstance}
-              />
-            ))
-          )}
-        </div>
-      </div>
+      <LogTerminal
+        title={getTerminalTitle()}
+        entries={displayLogs}
+        loading={isLoading}
+        resources={resources}
+        selectedResource={isTerraformRun ? undefined : selectedInstance}
+        scrollRef={scrollRef}
+        emptyText={isLoading ? "Fetching logs…" : "No log entries"}
+      />
     </div>
   )
 }

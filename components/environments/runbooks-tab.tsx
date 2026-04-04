@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Play, Loader2, Clock, CheckCircle2, XCircle, AlertCircle, BookOpen, RefreshCw, ListChecks } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Play, Loader2, Clock, CheckCircle2, XCircle, AlertCircle, BookOpen, RefreshCw, ListChecks, ScrollText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
 import { environmentsApi } from "@/lib/api/environments"
 import type { Deployment, Runbook, RunbookRun } from "@/lib/api/types"
 import { Button } from "@/components/ui/button"
+import { RunLogModal } from "@/components/environments/run-log-modal"
+import type { RunLogResource } from "@/components/environments/run-log-modal"
 
 interface RunbooksTabProps {
   projectId: string
@@ -36,11 +38,12 @@ interface RunbookCardProps {
   runbook: Runbook
   runs: RunbookRun[]
   onTrigger: (runbookId: string) => Promise<void>
+  onViewLogs: (run: RunbookRun) => void
   triggering: boolean
   disabled: boolean
 }
 
-function RunbookCard({ runbook, runs, onTrigger, triggering, disabled }: RunbookCardProps) {
+function RunbookCard({ runbook, runs, onTrigger, onViewLogs, triggering, disabled }: RunbookCardProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
       <div className="flex items-center justify-between gap-2">
@@ -72,8 +75,17 @@ function RunbookCard({ runbook, runs, onTrigger, triggering, disabled }: Runbook
                 {statusIcon(r.status)}
                 <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", statusClass(r.status))}>{r.status}</span>
                 {r.created_at && (
-                  <span className="text-muted-foreground ml-auto">{new Date(r.created_at).toLocaleString()}</span>
+                  <span className="text-muted-foreground">{new Date(r.created_at).toLocaleString()}</span>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => onViewLogs(r)}
+                >
+                  <ScrollText className="h-3 w-3" />
+                  Logs
+                </Button>
               </div>
             ))}
           </div>
@@ -92,9 +104,12 @@ export function RunbooksTab({ projectId, environmentId, templateId, versionId, d
   const [runs, setRuns] = useState<RunbookRun[]>([])
   const [loading, setLoading] = useState(true)
   const [triggeringId, setTriggeringId] = useState<string | null>(null)
+  const [logResource, setLogResource] = useState<RunLogResource | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const hasRunningDeployment = deployments.some((d) => d.status?.toLowerCase() === "running")
 
+  // Full load (shows spinner) — used on mount and manual refresh
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -114,16 +129,39 @@ export function RunbooksTab({ projectId, environmentId, templateId, versionId, d
     }
   }, [templateId, versionId, projectId, environmentId])
 
-  useEffect(() => { load() }, [load])
+  // Silent background poll — only refreshes run statuses, no spinner
+  const pollRuns = useCallback(async () => {
+    const runsData = await environmentsApi.listRunbookRuns(projectId, environmentId).catch(() => null)
+    if (runsData) setRuns(runsData)
+  }, [projectId, environmentId])
+
+  useEffect(() => {
+    load()
+    intervalRef.current = setInterval(pollRuns, 5000)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [load, pollRuns])
 
   const handleTrigger = async (runbookId: string) => {
     setTriggeringId(runbookId)
     try {
-      await environmentsApi.triggerRunbookRun(projectId, environmentId, runbookId)
-      await load()
+      const newRun = await environmentsApi.triggerRunbookRun(projectId, environmentId, runbookId)
+      // Optimistically prepend the QUEUED run immediately
+      setRuns((prev) => [newRun, ...prev])
     } finally {
       setTriggeringId(null)
+      // Refresh in background to pick up any immediate status change
+      load()
     }
+  }
+
+  const handleViewLogs = (run: RunbookRun) => {
+    setLogResource({
+      type:          "runbook",
+      projectId,
+      environmentId,
+      runId:         String(run.id),
+      title:         `Logs — ${run.runbook_name ?? "Runbook"}`,
+    })
   }
 
   const runsByRunbook = (runbookId: string) =>
@@ -173,12 +211,19 @@ export function RunbooksTab({ projectId, environmentId, templateId, versionId, d
               runbook={rb}
               runs={runsByRunbook(String(rb.id))}
               onTrigger={handleTrigger}
+              onViewLogs={handleViewLogs}
               triggering={triggeringId === String(rb.id)}
               disabled={!hasRunningDeployment}
             />
           ))}
         </div>
       )}
+
+      <RunLogModal
+        open={logResource !== null}
+        onClose={() => setLogResource(null)}
+        resource={logResource}
+      />
     </div>
   )
 }

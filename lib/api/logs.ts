@@ -1,8 +1,14 @@
 import { request } from "./client"
 import type { LogEntry, TerraformRun, AnsibleRun } from "./types"
 
-export const TERRAFORM_RUN_SELECTOR = "__terraform_run__"
-export const ANSIBLE_RUN_SELECTOR   = "__ansible_run__"
+export const TERRAFORM_RUN_SELECTOR      = "__terraform_run__"
+export const ANSIBLE_RUN_SELECTOR        = "__ansible_run__"
+export const RUNBOOK_RUN_SELECTOR_PREFIX = "__runbook_run__"
+
+export const makeRunbookRunSelector = (runId: string | number) =>
+  `${RUNBOOK_RUN_SELECTOR_PREFIX}${runId}`
+export const parseRunbookRunSelector = (s: string): string | null =>
+  s.startsWith(RUNBOOK_RUN_SELECTOR_PREFIX) ? s.slice(RUNBOOK_RUN_SELECTOR_PREFIX.length) : null
 
 // ── API shape returned by the new /logs endpoints ────────────────────────────
 
@@ -110,5 +116,21 @@ export const logsApi = {
 
     const raw = await request<RunLogApiEntry[]>(url)
     return { entries: raw.map(toLogEntry), runId: resolvedRunId }
+  },
+
+  /**
+   * Fetch logs for a runbook run.
+   */
+  runbookRunLogs: async (
+    projectId: string,
+    environmentId: string,
+    runId: string,
+    afterId?: number | null,
+  ): Promise<LogEntry[]> => {
+    const url = afterId
+      ? `/projects/${projectId}/environments/${environmentId}/runbook-runs/${runId}/logs?after_id=${afterId}`
+      : `/projects/${projectId}/environments/${environmentId}/runbook-runs/${runId}/logs`
+    const raw = await request<RunLogApiEntry[]>(url)
+    return raw.map(toLogEntry)
   },
 }
