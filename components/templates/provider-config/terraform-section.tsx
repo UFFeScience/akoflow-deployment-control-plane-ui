@@ -1,50 +1,35 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2, ChevronDown, ChevronRight, Code2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Code2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { OutputsMappingEditor } from "../outputs-mapping-editor"
-import { parseOutputsMappingJson } from "../outputs-mapping-editor"
+import { SectionCard } from "./section-card"
+import { CredentialKeysEditor } from "./credential-keys-editor"
 import type { TerraformForm } from "./shared"
 import { HCL_TABS } from "./shared"
-import type { TemplateDefinition, ProviderConfiguration } from "@/lib/api/types"
+import type { ProviderConfiguration } from "@/lib/api/types"
 
 interface TerraformSectionProps {
   config: ProviderConfiguration
   tfForm: TerraformForm
   onTfFormChange: (form: TerraformForm) => void
   expFields: { name: string; label: string }[]
-  newCredKeyTf: string
-  onNewCredKeyTfChange: (v: string) => void
 }
 
-export function TerraformSection({ config, tfForm, onTfFormChange, expFields, newCredKeyTf, onNewCredKeyTfChange }: TerraformSectionProps) {
+export function TerraformSection({ config, tfForm, onTfFormChange, expFields }: TerraformSectionProps) {
   const [hclTab, setHclTab] = useState<"main" | "variables" | "outputs">("main")
-  const [showTf, setShowTf] = useState(true)
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <button
-        type="button"
-        className="w-full flex items-center gap-2 px-4 py-3 bg-muted/30 text-left hover:bg-muted/50 transition-colors"
-        onClick={() => setShowTf((v) => !v)}
-      >
-        {showTf ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-        <Code2 className="h-3.5 w-3.5 text-blue-500" />
-        <span className="text-sm font-semibold">Terraform (HCL)</span>
-        {config.terraform_module?.has_custom_hcl && (
-          <Badge variant="secondary" className="text-[10px] ml-1">Configured</Badge>
-        )}
-      </button>
-
-      {showTf && (
-        <div className="p-4 flex flex-col gap-4">
-          <div className="flex flex-col gap-0">
+    <SectionCard
+      title="Terraform (HCL)"
+      icon={<Code2 className="h-3.5 w-3.5 text-blue-500" />}
+      badge={config.terraform_module?.has_custom_hcl ? "Configured" : undefined}
+    >
+        <div className="flex flex-col gap-0">
             <div className="flex gap-0 rounded-t-lg border border-border overflow-hidden text-xs">
               {HCL_TABS.map((t) => (
                 <button
@@ -127,40 +112,11 @@ export function TerraformSection({ config, tfForm, onTfFormChange, expFields, ne
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label className="text-xs font-semibold">Credential ENV Keys</Label>
-            {tfForm.credential_env_keys.map((key, i) => (
-              <div key={i} className="flex gap-2">
-                <code className="flex-1 rounded border bg-muted/50 px-2 py-1 text-xs font-mono">{key}</code>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => onTfFormChange({ ...tfForm, credential_env_keys: tfForm.credential_env_keys.filter((_, j) => j !== i) })}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <Input className="h-7 text-xs font-mono" placeholder="AWS_ACCESS_KEY_ID"
-                value={newCredKeyTf}
-                onChange={(e) => onNewCredKeyTfChange(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newCredKeyTf.trim()) {
-                    onTfFormChange({ ...tfForm, credential_env_keys: [...tfForm.credential_env_keys, newCredKeyTf.trim()] })
-                    onNewCredKeyTfChange("")
-                  }
-                }}
-              />
-              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={!newCredKeyTf.trim()}
-                onClick={() => {
-                  if (!newCredKeyTf.trim()) return
-                  onTfFormChange({ ...tfForm, credential_env_keys: [...tfForm.credential_env_keys, newCredKeyTf.trim()] })
-                  onNewCredKeyTfChange("")
-                }}>
-                <Plus className="h-3.5 w-3.5 mr-1" />Add
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+          <CredentialKeysEditor
+            value={tfForm.credential_env_keys}
+            onChange={(keys) => onTfFormChange({ ...tfForm, credential_env_keys: keys })}
+            placeholder="AWS_ACCESS_KEY_ID"
+          />
+        </SectionCard>
   )
 }

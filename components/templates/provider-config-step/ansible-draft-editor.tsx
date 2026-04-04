@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { OutputsMappingEditor } from "../outputs-mapping-editor"
 import { MappingEditor } from "./mapping-editor"
 import { CredentialKeysEditor } from "./credential-keys-editor"
+import { PlaybookTasksEditor } from "../provider-config/playbook-tasks-editor"
+import type { TaskDraft } from "../provider-config/playbook-task-card"
 import type { AnsibleConfigDraft } from "./types"
 
 interface AnsibleDraftEditorProps {
@@ -20,6 +22,7 @@ interface AnsibleDraftEditorProps {
 export function AnsibleDraftEditor({ value, onChange, enabled, onToggle, expFields }: AnsibleDraftEditorProps) {
   const [expanded, setExpanded] = useState(false)
   const [showInventory, setShowInventory] = useState(false)
+  const [tasks, setTasks] = useState<TaskDraft[]>([])
 
   return (
     <div className="flex flex-col gap-3">
@@ -43,10 +46,13 @@ export function AnsibleDraftEditor({ value, onChange, enabled, onToggle, expFiel
       {enabled && expanded && (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-semibold">playbook.yml</Label>
-            <Textarea className="font-mono text-xs min-h-[160px] resize-y"
-              value={value.playbook_yaml} onChange={(e) => onChange({ ...value, playbook_yaml: e.target.value })}
-              placeholder={"- hosts: all\n  become: yes\n  tasks:\n    - name: ..."} />
+            <Label className="text-xs font-semibold">playbook.yml <span className="font-normal text-muted-foreground">+ tasks</span></Label>
+            <PlaybookTasksEditor
+              yaml={value.playbook_yaml}
+              onYamlChange={(yaml) => onChange({ ...value, playbook_yaml: yaml })}
+              tasks={tasks}
+              onTasksChange={setTasks}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

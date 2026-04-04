@@ -8,12 +8,13 @@ import { templatesApi } from "@/lib/api/templates"
 import { emptyDraftDefinition, draftToDefinition, type DraftDefinition } from "./definition-builder"
 import { defaultTfDraft, tfDraftToPayload, type TfDraft } from "./terraform-module-step"
 import { defaultAnsibleDraft, ansibleDraftToPayload, ansibleDraftIsConfigured, type AnsibleDraft } from "./ansible-playbook-step"
-import { STEPS, toSlug, type BasicInfo } from "./template-create/types"
+import { STEPS, toSlug, type BasicInfo, type RunbookDraft, defaultRunbookDraft } from "./template-create/types"
 import { TemplateStepper } from "./template-create/stepper"
 import { Step1BasicInfo } from "./template-create/step1-basic-info"
 import { Step2Definition } from "./template-create/step2-definition"
 import { Step3Terraform } from "./template-create/step3-terraform"
 import { Step4Ansible } from "./template-create/step4-ansible"
+import { Step5PosConfig } from "./template-create/step5-posconfig"
 import { Step5Review } from "./template-create/step5-review"
 
 export function TemplateCreate() {
@@ -25,6 +26,7 @@ export function TemplateCreate() {
   const [draft, setDraft]   = useState<DraftDefinition>(emptyDraftDefinition)
   const [tfDrafts, setTfDrafts]           = useState<TfDraft[]>([])
   const [ansibleDrafts, setAnsibleDrafts] = useState<AnsibleDraft[]>([])
+  const [runbookDrafts, setRunbookDrafts] = useState<RunbookDraft[]>([])
 
   const setName = (name: string) =>
     setInfo((prev) => ({ ...prev, name, slug: prev.slug === toSlug(prev.name) ? toSlug(name) : prev.slug }))
@@ -37,15 +39,40 @@ export function TemplateCreate() {
       const definitionJson = draftToDefinition(draft)
       const template = await templatesApi.create({ name: info.name.trim(), slug: info.slug.trim(), description: info.description.trim() || undefined, is_public: info.is_public })
       const version  = await templatesApi.createVersion(template.id, { version: info.first_version.trim(), is_active: true, definition_json: definitionJson })
+      const configIds = new Set<string>()
       for (const draft of tfDrafts) {
         if (!draft.provider_type) continue
         const payload = tfDraftToPayload(draft)
         const { provider_type: _pt, ...bodyPayload } = payload as any
-        await templatesApi.upsertTerraformModule(template.id, version.id, draft.provider_type as import("@/lib/api/types").TerraformProviderType, bodyPayload)
+        const tf = await templatesApi.upsertTerraformModule(template.id, version.id, draft.provider_type as import("@/lib/api/types").TerraformProviderType, bodyPayload)
+        if (tf.provider_configuration_id) configIds.add(tf.provider_configuration_id)
       }
       for (const ans of ansibleDrafts) {
-        if (ansibleDraftIsConfigured(ans))
-          await templatesApi.upsertAnsiblePlaybook(template.id, version.id, ans.provider_type, ansibleDraftToPayload(ans))
+        if (ansibleDraftIsConfigured(ans)) {
+          const ap = await templatesApi.upsertAnsiblePlaybook(template.id, version.id, ans.provider_type, ansibleDraftToPayload(ans))
+          if (ap.provider_configuration_id) configIds.add(ap.provider_configuration_id)
+        }
+      }
+      if (runbookDrafts.length > 0) {
+        let targetConfigIds = [...configIds]
+        if (targetConfigIds.length === 0) {
+          const configs = await templatesApi.listProviderConfigurations(template.id, version.id)
+          targetConfigIds = configs.map((c) => c.id)
+        }
+        for (const configId of targetConfigIds) {
+          for (const rb of runbookDrafts) {
+            if (!rb.name.trim()) continue
+            let parsedRoles: unknown = []
+            try { parsedRoles = JSON.parse(rb.roles_json) } catch { /* ignore */ }
+            await templatesApi.createRunbook(template.id, version.id, configId, {
+              name: rb.name.trim(),
+              description: rb.description || undefined,
+              playbook_yaml: rb.playbook_yaml || undefined,
+              credential_env_keys: rb.credential_env_keys.filter(Boolean),
+              roles_json: parsedRoles as any,
+            })
+          }
+        }
       }
       router.push(`/organization/templates/${template.id}`)
     } catch (err: any) {
@@ -63,7 +90,8 @@ export function TemplateCreate() {
           {step === 2 && <Step2Definition draft={draft} setDraft={setDraft} />}
           {step === 3 && <Step3Terraform draft={draft} tfDrafts={tfDrafts} setTfDrafts={setTfDrafts} />}
           {step === 4 && <Step4Ansible draft={draft} ansibleDrafts={ansibleDrafts} setAnsibleDrafts={setAnsibleDrafts} />}
-          {step === 5 && <Step5Review info={info} draft={draft} tfDrafts={tfDrafts} ansibleDrafts={ansibleDrafts} />}
+          {step === 5 && <Step5PosConfig runbooks={runbookDrafts} setRunbooks={setRunbookDrafts} />}
+          {step === 6 && <Step5Review info={info} draft={draft} tfDrafts={tfDrafts} ansibleDrafts={ansibleDrafts} />}
         </div>
 
         {error && <p className="text-sm text-destructive text-center">{error}</p>}

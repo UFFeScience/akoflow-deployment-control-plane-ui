@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo } from "react"
-import { cn } from "@/lib/utils"
+import { Layers } from "lucide-react"
 import type { Deployment, Environment, ProvisionedResource } from "@/lib/api/types"
-import { DeploymentCard } from "./deployment-card"
+import { DeploymentsTopology } from "./topology-tab/deployments-topology"
+import { TemplateGraph } from "./topology-tab/template-graph"
 
 interface TopologyTabProps {
   environment: Environment
@@ -12,61 +12,45 @@ interface TopologyTabProps {
 }
 
 export function TopologyTab({ environment, deployments, resourcesByDeployment }: TopologyTabProps) {
-  // Group deployments by provider
-  const grouped = useMemo(() => {
-    const map: Record<string, { label: string; deployments: Deployment[] }> = {}
-    deployments.forEach((d) => {
-      const key = (d.providerId ?? d.provider_id ?? "unknown") as string
-      if (!map[key]) map[key] = { label: d.providerName ?? key, deployments: [] }
-      map[key].deployments.push(d)
-    })
-    return Object.entries(map)
-  }, [deployments])
-
-  if (deployments.length === 0) {
-    return (
-      <div className="flex items-center justify-center rounded-lg border border-dashed border-border py-12 text-xs text-muted-foreground">
-        No deployments provisioned for this environment yet.
-      </div>
-    )
-  }
+  const templateVersionId =
+    (environment as any).environment_template_version_id ??
+    (environment as any).environmentTemplateVersionId ?? null
+  const templateId =
+    (environment as any).templateId ??
+    (environment as any).template_id ?? null
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Environment node */}
-      <div className="flex flex-col items-center gap-1">
-        <div className="rounded-lg border-2 border-primary/40 bg-primary/5 px-4 py-2">
-          <span className="text-xs font-semibold text-primary">{environment.name}</span>
+    <div className="flex flex-col gap-6">
+      {/* Deployments */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">Deployments</span>
+          {deployments.length > 0 && (
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {deployments.length}
+            </span>
+          )}
         </div>
+        <DeploymentsTopology
+          environment={environment}
+          deployments={deployments}
+          resourcesByDeployment={resourcesByDeployment}
+        />
       </div>
 
-      {/* Provider groups */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {grouped.map(([providerId, group]) => (
-          <div
-            key={providerId}
-            className={cn("flex flex-col gap-3 rounded-lg border p-4 bg-muted/20")}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                {group.label}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {group.deployments.length} deployment{group.deployments.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {group.deployments.map((deployment) => (
-                <DeploymentCard
-                  key={deployment.id}
-                  deployment={deployment}
-                  resources={resourcesByDeployment[deployment.id] ?? []}
-                />
-              ))}
-            </div>
+      {/* Infrastructure Topology */}
+      {templateId && templateVersionId && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Infrastructure Topology</span>
           </div>
-        ))}
-      </div>
+          <TemplateGraph
+            templateId={String(templateId)}
+            templateVersionId={String(templateVersionId)}
+          />
+        </div>
+      )}
     </div>
   )
 }

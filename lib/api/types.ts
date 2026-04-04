@@ -390,6 +390,20 @@ export interface AnsiblePlaybook {
   updated_at?: string
 }
 
+export interface Runbook {
+  id: string
+  provider_configuration_id: string
+  name: string
+  description?: string | null
+  playbook_yaml?: string | null
+  vars_mapping_json?: Record<string, unknown> | null
+  credential_env_keys?: string[]
+  roles_json?: Array<{ name: string; version?: string } | string> | null
+  position?: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface ProviderConfiguration {
   id: string
   template_version_id: string
@@ -397,6 +411,7 @@ export interface ProviderConfiguration {
   applies_to_providers: string[]
   terraform_module?: TerraformModule | null
   ansible_playbook?: AnsiblePlaybook | null
+  runbooks?: Runbook[]
   created_at?: string
   updated_at?: string
 }
@@ -554,6 +569,21 @@ export interface AnsibleRun {
   workspace_path?: string
   extra_vars?: Record<string, unknown>
   output?: Record<string, unknown>
+  started_at?: string | null
+  finished_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface RunbookRun {
+  id: string
+  runbook_id: string | number
+  runbook_name?: string
+  deployment_id?: string | number | null
+  environment_id?: string
+  triggered_by?: string
+  /** QUEUED | RUNNING | COMPLETED | FAILED */
+  status: string
   started_at?: string | null
   finished_at?: string | null
   created_at?: string

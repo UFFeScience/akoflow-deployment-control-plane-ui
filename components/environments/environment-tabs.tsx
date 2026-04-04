@@ -8,6 +8,7 @@ import { ResourcesTab } from "@/components/environments/resources-tab"
 import { LogsTab } from "@/components/environments/logs-tab"
 import { ConfigurationTab } from "@/components/environments/configuration-tab"
 import { IframeTab } from "@/components/environments/iframe-tab"
+import { RunbooksTab } from "@/components/environments/runbooks-tab"
 import type { Deployment, Environment, Provider, ProvisionedResource, Template } from "@/lib/api/types"
 
 interface EnvironmentTabsProps {
@@ -40,6 +41,33 @@ export function EnvironmentTabs({
   const [activeTab, setActiveTab] = useState<string>("topology")
 
   const allResources = Object.values(resourcesByDeployment).flat()
+
+  // Resolve template IDs — the API may omit templateId, fall back to matching by name
+  const resolvedTemplateId: string | null = (() => {
+    if (!environment) return null
+    const direct = (environment as any).templateId ?? (environment as any).template_id
+    if (direct) return String(direct)
+    const byName = (environment.templateName ?? (environment as any).template_name) as string | undefined
+    if (byName) {
+      const found = templates.find((t) => t.name === byName)
+      if (found) return found.id
+    }
+    return null
+  })()
+
+  const resolvedVersionId: string | null = (() => {
+    if (!environment) return null
+    const direct =
+      (environment as any).environment_template_version_id ??
+      (environment as any).environmentTemplateVersionId
+    if (direct) return String(direct)
+    if (resolvedTemplateId) {
+      const tmpl = templates.find((t) => t.id === resolvedTemplateId)
+      const active = tmpl?.active_version?.id
+      if (active) return String(active)
+    }
+    return null
+  })()
 
   return (
     <Tabs
@@ -74,6 +102,11 @@ export function EnvironmentTabs({
         {allResources.some((r) => r.metadata_json?.akoflow_iframe_url) && (
           <TabsTrigger value="preview" className="text-xs h-6 px-3">
             Workflow Engine
+          </TabsTrigger>
+        )}
+        {resolvedTemplateId && resolvedVersionId && (
+          <TabsTrigger value="runbooks" className="text-xs h-6 px-3">
+            Runbooks
           </TabsTrigger>
         )}
       </TabsList>
@@ -120,6 +153,18 @@ export function EnvironmentTabs({
 
       <TabsContent value="preview" className="mt-3">
         <IframeTab resources={allResources} />
+      </TabsContent>
+
+      <TabsContent value="runbooks" className="mt-3">
+        {environment && resolvedTemplateId && resolvedVersionId && (
+          <RunbooksTab
+            projectId={projectId}
+            environmentId={environmentId}
+            templateId={resolvedTemplateId}
+            versionId={resolvedVersionId}
+            deployments={deployments}
+          />
+        )}
       </TabsContent>
     </Tabs>
   )

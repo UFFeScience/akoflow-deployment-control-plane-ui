@@ -1,5 +1,5 @@
 import { request } from "./client"
-import type { AnsibleRun, Environment, TerraformRun } from "./types"
+import type { AnsibleRun, Environment, RunbookRun, TerraformRun } from "./types"
 
 export const environmentsApi = {
   listAll: (orgId: string) => request<Environment[]>(`/organizations/${orgId}/environments`),
@@ -66,4 +66,14 @@ export const environmentsApi = {
       method: "POST",
       body: deploymentId ? { deployment_id: deploymentId } : {},
     }),
+
+  // ── Runbook runs ───────────────────────────────────────────────────────────
+  listRunbookRuns: (projectId: string, environmentId: string) =>
+    request<RunbookRun[]>(`/projects/${projectId}/environments/${environmentId}/runbook-runs`),
+
+  triggerRunbookRun: (projectId: string, environmentId: string, runbookId: string, deploymentId?: string) =>
+    request<{ message: string; runbook_name?: string; deployment_id?: string }>(
+      `/projects/${projectId}/environments/${environmentId}/runbook-runs`,
+      { method: "POST", body: { runbook_id: runbookId, ...(deploymentId ? { deployment_id: deploymentId } : {}) } },
+    ),
 }

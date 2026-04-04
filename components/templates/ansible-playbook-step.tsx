@@ -5,6 +5,8 @@ import { Plus, Trash2, Code2, Eye, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { PlaybookTasksEditor } from "./provider-config/playbook-tasks-editor"
+import type { TaskDraft } from "./provider-config/playbook-task-card"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import type { TemplateDefinition } from "@/lib/api/types"
@@ -33,6 +35,7 @@ interface Props {
 export function AnsiblePlaybookStep({ definition, value, onChange }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [varsMappingMode, setVarsMappingMode] = useState<"visual" | "raw">("visual")
+  const [tasksByProvider, setTasksByProvider] = useState<Record<string, TaskDraft[]>>({})
 
   const valueRef = useRef(value)
   useEffect(() => { valueRef.current = value }, [value])
@@ -141,9 +144,12 @@ export function AnsiblePlaybookStep({ definition, value, onChange }: Props) {
       <Separator />
 
       <Section title="Playbook YAML" description={`The main playbook.yml that Ansible will execute for ${providerLabel(current.provider_type)}.`}>
-        <Textarea value={current.playbook_yaml} onChange={(e) => patchCurrent({ playbook_yaml: e.target.value })}
-          placeholder={"- name: Configure environment\n  hosts: all\n  tasks:\n    - name: Example\n      debug:\n        msg: \"Hello\""}
-          className="font-mono text-xs leading-relaxed min-h-[220px] resize-y bg-muted/20" spellCheck={false} />
+        <PlaybookTasksEditor
+          yaml={current.playbook_yaml}
+          onYamlChange={(yaml) => patchCurrent({ playbook_yaml: yaml })}
+          tasks={tasksByProvider[current.provider_type] ?? []}
+          onTasksChange={(tasks) => setTasksByProvider((prev) => ({ ...prev, [current.provider_type]: tasks }))}
+        />
       </Section>
 
       {needsInventory && (

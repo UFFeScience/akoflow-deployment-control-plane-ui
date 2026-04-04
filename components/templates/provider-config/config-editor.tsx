@@ -12,6 +12,7 @@ import { defaultTfForm, defaultAnsibleForm, ProviderMultiSelect } from "./shared
 import type { TerraformForm, AnsibleForm } from "./shared"
 import { TerraformSection } from "./terraform-section"
 import { AnsibleSection } from "./ansible-section"
+import { RunbookSection } from "./runbook-section"
 
 interface ConfigEditorProps {
   templateId: string
@@ -29,8 +30,6 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [newCredKeyTf, setNewCredKeyTf] = useState("")
-  const [newCredKeyAns, setNewCredKeyAns] = useState("")
 
   const expFields = definition?.environment_configuration?.sections?.flatMap((s) =>
     s.fields.map((f) => ({ name: f.name, label: f.label }))
@@ -106,8 +105,6 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
         tfForm={tfForm}
         onTfFormChange={setTfForm}
         expFields={expFields}
-        newCredKeyTf={newCredKeyTf}
-        onNewCredKeyTfChange={setNewCredKeyTf}
       />
 
       <AnsibleSection
@@ -115,9 +112,9 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
         ansibleForm={ansibleForm}
         onAnsibleFormChange={setAnsibleForm}
         expFields={expFields}
-        newCredKeyAns={newCredKeyAns}
-        onNewCredKeyAnsChange={setNewCredKeyAns}
       />
+
+      <RunbookSection templateId={templateId} versionId={versionId} config={config} />
 
       <div className="flex items-center gap-3">
         <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleSave} disabled={saving}>

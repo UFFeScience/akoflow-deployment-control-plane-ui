@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import {
-  ArrowLeft, Plus, Globe, Lock, Cpu, Layers, FileCode2, AlertCircle, Settings2, Network,
+  ArrowLeft, Plus, Globe, Lock, Cpu, Layers, FileCode2, AlertCircle, Settings2, Network, ListChecks,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,6 +11,7 @@ import { templatesApi } from "@/lib/api/templates"
 import { DefinitionViewer } from "./definition-viewer"
 import { AddVersionSheet } from "./add-version-sheet"
 import { ProviderConfigTab } from "./provider-config-tab"
+import { PlaybooksTab } from "./playbooks-tab"
 import type { Template, TemplateVersion } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 import { RUNTIME_COLORS } from "./template-detail/types"
@@ -128,6 +129,9 @@ export function TemplateDetail({ templateId }: { templateId: string }) {
           <TabsTrigger value="provider-configurations" className="text-xs h-7 gap-1">
             <Settings2 className="h-3 w-3" />Provider Configurations
           </TabsTrigger>
+          <TabsTrigger value="playbooks" className="text-xs h-7 gap-1">
+            <ListChecks className="h-3 w-3" />Playbooks &amp; Runbooks
+          </TabsTrigger>
           <TabsTrigger value="topology" className="text-xs h-7 gap-1">
             <Network className="h-3 w-3" />Topology
           </TabsTrigger>
@@ -172,6 +176,17 @@ export function TemplateDetail({ templateId }: { templateId: string }) {
           ) : (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <AlertCircle className="h-4 w-4" />Select a version to configure its provider configurations.
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="playbooks" className="mt-4">
+          {versions.length > 0 && <div className="flex items-center gap-2 mb-5"><span className="text-xs text-muted-foreground">Version:</span><VersionSelector /></div>}
+          {selectedVersion && selectedVersionId ? (
+            <PlaybooksTab key={selectedVersionId} templateId={templateId} versionId={selectedVersionId} version={selectedVersion} />
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />Select a version to manage its playbooks and runbooks.
             </div>
           )}
         </TabsContent>

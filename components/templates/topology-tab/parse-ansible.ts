@@ -50,3 +50,42 @@ export function parseAnsibleGraph(yaml?: string | null): AnsibleGraph | null {
 
   return graph.hosts || graph.tasks.length ? graph : null
 }
+
+// ── Per-task status from Ansible log output ───────────────────────────────────
+
+export type AnsibleTaskStatus = "pending" | "running" | "ok" | "changed" | "failed" | "skipped"
+
+/**
+ * Parses a list of Ansible log messages (from logsApi.ansibleRunLogs) and returns
+ * a map of task name → status. Standard Ansible output follows:
+ *   TASK [task name] ***
+ *   ok: [host]  /  changed: [host]  /  fatal: [host]  /  skipping: [host]
+ */
+export function parseAnsibleTaskStatusFromLogs(
+  messages: string[],
+  tasks: AnsibleTask[],
+): Record<string, AnsibleTaskStatus> {
+  const result: Record<string, AnsibleTaskStatus> = {}
+  tasks.forEach((t) => { result[t.name] = "pending" })
+
+  let currentTask: string | null = null
+
+  for (const msg of messages) {
+    const taskMatch = msg.match(/TASK\s*\[([^\]]+)\]/)
+    if (taskMatch) {
+      currentTask = taskMatch[1].trim()
+      if (result[currentTask] === "pending") result[currentTask] = "running"
+      continue
+    }
+    if (!currentTask) continue
+    const m = msg.trim()
+    if (m.startsWith("ok:"))       { result[currentTask] = "ok";      currentTask = null; continue }
+    if (m.startsWith("changed:"))  { result[currentTask] = "changed"; currentTask = null; continue }
+    if (m.startsWith("fatal:") || m.startsWith("failed:") || /FAILED/i.test(m)) {
+      result[currentTask] = "failed"; currentTask = null; continue
+    }
+    if (m.startsWith("skipping:")) { result[currentTask] = "skipped"; currentTask = null; continue }
+  }
+
+  return result
+}

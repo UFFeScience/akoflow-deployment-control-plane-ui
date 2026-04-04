@@ -24,6 +24,7 @@ export function useEnvironmentCreate() {
   const [isSubmitting, setIsSubmitting]   = useState(false)
   const [configErrors, setConfigErrors]   = useState<Record<string, string>>({})
   const [showConfigErrors, setShowConfigErrors] = useState(false)
+  const [createdEnvironmentId, setCreatedEnvironmentId] = useState<string | null>(null)
 
   const [basics, setBasics] = useState({ name: "", description: "", executionMode: "manual" as "manual" | "auto" })
   const [environmentTemplateId, setEnvironmentTemplateId]     = useState<string>("none")
@@ -176,11 +177,18 @@ export function useEnvironmentCreate() {
     if (activeStep === "basics") return basics.name.trim().length > 0
     if (activeStep === "template") return true
     if (activeStep === "config") return !(isMultiProvider && activeSlugs.length < minProviders)
-    if (isMultiProvider) return activeSlugs.every((s) => Boolean(multiDeploymentForm.providerCredentials[s]?.providerId) && Boolean(multiDeploymentForm.providerCredentials[s]?.credentialId))
-    return Boolean(deploymentForm.providerId && deploymentForm.credentialId)
+    if (activeStep === "deployment") {
+      if (isMultiProvider) return activeSlugs.every((s) => Boolean(multiDeploymentForm.providerCredentials[s]?.providerId) && Boolean(multiDeploymentForm.providerCredentials[s]?.credentialId))
+      return Boolean(deploymentForm.providerId && deploymentForm.credentialId)
+    }
+    return true
   }
 
   async function handleFinish() {
+    if (activeStep === "runbooks") {
+      router.push(`/projects/${projectId}/environments/${createdEnvironmentId}`)
+      return
+    }
     if (isSubmitting) return; setIsSubmitting(true)
     try {
       const configurationJson: Record<string, unknown> = {}
@@ -198,7 +206,9 @@ export function useEnvironmentCreate() {
       }
       const result = await environmentsApi.provision(projectId, payload)
       toast.success("Environment created")
-      router.push(`/projects/${projectId}/environments/${result.id}`)
+      setCreatedEnvironmentId(result.id)
+      setActiveStep("provisioning")
+      setIsSubmitting(false)
     } catch { toast.error("Failed to create environment"); setIsSubmitting(false) }
   }
 
@@ -216,6 +226,6 @@ export function useEnvironmentCreate() {
     configErrors, showConfigErrors, setShowConfigErrors,
     isLoadingData, isSubmitting,
     nextStep, prevStep, canProceed, handleFinish,
-    templates,
+    templates, createdEnvironmentId,
   }
 }

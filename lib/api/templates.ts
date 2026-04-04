@@ -1,5 +1,5 @@
 import { request } from "./client"
-import type { Template, TemplateVersion, TemplateDefinition, TerraformModule, TerraformProviderType, AnsiblePlaybook, ProviderConfiguration } from "./types"
+import type { Template, TemplateVersion, TemplateDefinition, TerraformModule, TerraformProviderType, AnsiblePlaybook, ProviderConfiguration, Runbook } from "./types"
 
 export const templatesApi = {
   list: () => request<Template[]>("/environment-templates"),
@@ -73,6 +73,34 @@ export const templatesApi = {
     request<AnsiblePlaybook>(`/environment-templates/${id}/versions/${versionId}/ansible-playbooks/${providerType}`, {
       method: "PUT",
       body: data,
+    }),
+
+  // Runbooks
+  listRunbooks: (id: string, versionId: string, configId: string) =>
+    request<Runbook[]>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/runbooks`),
+  createRunbook: (id: string, versionId: string, configId: string, data: Partial<Runbook>) =>
+    request<Runbook>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/runbooks`, {
+      method: "POST",
+      body: data,
+    }),
+  updateRunbook: (id: string, versionId: string, configId: string, runbookId: string, data: Partial<Runbook>) =>
+    request<Runbook>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/runbooks/${runbookId}`, {
+      method: "PUT",
+      body: data,
+    }),
+  deleteRunbook: (id: string, versionId: string, configId: string, runbookId: string) =>
+    request<void>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/runbooks/${runbookId}`, {
+      method: "DELETE",
+    }),
+  syncRunbookTasks: (id: string, versionId: string, configId: string, runbookId: string, tasks: unknown[]) =>
+    request<unknown>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/runbooks/${runbookId}/tasks`, {
+      method: "PUT",
+      body: { tasks },
+    }),
+  syncPlaybookTasks: (id: string, versionId: string, configId: string, tasks: unknown[]) =>
+    request<unknown>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/ansible/tasks`, {
+      method: "PUT",
+      body: { tasks },
     }),
 }
 
