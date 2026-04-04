@@ -52,23 +52,44 @@ output "project_number" {
   LOCAL: `terraform {
   required_version = ">= 1.5"
   required_providers {
-    docker = {
-      source  = "kreuzwerker/docker"
+    null = {
+      source  = "hashicorp/null"
       version = "~> 3.0"
     }
   }
 }
 
-# DOCKER_HOST injected via env (e.g. unix:///var/run/docker.sock)
-provider "docker" {}
+variable "host" {}
+variable "user" {}
 
-# Fetches the bridge network — proves the Docker daemon is reachable
-data "docker_network" "bridge" {
-  name = "bridge"
+variable "ssh_password" {
+  default   = ""
+  sensitive = true
 }
 
-output "network_id" {
-  value = data.docker_network.bridge.id
+variable "ssh_private_key" {
+  default   = ""
+  sensitive = true
+}
+
+# Connects via SSH (password or private key) and runs basic commands to verify the host is reachable
+resource "null_resource" "health_check" {
+  provisioner "remote-exec" {
+    connection {
+      type        = "ssh"
+      host        = var.host
+      user        = var.user
+      password    = var.ssh_password != "" ? var.ssh_password : null
+      private_key = var.ssh_private_key != "" ? var.ssh_private_key : null
+    }
+
+    inline = [
+      "echo 'Connected to host'",
+      "hostname",
+      "docker ps",
+      "kubectl get pods || true",
+    ]
+  }
 }`,
 
   HPC: `terraform {
