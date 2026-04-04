@@ -1,295 +1,78 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { providerSchemasApi } from "@/lib/api/provider-schemas"
-import { providersApi } from "@/lib/api/providers"
-import type { ProviderVariableSchema, ProviderCredential } from "@/lib/api/types"
-import { useAuth } from "@/contexts/auth-context"
-import { toast } from "sonner"
+import { useCredentialForm } from "@/hooks/use-credential-form"
+import { CredentialMetaFields } from "./providers/credential-form/credential-meta-fields"
+import { SchemaFieldsSection } from "./providers/credential-form/schema-fields-section"
+import { HealthCheckTemplateField } from "./providers/credential-form/health-check-template-field"
+import type { ProviderType } from "@/lib/hcl-templates"
+import type { ProviderCredential } from "@/lib/api/types"
 
-type Props = {
+interface ProviderCredentialFormProps {
   providerId: string
+  providerType?: ProviderType
   onCreated: (credential: ProviderCredential) => void
   onCancel: () => void
 }
 
-// Group schemas by section
-function groupBySection(schemas: ProviderVariableSchema[]) {
-  return schemas.reduce<Record<string, ProviderVariableSchema[]>>((acc, s) => {
-    ;(acc[s.section] ??= []).push(s)
-    return acc
-  }, {})
-}
-
-function SecretInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  const [show, setShow] = useState(false)
-  return (
-    <div className="relative">
-      <Input
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="pr-10"
-      />
-      <button
-        type="button"
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-        onClick={() => setShow((s) => !s)}
-        tabIndex={-1}
-      >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-    </div>
-  )
-}
-
-function SchemaField({
-  schema,
-  value,
-  onChange,
-}: {
-  schema: ProviderVariableSchema
-  value: string
-  onChange: (v: string) => void
-}) {
-  const placeholder = schema.default_value ? `Default: ${schema.default_value}` : schema.label
-
-  if (schema.type === "select" && schema.options) {
-    return (
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger>
-          <SelectValue placeholder={`Select ${schema.label}`} />
-        </SelectTrigger>
-        <SelectContent>
-          {schema.options.map((opt) => (
-            <SelectItem key={opt} value={opt}>
-              {opt}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    )
-  }
-
-  if (schema.type === "textarea") {
-    return (
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={5}
-        className="font-mono text-xs"
-      />
-    )
-  }
-
-  if (schema.type === "boolean") {
-    return (
-      <div className="flex items-center gap-2">
-        <Switch checked={value === "true"} onCheckedChange={(v) => onChange(v ? "true" : "false")} />
-        <span className="text-sm text-muted-foreground">{value === "true" ? "Enabled" : "Disabled"}</span>
-      </div>
-    )
-  }
-
-  if (schema.type === "secret") {
-    return <SecretInput value={value} onChange={onChange} placeholder={placeholder} />
-  }
-
-  return (
-    <Input
-      type={schema.type === "number" ? "number" : "text"}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-    />
-  )
-}
-
-export function ProviderCredentialForm({ providerId, onCreated, onCancel }: Props) {
-  const [schemas, setSchemas] = useState<ProviderVariableSchema[]>([])
-  const [isSchemasLoading, setIsSchemasLoading] = useState(false)
-  const [credentialName, setCredentialName] = useState("")
-  const [credentialSlug, setCredentialSlug] = useState("")
-  const { currentOrg } = useAuth()
-  const [credentialDescription, setCredentialDescription] = useState("")
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  useEffect(() => {
-    if (!currentOrg) return
-    setIsSchemasLoading(true)
-    providerSchemasApi
-      .listByProvider(String(currentOrg.id), providerId)
-      .then((list) => {
-        setSchemas(list)
-        // Pre-fill defaults
-        const defaults: Record<string, string> = {}
-        list.forEach((s) => {
-          if (s.default_value) defaults[s.name] = s.default_value
-        })
-        setValues(defaults)
-      })
-      .catch((err) => toast.error(err instanceof Error ? err.message : "Failed to load schema"))
-      .finally(() => setIsSchemasLoading(false))
-  }, [providerId, currentOrg])
-
-  const grouped = useMemo(() => groupBySection(schemas), [schemas])
-  const sections = useMemo(() => Object.keys(grouped).sort(), [grouped])
-
-  function handleChange(field: string, val: string) {
-    setValues((prev) => ({ ...prev, [field]: val }))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!credentialName.trim() || !credentialSlug.trim()) return
-
-    // Validate required fields
-    const missing = schemas.filter((s) => s.required && !values[s.name]?.trim())
-    if (missing.length > 0) {
-      toast.error(`Required fields missing: ${missing.map((s) => s.label).join(", ")}`)
-      return
-    }
-
-    if (!currentOrg) return
-    setIsSubmitting(true)
-    try {
-      const cred = await providersApi.createCredential(String(currentOrg.id), providerId, {
-        name:        credentialName.trim(),
-        slug:        credentialSlug.trim(),
-        description: credentialDescription.trim() || undefined,
-        is_active:   true,
-        values,
-      })
-      onCreated(cred as ProviderCredential)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create credential")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+export function ProviderCredentialForm({
+  providerId,
+  providerType,
+  onCreated,
+  onCancel,
+}: ProviderCredentialFormProps) {
+  const {
+    schemas,
+    isSchemasLoading,
+    grouped,
+    sections,
+    credentialName,
+    setCredentialName,
+    credentialSlug,
+    setCredentialSlug,
+    credentialDescription,
+    setCredentialDescription,
+    values,
+    handleValueChange,
+    healthCheckTemplate,
+    setHealthCheckTemplate,
+    isSubmitting,
+    canSubmit,
+    handleSubmit,
+  } = useCredentialForm({ providerId, providerType, onCreated })
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Credential metadata */}
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="cred-name">Credential Name *</Label>
-          <Input
-            id="cred-name"
-            value={credentialName}
-            onChange={(e) => setCredentialName(e.target.value)}
-            placeholder="e.g. Production Key"
-            required
-          />
-        </div>
+      <CredentialMetaFields
+        name={credentialName}
+        slug={credentialSlug}
+        description={credentialDescription}
+        onNameChange={setCredentialName}
+        onSlugChange={setCredentialSlug}
+        onDescriptionChange={setCredentialDescription}
+      />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cred-slug">Slug *</Label>
-          <Input
-            id="cred-slug"
-            value={credentialSlug}
-            onChange={(e) =>
-              setCredentialSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
-            }
-            placeholder="e.g. prod-key"
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            Unique identifier for this credential within the provider. Used when creating environments.
-          </p>
-        </div>
+      <SchemaFieldsSection
+        sections={sections}
+        grouped={grouped}
+        values={values}
+        onValueChange={handleValueChange}
+        isLoading={isSchemasLoading}
+      />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cred-desc">Description</Label>
-          <Input
-            id="cred-desc"
-            value={credentialDescription}
-            onChange={(e) => setCredentialDescription(e.target.value)}
-            placeholder="Optional description"
-          />
-        </div>
-      </div>
-
-      {/* Dynamic schema fields */}
-      {isSchemasLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 rounded bg-muted animate-pulse" />
-          ))}
-        </div>
-      ) : schemas.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          This provider has no credential fields defined yet.
-        </p>
-      ) : (
-        <div className="space-y-6">
-          {sections.map((section) => (
-            <div key={section} className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1">
-                {section}
-              </p>
-              {grouped[section].map((schema) => (
-                <div key={schema.name} className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor={`field-${schema.name}`}>{schema.label}</Label>
-                    {schema.required && (
-                      <span className="text-destructive text-xs">*</span>
-                    )}
-                    {schema.is_sensitive && (
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-300">
-                        sensitive
-                      </Badge>
-                    )}
-                  </div>
-                  <SchemaField
-                    schema={schema}
-                    value={values[schema.name] ?? ""}
-                    onChange={(v) => handleChange(schema.name, v)}
-                  />
-                  {schema.description && (
-                    <p className="text-xs text-muted-foreground">{schema.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+      <HealthCheckTemplateField
+        value={healthCheckTemplate}
+        onChange={setHealthCheckTemplate}
+      />
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting || !credentialName.trim() || !credentialSlug.trim()}>
+        <Button type="submit" disabled={!canSubmit}>
           {isSubmitting ? "Saving…" : "Save Credential"}
         </Button>
       </div>
     </form>
   )
 }
-

@@ -160,12 +160,10 @@ export interface Provider {
   slug?: string
   default_module_slug?: string | null
   description?: string
-  type: "AWS" | "GCP" | "AZURE" | "ON_PREM" | "HPC" | "CUSTOM"
+  type: "AWS" | "GCP" | "AZURE" | "ON_PREM" | "HPC" | "CUSTOM" | "LOCAL"
   status: string
-  health_status?: string
-  health_message?: string
-  last_health_check_at?: string
   credentials_count?: number
+  healthy_credentials_count?: number
   regions?: string[]
   createdAt?: string
   created_at?: string
@@ -195,6 +193,13 @@ export interface ProviderCredentialValue {
   field_value: string | null
 }
 
+export interface ProviderCredentialHealthLog {
+  id: string
+  health_status: string
+  health_message?: string | null
+  checked_at: string
+}
+
 export interface ProviderCredential {
   id: string
   provider_id: string
@@ -202,6 +207,11 @@ export interface ProviderCredential {
   slug?: string
   description?: string
   is_active: boolean
+  health_check_template?: string | null
+  health_status?: string
+  health_message?: string | null
+  last_health_check_at?: string | null
+  health_logs?: ProviderCredentialHealthLog[]
   values?: ProviderCredentialValue[]
   created_at?: string
   updated_at?: string
