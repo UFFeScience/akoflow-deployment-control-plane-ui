@@ -135,6 +135,8 @@ export function EnvironmentTabs({
             environment={environment}
             deployments={deployments}
             resourcesByDeployment={resourcesByDeployment}
+            templateId={resolvedTemplateId}
+            templateVersionId={resolvedVersionId}
           />
         )}
       </TabsContent>
@@ -181,6 +183,8 @@ export function EnvironmentTabs({
             templateId={resolvedTemplateId}
             versionId={resolvedVersionId}
             deployments={deployments}
+            environment={environment}
+            resourcesByDeployment={resourcesByDeployment}
           />
         )}
       </TabsContent>

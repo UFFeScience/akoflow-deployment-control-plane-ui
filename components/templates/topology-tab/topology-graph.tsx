@@ -192,7 +192,7 @@ const bezier = (x1: number, y1: number, x2: number, y2: number) => {
   return `M ${x1} ${y1} C ${cx} ${y1} ${cx} ${y2} ${x2} ${y2}`
 }
 
-export function TopologyGraph({ graph, hiddenProviders = [] }: { graph: TfGraph; hiddenProviders?: string[] }) {
+export function TopologyGraph({ graph, hiddenProviders = [], nodeValues }: { graph: TfGraph; hiddenProviders?: string[]; nodeValues?: Map<string, string> }) {
   const filteredGraph = useMemo(() => {
     if (hiddenProviders.length === 0) return graph
     const hidden = new Set(hiddenProviders)
@@ -282,6 +282,10 @@ export function TopologyGraph({ graph, hiddenProviders = [] }: { graph: TfGraph;
           const detail = node.detail
             ? node.detail.length > maxDetailLen ? node.detail.slice(0, maxDetailLen - 1) + "…" : node.detail
             : null
+          // Live value from provisioned resources (output nodes only)
+          const liveValue = node.type === "output" ? (nodeValues?.get(node.label) ?? null) : null
+          const subText = detail ?? liveValue
+          const subColor = liveValue && !detail ? "#34d399" : stroke // emerald for live values
           return (
             <g key={node.id}>
               {/* Outer rect */}
@@ -307,7 +311,7 @@ export function TopologyGraph({ graph, hiddenProviders = [] }: { graph: TfGraph;
               {/* Label */}
               <text
                 x={x + BADGE_W + 8}
-                y={detail ? y + NODE_H / 2 - 3 : y + NODE_H / 2 + 4}
+                y={subText ? y + NODE_H / 2 - 3 : y + NODE_H / 2 + 4}
                 fontSize={11}
                 fontWeight="600"
                 fontFamily="ui-monospace, monospace"
@@ -316,17 +320,17 @@ export function TopologyGraph({ graph, hiddenProviders = [] }: { graph: TfGraph;
                 {label}
               </text>
 
-              {/* Detail (resource type) */}
-              {detail && (
+              {/* Detail (resource type) or live instance value */}
+              {subText && (
                 <text
                   x={x + BADGE_W + 8}
                   y={y + NODE_H / 2 + 10}
                   fontSize={9}
                   fontFamily="ui-monospace, monospace"
-                  fill={stroke}
-                  opacity={0.5}
+                  fill={subColor}
+                  opacity={detail ? 0.5 : 0.9}
                 >
-                  {detail}
+                  {liveValue && !detail ? `= ${liveValue}` : subText}
                 </text>
               )}
             </g>

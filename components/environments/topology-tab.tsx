@@ -9,15 +9,22 @@ interface TopologyTabProps {
   environment: Environment
   deployments: Deployment[]
   resourcesByDeployment: Record<string, ProvisionedResource[]>
+  templateId?: string | null
+  templateVersionId?: string | null
 }
 
-export function TopologyTab({ environment, deployments, resourcesByDeployment }: TopologyTabProps) {
+export function TopologyTab({ environment, deployments, resourcesByDeployment, templateId: templateIdProp, templateVersionId: templateVersionIdProp }: TopologyTabProps) {
+  // Prefer explicitly-resolved props, fall back to whatever the raw environment object carries
   const templateVersionId =
+    templateVersionIdProp ??
     (environment as any).environment_template_version_id ??
     (environment as any).environmentTemplateVersionId ?? null
   const templateId =
+    templateIdProp ??
     (environment as any).templateId ??
     (environment as any).template_id ?? null
+
+  const allResources = Object.values(resourcesByDeployment).flat()
 
   return (
     <div className="flex flex-col gap-6">
@@ -48,6 +55,7 @@ export function TopologyTab({ environment, deployments, resourcesByDeployment }:
           <TemplateGraph
             templateId={String(templateId)}
             templateVersionId={String(templateVersionId)}
+            resources={allResources}
           />
         </div>
       )}

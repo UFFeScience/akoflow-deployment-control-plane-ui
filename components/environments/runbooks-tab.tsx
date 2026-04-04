@@ -1,14 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Play, Loader2, Clock, CheckCircle2, XCircle, AlertCircle, BookOpen, RefreshCw, ListChecks, ScrollText } from "lucide-react"
+import { Play, Loader2, Clock, CheckCircle2, XCircle, AlertCircle, BookOpen, RefreshCw, ListChecks, ScrollText, ChevronDown, ChevronUp, Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
 import { environmentsApi } from "@/lib/api/environments"
-import type { Deployment, Runbook, RunbookRun } from "@/lib/api/types"
+import type { Deployment, Environment, ProvisionedResource, Runbook, RunbookRun } from "@/lib/api/types"
 import { Button } from "@/components/ui/button"
 import { RunLogModal } from "@/components/environments/run-log-modal"
 import type { RunLogResource } from "@/components/environments/run-log-modal"
+import { DeploymentsTopology } from "@/components/environments/topology-tab/deployments-topology"
+import { PlaybookYamlViewer } from "@/components/environments/playbook-yaml-viewer"
 
 interface RunbooksTabProps {
   projectId: string
@@ -16,6 +18,8 @@ interface RunbooksTabProps {
   templateId: string
   versionId: string
   deployments: Deployment[]
+  environment: Environment | null
+  resourcesByDeployment: Record<string, ProvisionedResource[]>
 }
 
 function statusIcon(status: string) {
@@ -44,6 +48,8 @@ interface RunbookCardProps {
 }
 
 function RunbookCard({ runbook, runs, onTrigger, onViewLogs, triggering, disabled }: RunbookCardProps) {
+  const [yamlOpen, setYamlOpen] = useState(false)
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
       <div className="flex items-center justify-between gap-2">
@@ -54,17 +60,35 @@ function RunbookCard({ runbook, runs, onTrigger, onViewLogs, triggering, disable
             <span className="text-xs text-muted-foreground">— {runbook.description}</span>
           )}
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1.5 shrink-0"
-          onClick={() => onTrigger(String(runbook.id))}
-          disabled={disabled || triggering}
-        >
-          {triggering ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-          Run
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+            onClick={() => setYamlOpen((v) => !v)}
+          >
+            {yamlOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            Playbook
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => onTrigger(String(runbook.id))}
+            disabled={disabled || triggering}
+          >
+            {triggering ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+            Run
+          </Button>
+        </div>
       </div>
+
+      {/* YAML / task flow preview */}
+      {yamlOpen && (
+        <div className="border-t border-border pt-3">
+          <PlaybookYamlViewer yaml={runbook.playbook_yaml} />
+        </div>
+      )}
 
       {runs.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -99,7 +123,7 @@ function RunbookCard({ runbook, runs, onTrigger, onViewLogs, triggering, disable
   )
 }
 
-export function RunbooksTab({ projectId, environmentId, templateId, versionId, deployments }: RunbooksTabProps) {
+export function RunbooksTab({ projectId, environmentId, templateId, versionId, deployments, environment, resourcesByDeployment }: RunbooksTabProps) {
   const [runbooks, setRunbooks] = useState<Runbook[]>([])
   const [runs, setRuns] = useState<RunbookRun[]>([])
   const [loading, setLoading] = useState(true)
@@ -183,6 +207,8 @@ export function RunbooksTab({ projectId, environmentId, templateId, versionId, d
           Refresh
         </Button>
       </div>
+
+     
 
       {!hasRunningDeployment && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">

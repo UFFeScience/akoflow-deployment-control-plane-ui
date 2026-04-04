@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { GitBranch, Terminal, AlertCircle, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
-import type { ProviderConfiguration } from "@/lib/api/types"
+import type { ProviderConfiguration, ProvisionedResource } from "@/lib/api/types"
 import { parseTerraformGraph } from "@/components/templates/topology-tab/parse-terraform"
 import type { TfNodeType } from "@/components/templates/topology-tab/parse-terraform"
 import { parseAnsibleGraph } from "@/components/templates/topology-tab/parse-ansible"
@@ -15,9 +15,28 @@ import { TypeFilterBar, ALL_TYPES } from "./type-filter-bar"
 interface TemplateGraphProps {
   templateId: string
   templateVersionId: string
+  resources?: ProvisionedResource[]
 }
 
-export function TemplateGraph({ templateId, templateVersionId }: TemplateGraphProps) {
+/** Build a label→value map for Terraform output nodes from actual provisioned resources. */
+function buildOutputValues(resources: ProvisionedResource[]): Map<string, string> {
+  const m = new Map<string, string>()
+  for (const r of resources) {
+    if (r.public_ip)            m.set("public_ip",   r.public_ip)
+    if (r.private_ip)           m.set("private_ip",  r.private_ip)
+    if (r.provider_resource_id) {
+      m.set("instance_id", r.provider_resource_id)
+      m.set("resource_id", r.provider_resource_id)
+    }
+    if (r.name) {
+      m.set("name",          r.name)
+      m.set("resource_name", r.name)
+    }
+  }
+  return m
+}
+
+export function TemplateGraph({ templateId, templateVersionId, resources = [] }: TemplateGraphProps) {
   const [configs, setConfigs] = useState<ProviderConfiguration[]>([])
   const [loading, setLoading] = useState(false)
   const [activeConfigId, setActiveConfigId] = useState<string>("")
@@ -70,6 +89,7 @@ export function TemplateGraph({ templateId, templateVersionId }: TemplateGraphPr
 
   const hasTfGraph = (tfGraph?.nodes.length ?? 0) > 0
   const hasAnsible = !!ansibleGraph
+  const nodeValues = resources.length > 0 ? buildOutputValues(resources) : undefined
 
   if (loading) {
     return (
@@ -127,7 +147,7 @@ export function TemplateGraph({ templateId, templateVersionId }: TemplateGraphPr
             <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">Terraform Infrastructure</span>
           </div>
-          <TopologyGraph graph={tfGraph!} hiddenProviders={[...hiddenProviders]} />
+          <TopologyGraph graph={tfGraph!} hiddenProviders={[...hiddenProviders]} nodeValues={nodeValues} />
         </div>
       )}
 
