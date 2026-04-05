@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { environmentsApi } from "@/lib/api/environments"
 import { templatesApi } from "@/lib/api/templates"
 import { providersApi } from "@/lib/api/providers"
@@ -14,6 +14,7 @@ export function useEnvironmentCreate() {
   const params = useParams()
   const projectId = params.projectId as string
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { currentOrg } = useAuth()
 
   const [activeStep, setActiveStep]       = useState<StepId>("basics")
@@ -81,12 +82,38 @@ export function useEnvironmentCreate() {
         ])
         if (!active) return
         setTemplates(templateData); setProviders(providerData)
-        const firstHealthy = providerData.find((p) => p.status !== "DOWN")
-        const def = firstHealthy || providerData[0]
-        if (def && currentOrg) {
-          const id = String(def.id)
-          setDeploymentForm((prev) => ({ ...prev, providerId: prev.providerId || id }))
-          providersApi.listCredentials(String(currentOrg.id), id).then((c) => { if (active) setCredentials(c) }).catch(() => { if (active) setCredentials([]) })
+
+        const preTemplateSlug = searchParams.get("templateSlug")
+        const preName         = searchParams.get("name")
+        const preProviderId   = searchParams.get("providerId")
+        const preCredentialId = searchParams.get("credentialId")
+
+        if (preName) {
+          setBasics((prev) => ({ ...prev, name: prev.name || preName }))
+        }
+        if (preTemplateSlug) {
+          const match = templateData.find((t: Template) => t.slug === preTemplateSlug)
+          if (match) setEnvironmentTemplateId(String(match.id))
+        }
+        if (preProviderId) {
+          setDeploymentForm((prev) => ({
+            ...prev,
+            providerId:   preProviderId,
+            credentialId: preCredentialId ?? prev.credentialId,
+          }))
+          if (currentOrg) {
+            providersApi.listCredentials(String(currentOrg.id), preProviderId)
+              .then((c) => { if (active) setCredentials(c) })
+              .catch(() => { if (active) setCredentials([]) })
+          }
+        } else {
+          const firstHealthy = providerData.find((p: any) => p.status !== "DOWN")
+          const def = firstHealthy || providerData[0]
+          if (def && currentOrg) {
+            const id = String(def.id)
+            setDeploymentForm((prev) => ({ ...prev, providerId: prev.providerId || id }))
+            providersApi.listCredentials(String(currentOrg.id), id).then((c) => { if (active) setCredentials(c) }).catch(() => { if (active) setCredentials([]) })
+          }
         }
       } catch { if (active) { setTemplates([]); setProviders([]) } } finally { if (active) setIsLoadingData(false) }
     }
@@ -96,8 +123,15 @@ export function useEnvironmentCreate() {
   useEffect(() => {
     if (!deploymentForm.providerId || !currentOrg) { setCredentials([]); return }
     let active = true
+    const preCredentialId = searchParams.get("credentialId")
     providersApi.listCredentials(String(currentOrg.id), deploymentForm.providerId)
-      .then((d) => { if (active) setCredentials(d) }).catch(() => { if (active) setCredentials([]) })
+      .then((d) => {
+        if (!active) return
+        setCredentials(d)
+        if (preCredentialId) {
+          setDeploymentForm((prev) => ({ ...prev, credentialId: prev.credentialId || preCredentialId }))
+        }
+      }).catch(() => { if (active) setCredentials([]) })
     return () => { active = false }
   }, [deploymentForm.providerId, currentOrg]) // eslint-disable-line
 

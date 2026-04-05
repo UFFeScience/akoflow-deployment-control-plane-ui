@@ -29,6 +29,7 @@ export function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const search = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
+  const [welcomeResolved, setWelcomeResolved] = useState(false)
   const [showLocalProviderSetup, setShowLocalProviderSetup] = useState(false)
   const [reviewerTutorialDismissed, setReviewerTutorialDismissed] = useState(false)
 
@@ -40,10 +41,13 @@ export function DashboardScreen() {
       url.searchParams.delete("welcome")
       window.history.replaceState({}, "", url.toString())
     }
+    setWelcomeResolved(true)
   }, [search])
 
   // Auto-show local provider setup when no healthy provider credential exists yet
+  // Only runs after the welcome modal has been fully resolved and dismissed
   useEffect(() => {
+    if (!welcomeResolved || showWelcome) return
     if (typeof window === "undefined") return
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     if (!isLocal || !currentOrg) return
@@ -69,7 +73,7 @@ export function DashboardScreen() {
     }
 
     checkAnyHealthyCredential()
-  }, [currentOrg?.id])
+  }, [currentOrg?.id, showWelcome, welcomeResolved])
 
   const showReviewerTutorial = !reviewerTutorialDismissed && !!user && user.email === "vldbreviewer@vldbreviewer"
 

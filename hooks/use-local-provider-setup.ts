@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { providersApi } from "@/lib/api/providers"
+import { environmentsApi } from "@/lib/api/environments"
+import { templatesApi } from "@/lib/api/templates"
+import { projectsApi } from "@/lib/api/projects"
 import { useAuth } from "@/contexts/auth-context"
 import {
   isLocalhost,
@@ -14,6 +17,8 @@ export type SaveStatus   = "idle" | "saving" | "saved" | "error"
 export type HealthStatus = "idle" | "checking" | "healthy" | "unhealthy"
 
 const HEALTH_CHECK_TIMEOUT_MS = 30_000
+const LOCAL_INSTALLER_SLUG    = "akoflow-local-installer"
+const DEFAULT_ENV_NAME        = "Workflow Engine Local"
 
 export function useLocalProviderSetup() {
   const { currentOrg } = useAuth()
@@ -31,6 +36,10 @@ export function useLocalProviderSetup() {
 
   const [providerId, setProviderId]     = useState<string | null>(null)
   const [credentialId, setCredentialId] = useState<string | null>(null)
+
+  const [needsEnvironmentSetup, setNeedsEnvironmentSetup] = useState(false)
+  const [setupProjectId, setSetupProjectId]               = useState<string | null>(null)
+  const [setupTemplateId, setSetupTemplateId]             = useState<string | null>(null)
 
   const canSave  = !!host.trim() && !!user.trim()
   const canCheck = !!credentialId && !!providerId
@@ -82,7 +91,7 @@ export function useLocalProviderSetup() {
       description: "Your local machine connected via SSH.",
       type: "LOCAL",
       status: "ACTIVE",
-      variable_schemas: LOCAL_VARIABLE_SCHEMAS,
+      variable_schemas: LOCAL_VARIABLE_SCHEMAS as unknown as unknown[],
     })
     return String(created.id)
   }
@@ -165,6 +174,7 @@ export function useLocalProviderSetup() {
       setCountdown(null)
       if (result.health_status === "HEALTHY") {
         setHealthStatus("healthy")
+        checkEnvironmentNeeded()
       } else {
         setHealthStatus("unhealthy")
         setHealthError(result.health_message ?? "Health check failed.")
@@ -175,6 +185,40 @@ export function useLocalProviderSetup() {
       setHealthStatus("unhealthy")
       setHealthError(err?.message ?? "Failed to run health check.")
     }
+  }
+
+  async function checkEnvironmentNeeded() {
+    if (!currentOrg) return
+    try {
+      const orgId = String(currentOrg.id)
+
+      const [templates, environments, projects] = await Promise.all([
+        templatesApi.list().catch(() => [] as any[]),
+        environmentsApi.listAll(orgId).catch(() => [] as any[]),
+        projectsApi.list(orgId).catch(() => [] as any[]),
+      ])
+
+      const template = (templates as any[]).find(
+        (t: any) => t.slug === LOCAL_INSTALLER_SLUG,
+      )
+      if (!template) return
+
+      setSetupTemplateId(String(template.id))
+
+      const firstProject = (projects as any[])[0]
+      if (!firstProject) return
+      setSetupProjectId(String(firstProject.id))
+
+      const hasEnv = (environments as any[]).some(
+        (e: any) =>
+          e.templateId === template.id ||
+          String(e.templateId) === String(template.id) ||
+          e.templateName === template.name ||
+          e.template_name === template.name,
+      )
+
+      setNeedsEnvironmentSetup(!hasEnv)
+    } catch {}
   }
 
   return {
@@ -188,6 +232,13 @@ export function useLocalProviderSetup() {
     canSave,
     canCheck,
     countdown,
+    needsEnvironmentSetup,
+    setupProjectId,
+    setupTemplateId,
+    setupProviderId:    providerId,
+    setupCredentialId:  credentialId,
+    envDefaultName:     DEFAULT_ENV_NAME,
+    localInstallerSlug: LOCAL_INSTALLER_SLUG,
     save,
     checkHealth,
     reload: loadExisting,

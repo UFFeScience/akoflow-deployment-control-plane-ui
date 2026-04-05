@@ -11,13 +11,20 @@ export type Step = 1 | 2
 
 export function useOnboarding() {
   const router = useRouter()
-  const { refreshOrganizations } = useAuth()
+  const { refreshOrganizations, user } = useAuth()
 
   const local = isLocalhost()
   const totalSteps: number = 2
 
+  const emailHandle = user?.email
+    ? user.email.split("@")[1]?.split(".")[0] ?? user.email.split("@")[0]
+    : ""
+  const defaultOrgName = emailHandle
+    ? emailHandle.charAt(0).toUpperCase() + emailHandle.slice(1)
+    : ""
+
   const [currentStep, setCurrentStep] = useState<Step>(1)
-  const [orgName, setOrgName] = useState("")
+  const [orgName, setOrgName] = useState(defaultOrgName)
   const [projectName, setProjectName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +47,12 @@ export function useOnboarding() {
   }
 
   function goNext() {
-    if (currentStep === 1 && orgName.trim()) setCurrentStep(2)
+    if (currentStep === 1 && orgName.trim()) {
+      if (!projectName.trim()) {
+        setProjectName(`${orgName.trim()} Project`)
+      }
+      setCurrentStep(2)
+    }
   }
 
   function goBack() {

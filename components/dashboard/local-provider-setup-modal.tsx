@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Server, CheckCircle2, XCircle, Loader2, Save, HeartPulse, ChevronDown, ChevronUp } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Server, CheckCircle2, XCircle, Loader2, Save, HeartPulse, ChevronDown, ChevronUp, ArrowRight } from "lucide-react"
 import { useLocalProviderSetup } from "@/hooks/use-local-provider-setup"
 import { StepLocalProvider } from "@/components/onboarding/step-local-provider"
 
@@ -11,6 +12,7 @@ interface LocalProviderSetupModalProps {
 }
 
 export function LocalProviderSetupModal({ visible, onClose }: LocalProviderSetupModalProps) {
+  const router = useRouter()
   const {
     isLocalhost,
     host, setHost,
@@ -22,6 +24,13 @@ export function LocalProviderSetupModal({ visible, onClose }: LocalProviderSetup
     canSave,
     canCheck,
     countdown,
+    needsEnvironmentSetup,
+    setupProjectId,
+    setupTemplateId,
+    setupProviderId,
+    setupCredentialId,
+    envDefaultName,
+    localInstallerSlug,
     save,
     checkHealth,
   } = useLocalProviderSetup()
@@ -85,6 +94,33 @@ export function LocalProviderSetupModal({ visible, onClose }: LocalProviderSetup
           <div className="mt-3 p-3 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             Connected! Your local machine is reachable via SSH.
+          </div>
+        )}
+
+        {/* Next step: create the local installer environment */}
+        {isHealthy && needsEnvironmentSetup && setupProjectId && (
+          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="text-sm font-medium mb-1">Next step: set up your Workflow Engine</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              No local environment found. Create one now to start running infrastructure jobs on this machine.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                const params = new URLSearchParams({
+                  name:         envDefaultName,
+                  templateSlug: localInstallerSlug,
+                  ...(setupProviderId   ? { providerId:   setupProviderId }   : {}),
+                  ...(setupCredentialId ? { credentialId: setupCredentialId } : {}),
+                })
+                onClose()
+                router.push(`/projects/${setupProjectId}/environments/new?${params.toString()}`)
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium"
+            >
+              Create Workflow Engine Local
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         )}
         {isUnhealthy && healthError && (
