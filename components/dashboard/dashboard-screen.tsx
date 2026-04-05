@@ -5,6 +5,8 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import WelcomeModal from "@/components/welcome-modal"
 import ReviewerTutorialModal from "@/components/reviewer-tutorial-modal"
+import { LocalProviderSetupModal } from "@/components/dashboard/local-provider-setup-modal"
+import { providersApi } from "@/lib/api/providers"
 import { DashboardStats } from "./dashboard-stats"
 import { DashboardActivity } from "./dashboard-activity"
 import { DashboardResources } from "./dashboard-resources"
@@ -27,6 +29,7 @@ export function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const search = useSearchParams()
   const [showWelcome, setShowWelcome] = useState(false)
+  const [showLocalProviderSetup, setShowLocalProviderSetup] = useState(false)
   const [reviewerTutorialDismissed, setReviewerTutorialDismissed] = useState(false)
 
   useEffect(() => {
@@ -38,6 +41,35 @@ export function DashboardScreen() {
       window.history.replaceState({}, "", url.toString())
     }
   }, [search])
+
+  // Auto-show local provider setup when no healthy provider credential exists yet
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    if (!isLocal || !currentOrg) return
+
+    async function checkAnyHealthyCredential() {
+      try {
+        const providers = await providersApi.list(String(currentOrg!.id)).catch(() => [] as any[])
+        if (!providers || (providers as any[]).length === 0) {
+          setShowLocalProviderSetup(true)
+          return
+        }
+
+        // Check if any provider has at least one HEALTHY credential
+        for (const provider of providers as any[]) {
+          const creds = await providersApi.listCredentials(String(currentOrg!.id), String(provider.id)).catch(() => [] as any[])
+          const hasHealthy = (creds as any[]).some((c: any) => c.health_status === "HEALTHY")
+          if (hasHealthy) return // At least one healthy credential found — don't show modal
+        }
+
+        // No healthy credential anywhere — show local provider setup
+        setShowLocalProviderSetup(true)
+      } catch {}
+    }
+
+    checkAnyHealthyCredential()
+  }, [currentOrg?.id])
 
   const showReviewerTutorial = !reviewerTutorialDismissed && !!user && user.email === "vldbreviewer@vldbreviewer"
 
@@ -137,6 +169,7 @@ export function DashboardScreen() {
       </div>
 
       <WelcomeModal visible={showWelcome} onClose={() => setShowWelcome(false)} />
+      <LocalProviderSetupModal visible={showLocalProviderSetup} onClose={() => setShowLocalProviderSetup(false)} />
       <ReviewerTutorialModal visible={showReviewerTutorial} onClose={() => setReviewerTutorialDismissed(true)} />
 
       <DashboardStats

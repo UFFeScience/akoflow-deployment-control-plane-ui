@@ -1,0 +1,153 @@
+"use client"
+
+import { useState } from "react"
+import { Server, CheckCircle2, XCircle, Loader2, Save, HeartPulse, ChevronDown, ChevronUp } from "lucide-react"
+import { useLocalProviderSetup } from "@/hooks/use-local-provider-setup"
+import { StepLocalProvider } from "@/components/onboarding/step-local-provider"
+
+interface LocalProviderSetupModalProps {
+  visible: boolean
+  onClose: () => void
+}
+
+export function LocalProviderSetupModal({ visible, onClose }: LocalProviderSetupModalProps) {
+  const {
+    isLocalhost,
+    host, setHost,
+    user, setUser,
+    sshPassword, setSshPassword,
+    sshPrivateKey, setSshPrivateKey,
+    saveStatus, saveError,
+    healthStatus, healthError,
+    canSave,
+    canCheck,
+    countdown,
+    save,
+    checkHealth,
+  } = useLocalProviderSetup()
+
+  const [errorExpanded, setErrorExpanded] = useState(false)
+
+  if (!visible || !isLocalhost) return null
+
+  const isSaving   = saveStatus === "saving"
+  const isSaved    = saveStatus === "saved"
+  const isChecking = healthStatus === "checking"
+  const isHealthy  = healthStatus === "healthy"
+  const isUnhealthy = healthStatus === "unhealthy"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-card rounded-lg shadow-lg p-8">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-primary/10 rounded-lg">
+            <Server className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Local Machine Provider</h2>
+            <p className="text-sm text-muted-foreground">
+              AkôFlow connects to your machine via SSH to run infrastructure jobs.
+            </p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <StepLocalProvider
+          host={host}
+          user={user}
+          sshPassword={sshPassword}
+          sshPrivateKey={sshPrivateKey}
+          onHostChange={setHost}
+          onUserChange={setUser}
+          onSshPasswordChange={setSshPassword}
+          onSshPrivateKeyChange={setSshPrivateKey}
+        />
+
+        {/* Save feedback */}
+        {saveStatus === "error" && saveError && (
+          <div className="mt-4 p-3 rounded-lg border border-destructive/30 bg-destructive/10 flex items-start gap-2 text-sm text-destructive">
+            <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            {saveError}
+          </div>
+        )}
+        {isSaved && (
+          <div className="mt-4 p-3 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            Credentials saved. You can now run a health check.
+          </div>
+        )}
+
+        {/* Health check feedback */}
+        {isHealthy && (
+          <div className="mt-3 p-3 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            Connected! Your local machine is reachable via SSH.
+          </div>
+        )}
+        {isUnhealthy && healthError && (
+          <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 text-sm text-destructive overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setErrorExpanded((v) => !v)}
+              className="w-full flex items-start gap-2 p-3 text-left hover:bg-destructive/10 transition-colors"
+            >
+              <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span className="flex-1 line-clamp-2">{healthError}</span>
+              {errorExpanded
+                ? <ChevronUp className="w-4 h-4 shrink-0 mt-0.5" />
+                : <ChevronDown className="w-4 h-4 shrink-0 mt-0.5" />}
+            </button>
+            {errorExpanded && (
+              <pre className="px-3 pb-3 text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto border-t border-destructive/20 pt-2">
+                {healthError}
+              </pre>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center justify-between mt-6 pt-4 border-t">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Close
+          </button>
+
+          <div className="flex gap-2">
+            {/* Save */}
+            <button
+              type="button"
+              onClick={save}
+              disabled={isSaving || !canSave}
+              className="flex items-center gap-2 px-5 py-2 border rounded-lg hover:bg-muted transition-all font-medium disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+
+            {/* Check */}
+            <button
+              type="button"
+              onClick={checkHealth}
+              disabled={isChecking || !canCheck}
+              className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
+            >
+              {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <HeartPulse className="w-4 h-4" />}
+              {isChecking ? (
+                <span className="tabular-nums">
+                  Checking… {countdown !== null ? `(${countdown}s)` : ""}
+                </span>
+              ) : "Check"}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}

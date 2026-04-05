@@ -18,6 +18,8 @@ export const providersApi = {
     request<ProviderCredential[]>(`/organizations/${organizationId}/providers/${providerId}/credentials`),
   createCredential: (organizationId: string, providerId: string, data: { name: string; slug: string; description?: string; is_active?: boolean; health_check_template: string; values: Record<string, string> }) =>
     request<ProviderCredential>(`/organizations/${organizationId}/providers/${providerId}/credentials`, { method: "POST", body: data }),
+  updateCredential: (organizationId: string, providerId: string, credentialId: string, data: { name: string; slug: string; description?: string; is_active?: boolean; health_check_template: string; values: Record<string, string> }) =>
+    request<ProviderCredential>(`/organizations/${organizationId}/providers/${providerId}/credentials/${credentialId}`, { method: "PATCH", body: data }),
   deleteCredential: (organizationId: string, providerId: string, credentialId: string) =>
     request<{ message: string }>(`/organizations/${organizationId}/providers/${providerId}/credentials/${credentialId}`, { method: "DELETE" }),
   checkCredentialHealth: (organizationId: string, providerId: string, credentialId: string) =>
