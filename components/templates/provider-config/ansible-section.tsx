@@ -18,18 +18,21 @@ interface AnsibleSectionProps {
   ansibleForm: AnsibleForm
   onAnsibleFormChange: (form: AnsibleForm) => void
   expFields: { name: string; label: string }[]
+  title?: string
+  hint?: string
+  badge?: string
 }
 
-export function AnsibleSection({ config, ansibleForm, onAnsibleFormChange, expFields }: AnsibleSectionProps) {
+export function AnsibleSection({ config, ansibleForm, onAnsibleFormChange, expFields, title = "Ansible", hint = "optional", badge }: AnsibleSectionProps) {
   const [showInventory, setShowInventory] = useState(false)
   const [tasks, setTasks] = useState<TaskDraft[]>([])
 
   return (
     <SectionCard
-      title="Ansible"
+      title={title}
       icon={<Terminal className="h-3.5 w-3.5 text-green-500" />}
-      badge={config.ansible_playbook?.has_custom_playbook ? "Configured" : undefined}
-      hint="optional"
+      badge={badge ?? (config.ansible_playbook?.has_custom_playbook ? "Configured" : undefined)}
+      hint={hint}
     >
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs font-semibold">playbook.yml</Label>

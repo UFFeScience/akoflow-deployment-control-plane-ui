@@ -35,3 +35,23 @@ export function ansiblePhaseStatus(deploymentStatus: string, ansibleRun?: Ansibl
   }
   return "idle"
 }
+
+export function teardownPhaseStatus(_deploymentStatus: string, teardownRun?: AnsibleRun | null): PhaseStatus {
+  if (!teardownRun) return "idle"
+  const s = teardownRun.status.toLowerCase()
+  if (s === "completed") return "success"
+  if (s === "failed")    return "error"
+  if (["initializing", "running"].includes(s)) return "running"
+  return "idle"
+}
+
+export function destroyPhaseStatus(deploymentStatus: string, destroyTfRun?: TerraformRun | null): PhaseStatus {
+  if (destroyTfRun) {
+    const s = destroyTfRun.status.toLowerCase()
+    if (s === "destroyed") return "success"
+    if (s === "failed")    return "error"
+    if (s === "destroying") return "running"
+  }
+  if (deploymentStatus.toLowerCase() === "stopped") return "success"
+  return "idle"
+}

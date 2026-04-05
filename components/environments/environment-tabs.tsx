@@ -40,8 +40,8 @@ export function EnvironmentTabs({
   onDeploymentsChange,
   onRefreshDeployments,
 }: EnvironmentTabsProps) {
-  const [activeTab, setActiveTab]         = useState<string>("topology")
-  const [runbookRuns, setRunbookRuns]     = useState<RunbookRunOption[]>([])
+  const [activeTab, setActiveTab] = useState<string>("deployments")
+  const [runbookRuns, setRunbookRuns] = useState<RunbookRunOption[]>([])
 
   const allResources = Object.values(resourcesByDeployment).flat()
 
@@ -57,7 +57,7 @@ export function EnvironmentTabs({
           }))
         )
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [projectId, environmentId])
 
   // Resolve template IDs — the API may omit templateId, fall back to matching by name
@@ -89,7 +89,7 @@ export function EnvironmentTabs({
 
   return (
     <Tabs
-      defaultValue="topology"
+      defaultValue="deployments"
       value={activeTab}
       onValueChange={async (val) => {
         setActiveTab(val)
@@ -98,9 +98,7 @@ export function EnvironmentTabs({
       className="w-full"
     >
       <TabsList className="h-8">
-        <TabsTrigger value="topology" className="text-xs h-6 px-3">
-          Topology
-        </TabsTrigger>
+
         <TabsTrigger value="deployments" className="text-xs h-6 px-3">
           Deployments
         </TabsTrigger>
@@ -109,6 +107,9 @@ export function EnvironmentTabs({
         </TabsTrigger>
         <TabsTrigger value="logs" className="text-xs h-6 px-3">
           Logs
+        </TabsTrigger>
+        <TabsTrigger value="topology" className="text-xs h-6 px-3">
+          Topology
         </TabsTrigger>
         {environment &&
           ((environment as any).environment_template_version_id ||
@@ -128,18 +129,6 @@ export function EnvironmentTabs({
           </TabsTrigger>
         )}
       </TabsList>
-
-      <TabsContent value="topology" className="mt-3">
-        {environment && (
-          <TopologyTab
-            environment={environment}
-            deployments={deployments}
-            resourcesByDeployment={resourcesByDeployment}
-            templateId={resolvedTemplateId}
-            templateVersionId={resolvedVersionId}
-          />
-        )}
-      </TabsContent>
 
       <TabsContent value="deployments" className="mt-3">
         <DeploymentsTab
@@ -185,6 +174,18 @@ export function EnvironmentTabs({
             deployments={deployments}
             environment={environment}
             resourcesByDeployment={resourcesByDeployment}
+          />
+        )}
+      </TabsContent>
+
+      <TabsContent value="topology" className="mt-3">
+        {environment && (
+          <TopologyTab
+            environment={environment}
+            deployments={deployments}
+            resourcesByDeployment={resourcesByDeployment}
+            templateId={resolvedTemplateId}
+            templateVersionId={resolvedVersionId}
           />
         )}
       </TabsContent>

@@ -30,6 +30,7 @@ export function EnvironmentCreateFlow() {
     isLoadingData, isSubmitting,
     nextStep, prevStep, canProceed, handleFinish,
     templates, createdEnvironmentId,
+    autoSetupNotice,
   } = useEnvironmentCreate()
 
   return (
@@ -44,6 +45,12 @@ export function EnvironmentCreateFlow() {
       </div>
 
       <StepIndicator activeStep={activeStep} onStepClick={setActiveStep} />
+
+      {autoSetupNotice && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+          {autoSetupNotice}
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-background/50 p-4 shadow-sm">
         {activeStep === "basics" && <BasicsStep value={basics} onChange={setBasics} />}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { environmentsApi } from "@/lib/api/environments"
 import { templatesApi } from "@/lib/api/templates"
@@ -40,6 +40,8 @@ export function useEnvironmentCreate() {
   const [credentialsBySlug, setCredentialsBySlug]             = useState<Record<string, ProviderCredential[]>>({})
   const [activeConfigProvider, setActiveConfigProvider]       = useState<string>("")
   const [selectedOptionalSlugs, setSelectedOptionalSlugs]     = useState<string[]>([])
+  const [autoSetupNotice, setAutoSetupNotice]                 = useState<string | null>(null)
+  const hasAppliedQuerySetup                                  = useRef(false)
 
   useEffect(() => {
     if (environmentTemplateId === "none") { setTemplateVersions([]); setSelectedTemplateVersionId(null); setAnsiblePlaybooks([]); return }
@@ -83,37 +85,54 @@ export function useEnvironmentCreate() {
         if (!active) return
         setTemplates(templateData); setProviders(providerData)
 
-        const preTemplateSlug = searchParams.get("templateSlug")
-        const preName         = searchParams.get("name")
-        const preProviderId   = searchParams.get("providerId")
-        const preCredentialId = searchParams.get("credentialId")
+        if (!hasAppliedQuerySetup.current) {
+          const preTemplateSlug = searchParams.get("templateSlug")
+          const preName         = searchParams.get("name")
+          const preProviderId   = searchParams.get("providerId")
+          const preCredentialId = searchParams.get("credentialId")
+          const hasQuerySetup   = Boolean(preTemplateSlug || preName || preProviderId || preCredentialId)
 
-        if (preName) {
-          setBasics((prev) => ({ ...prev, name: prev.name || preName }))
-        }
-        if (preTemplateSlug) {
-          const match = templateData.find((t: Template) => t.slug === preTemplateSlug)
-          if (match) setEnvironmentTemplateId(String(match.id))
-        }
-        if (preProviderId) {
-          setDeploymentForm((prev) => ({
-            ...prev,
-            providerId:   preProviderId,
-            credentialId: preCredentialId ?? prev.credentialId,
-          }))
-          if (currentOrg) {
-            providersApi.listCredentials(String(currentOrg.id), preProviderId)
-              .then((c) => { if (active) setCredentials(c) })
-              .catch(() => { if (active) setCredentials([]) })
+          const matchedTemplate = preTemplateSlug
+            ? templateData.find((t: Template) => t.slug === preTemplateSlug)
+            : undefined
+
+          if (preName) {
+            setBasics((prev) => ({ ...prev, name: prev.name || preName }))
           }
-        } else {
-          const firstHealthy = providerData.find((p: any) => p.status !== "DOWN")
-          const def = firstHealthy || providerData[0]
-          if (def && currentOrg) {
-            const id = String(def.id)
-            setDeploymentForm((prev) => ({ ...prev, providerId: prev.providerId || id }))
-            providersApi.listCredentials(String(currentOrg.id), id).then((c) => { if (active) setCredentials(c) }).catch(() => { if (active) setCredentials([]) })
+          if (matchedTemplate) {
+            setEnvironmentTemplateId(String(matchedTemplate.id))
           }
+          if (preProviderId) {
+            setDeploymentForm((prev) => ({
+              ...prev,
+              providerId:   preProviderId,
+              credentialId: preCredentialId ?? prev.credentialId,
+            }))
+            if (currentOrg) {
+              providersApi.listCredentials(String(currentOrg.id), preProviderId)
+                .then((c) => { if (active) setCredentials(c) })
+                .catch(() => { if (active) setCredentials([]) })
+            }
+          } else {
+            const firstHealthy = providerData.find((p: any) => p.status !== "DOWN")
+            const def = firstHealthy || providerData[0]
+            if (def && currentOrg) {
+              const id = String(def.id)
+              setDeploymentForm((prev) => ({ ...prev, providerId: prev.providerId || id }))
+              providersApi.listCredentials(String(currentOrg.id), id).then((c) => { if (active) setCredentials(c) }).catch(() => { if (active) setCredentials([]) })
+            }
+          }
+
+          if (preName && matchedTemplate) {
+            setActiveStep("config")
+          } else if (preName) {
+            setActiveStep("template")
+          }
+
+          if (hasQuerySetup) {
+            setAutoSetupNotice("This setup was pre-filled from the link. Basics were completed and template selection was advanced for you.")
+          }
+          hasAppliedQuerySetup.current = true
         }
       } catch { if (active) { setTemplates([]); setProviders([]) } } finally { if (active) setIsLoadingData(false) }
     }
@@ -261,5 +280,6 @@ export function useEnvironmentCreate() {
     isLoadingData, isSubmitting,
     nextStep, prevStep, canProceed, handleFinish,
     templates, createdEnvironmentId,
+    autoSetupNotice,
   }
 }

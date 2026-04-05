@@ -2,13 +2,160 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Server, CheckCircle2, XCircle, Loader2, Save, HeartPulse, ChevronDown, ChevronUp, ArrowRight } from "lucide-react"
+import { Server, CheckCircle2, XCircle, Loader2, Save, HeartPulse, ChevronDown, ChevronUp, ArrowRight, Terminal } from "lucide-react"
 import { useLocalProviderSetup } from "@/hooks/use-local-provider-setup"
 import { StepLocalProvider } from "@/components/onboarding/step-local-provider"
 
 interface LocalProviderSetupModalProps {
   visible: boolean
   onClose: () => void
+}
+
+type SshTab = "macos" | "linux" | "wsl"
+
+const SSH_TABS: { id: SshTab; label: string }[] = [
+  { id: "macos", label: "macOS" },
+  { id: "linux", label: "Linux" },
+  { id: "wsl",   label: "WSL (Windows)" },
+]
+
+const SSH_STEPS: Record<SshTab, { title: string; cmd: string; note?: string }[]> = {
+  macos: [
+    {
+      title: "Enable Remote Login (SSH server)",
+      cmd: "sudo systemsetup -setremotelogin on",
+      note: "Or go to System Settings → General → Sharing → Remote Login.",
+    },
+    {
+      title: "Verify sshd is running",
+      cmd: "sudo launchctl list | grep ssh",
+    },
+    {
+      title: "Allow your user (if needed)",
+      cmd: "sudo dseditgroup -o edit -a $USER -t user com.apple.access_ssh",
+    },
+    {
+      title: "Test locally",
+      cmd: "ssh $USER@host.docker.internal",
+    },
+  ],
+  linux: [
+    {
+      title: "Install openssh-server",
+      cmd: "sudo apt-get install -y openssh-server   # Debian/Ubuntu\n# sudo dnf install -y openssh-server          # Fedora/RHEL",
+    },
+    {
+      title: "Start & enable sshd",
+      cmd: "sudo systemctl enable --now ssh",
+    },
+    {
+      title: "Allow firewall (if active)",
+      cmd: "sudo ufw allow ssh",
+    },
+    {
+      title: "Test locally",
+      cmd: "ssh $USER@localhost",
+    },
+  ],
+  wsl: [
+    {
+      title: "Install openssh-server inside WSL",
+      cmd: "sudo apt-get install -y openssh-server",
+    },
+    {
+      title: "Start sshd (must be done each WSL session)",
+      cmd: "sudo service ssh start",
+    },
+    {
+      title: "Find your WSL IP (use this as Host)",
+      cmd: "hostname -I | awk '{print $1}'",
+      note: "Use this IP in the Host field above — not localhost.",
+    },
+    {
+      title: "Test from WSL",
+      cmd: "ssh $USER@$(hostname -I | awk '{print $1}')",
+    },
+  ],
+}
+
+function CodeBlock({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+  return (
+    <div className="relative group mt-1">
+      <pre className="bg-muted/60 border rounded-md px-3 py-2 text-xs font-mono whitespace-pre-wrap break-all leading-relaxed">
+        {code}
+      </pre>
+      <button
+        type="button"
+        onClick={copy}
+        className="absolute top-1.5 right-1.5 px-2 py-0.5 text-[10px] rounded border bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        {copied ? "Copied!" : "Copy"}
+      </button>
+    </div>
+  )
+}
+
+function SshGuide() {
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<SshTab>("macos")
+
+  return (
+    <div className="mt-4 rounded-lg border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-left hover:bg-muted/50 transition-colors"
+      >
+        <Terminal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="flex-1">How to enable SSH on your machine</span>
+        {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t">
+          {/* OS tabs */}
+          <div className="flex border-b">
+            {SSH_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`px-4 py-2 text-xs font-medium transition-colors ${
+                  tab === t.id
+                    ? "bg-background border-b-2 border-primary text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Steps */}
+          <div className="p-4 space-y-4">
+            {SSH_STEPS[tab].map((step, i) => (
+              <div key={i}>
+                <p className="text-xs font-semibold text-foreground mb-0.5">
+                  {i + 1}. {step.title}
+                </p>
+                <CodeBlock code={step.cmd} />
+                {step.note && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">{step.note}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function LocalProviderSetupModal({ visible, onClose }: LocalProviderSetupModalProps) {
@@ -74,6 +221,9 @@ export function LocalProviderSetupModal({ visible, onClose }: LocalProviderSetup
           onSshPasswordChange={setSshPassword}
           onSshPrivateKeyChange={setSshPrivateKey}
         />
+
+        {/* SSH setup guide */}
+        <SshGuide />
 
         {/* Save feedback */}
         {saveStatus === "error" && saveError && (

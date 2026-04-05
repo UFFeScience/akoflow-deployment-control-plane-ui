@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, CheckCircle2, Save, Terminal } from "lucide-react"
+import { Loader2, CheckCircle2, Save, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { SectionCard } from "@/components/templates/provider-config/section-card"
@@ -11,31 +11,35 @@ import type { TaskDraft } from "@/components/templates/provider-config/playbook-
 import { templatesApi } from "@/lib/api/templates"
 import type { ProviderConfiguration } from "@/lib/api/types"
 
-interface ConfigPlaybookSectionProps {
+interface TeardownPlaybookSectionProps {
   templateId: string
   versionId: string
   config: ProviderConfiguration
 }
 
-export function ConfigPlaybookSection({ templateId, versionId, config }: ConfigPlaybookSectionProps) {
-  const [yaml, setYaml] = useState(config.ansible_playbook?.playbook_yaml ?? "")
-  const [credKeys, setCredKeys] = useState<string[]>(config.ansible_playbook?.credential_env_keys ?? [])
+export function TeardownPlaybookSection({ templateId, versionId, config }: TeardownPlaybookSectionProps) {
+  const [yaml, setYaml] = useState(config.teardown_playbook?.playbook_yaml ?? "")
+  const [credKeys, setCredKeys] = useState<string[]>(config.teardown_playbook?.credential_env_keys ?? [])
   const [tasks, setTasks] = useState<TaskDraft[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSave = async () => {
     setSaving(true)
+    setError(null)
     try {
       await templatesApi.upsertProviderConfigAnsible(templateId, versionId, config.id, {
         playbook_yaml: yaml || undefined,
         credential_env_keys: credKeys,
-      }, "provision")
+      }, "teardown")
       if (tasks.length > 0) {
         await templatesApi.syncPlaybookTasks(templateId, versionId, config.id, tasks)
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to save")
     } finally {
       setSaving(false)
     }
@@ -43,14 +47,18 @@ export function ConfigPlaybookSection({ templateId, versionId, config }: ConfigP
 
   return (
     <SectionCard
-      title="Configure Playbook"
-      icon={<Terminal className="h-3.5 w-3.5 text-green-500" />}
-      badge={config.ansible_playbook?.has_custom_playbook ? "Configured" : undefined}
-      hint="ansible"
+      title="Teardown Playbook"
+      icon={<Trash2 className="h-3.5 w-3.5 text-orange-500" />}
+      badge={config.teardown_playbook?.has_custom_playbook ? "Configured" : undefined}
+      hint="runs before Terraform destroy"
     >
+      <p className="text-[11px] text-muted-foreground -mt-1">
+        Optional. When set, this playbook runs on the provisioned host before Terraform destroy is executed.
+      </p>
+
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs font-semibold">
-          playbook.yml <span className="font-normal text-muted-foreground">+ tasks</span>
+          teardown.yml <span className="font-normal text-muted-foreground">+ tasks</span>
         </Label>
         <PlaybookTasksEditor
           yaml={yaml}
@@ -72,6 +80,7 @@ export function ConfigPlaybookSection({ templateId, versionId, config }: ConfigP
             <CheckCircle2 className="h-3 w-3" />Saved
           </span>
         )}
+        {error && <span className="text-xs text-destructive">{error}</span>}
       </div>
     </SectionCard>
   )

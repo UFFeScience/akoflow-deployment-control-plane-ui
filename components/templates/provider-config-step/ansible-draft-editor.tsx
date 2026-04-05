@@ -17,9 +17,11 @@ interface AnsibleDraftEditorProps {
   enabled: boolean
   onToggle: (enabled: boolean) => void
   expFields: { name: string; label: string }[]
+  label?: string
+  hint?: string
 }
 
-export function AnsibleDraftEditor({ value, onChange, enabled, onToggle, expFields }: AnsibleDraftEditorProps) {
+export function AnsibleDraftEditor({ value, onChange, enabled, onToggle, expFields, label = "Ansible", hint = "optional" }: AnsibleDraftEditorProps) {
   const [expanded, setExpanded] = useState(false)
   const [showInventory, setShowInventory] = useState(false)
   const [tasks, setTasks] = useState<TaskDraft[]>([])
@@ -29,8 +31,8 @@ export function AnsibleDraftEditor({ value, onChange, enabled, onToggle, expFiel
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Terminal className="h-4 w-4 text-green-500" />
-          <h3 className="text-sm font-semibold">Ansible</h3>
-          <span className="text-xs text-muted-foreground italic">optional</span>
+          <h3 className="text-sm font-semibold">{label}</h3>
+          <span className="text-xs text-muted-foreground italic">{hint}</span>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setExpanded((v) => !v)}>

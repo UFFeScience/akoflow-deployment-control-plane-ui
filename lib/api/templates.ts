@@ -48,10 +48,10 @@ export const templatesApi = {
       method: "PUT",
       body: data,
     }),
-  upsertProviderConfigAnsible: (id: string, versionId: string, configId: string, data: Record<string, unknown>) =>
+  upsertProviderConfigAnsible: (id: string, versionId: string, configId: string, data: Record<string, unknown>, phase = "provision") =>
     request<ProviderConfiguration>(`/environment-templates/${id}/versions/${versionId}/provider-configurations/${configId}/ansible`, {
       method: "PUT",
-      body: data,
+      body: { ...data, phase },
     }),
 
   // Legacy endpoints kept for compatibility

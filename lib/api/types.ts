@@ -372,6 +372,7 @@ export interface AnsiblePlaybook {
   id: string
   provider_configuration_id: string
   provider_type?: string
+  phase?: string
   playbook_slug?: string | null
   is_built_in?: boolean
   has_custom_playbook?: boolean
@@ -421,6 +422,7 @@ export interface ProviderConfiguration {
   applies_to_providers: string[]
   terraform_module?: TerraformModule | null
   ansible_playbook?: AnsiblePlaybook | null
+  teardown_playbook?: AnsiblePlaybook | null
   runbooks?: Runbook[]
   created_at?: string
   updated_at?: string

@@ -27,6 +27,7 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
   const [providers, setProviders] = useState<string[]>(config.applies_to_providers)
   const [tfForm, setTfForm] = useState<TerraformForm>(defaultTfForm(config.terraform_module ?? undefined))
   const [ansibleForm, setAnsibleForm] = useState<AnsibleForm>(defaultAnsibleForm(config.ansible_playbook ?? undefined))
+  const [teardownForm, setTeardownForm] = useState<AnsibleForm>(defaultAnsibleForm(config.teardown_playbook ?? undefined))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,7 +74,24 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
         vars_mapping_json: varsMappingJson ?? undefined,
         outputs_mapping_json: ansOutputsJson ?? undefined,
         roles_json: rolesValue ?? undefined,
-      })
+      }, "provision")
+
+      // Save teardown playbook
+      let teardownVarsJson: unknown = null
+      try { teardownVarsJson = JSON.parse(teardownForm.vars_mapping_json) } catch { /* ignore */ }
+      let teardownOutputsJson: unknown = null
+      try { teardownOutputsJson = parseOutputsMappingJson(teardownForm.outputs_mapping_json) } catch { /* ignore */ }
+      let teardownRoles: unknown = null
+      try { teardownRoles = JSON.parse(teardownForm.roles_json) } catch { /* ignore */ }
+
+      await templatesApi.upsertProviderConfigAnsible(templateId, versionId, config.id, {
+        playbook_yaml: teardownForm.playbook_yaml || undefined,
+        inventory_template: teardownForm.inventory_template || undefined,
+        credential_env_keys: teardownForm.credential_env_keys.filter(Boolean),
+        vars_mapping_json: teardownVarsJson ?? undefined,
+        outputs_mapping_json: teardownOutputsJson ?? undefined,
+        roles_json: teardownRoles ?? undefined,
+      }, "teardown")
 
       onUpdated(finalConfig as ProviderConfiguration)
       setSaved(true)
@@ -112,6 +130,16 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
         ansibleForm={ansibleForm}
         onAnsibleFormChange={setAnsibleForm}
         expFields={expFields}
+      />
+
+      <AnsibleSection
+        config={config}
+        ansibleForm={teardownForm}
+        onAnsibleFormChange={setTeardownForm}
+        expFields={expFields}
+        title="Ansible Teardown"
+        hint="runs before Terraform destroy"
+        badge={config.teardown_playbook?.has_custom_playbook ? "Configured" : undefined}
       />
 
       <RunbookSection templateId={templateId} versionId={versionId} config={config} />

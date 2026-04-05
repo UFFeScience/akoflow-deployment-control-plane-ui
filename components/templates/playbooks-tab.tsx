@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
 import type { ProviderConfiguration, TemplateVersion } from "@/lib/api/types"
 import { ConfigPlaybookSection } from "./playbooks-tab/config-playbook-section"
+import { TeardownPlaybookSection } from "./playbooks-tab/teardown-playbook-section"
 import { RunbooksSection } from "./playbooks-tab/runbooks-section"
 
 interface PlaybooksTabProps {
@@ -71,6 +72,15 @@ export function PlaybooksTab({ templateId, versionId, version }: PlaybooksTabPro
         <div className="flex flex-col gap-5">
           <ConfigPlaybookSection
             key={`playbook-${activeConfig.id}`}
+            templateId={templateId}
+            versionId={versionId}
+            config={activeConfig}
+          />
+
+          <div className="h-px bg-border" />
+
+          <TeardownPlaybookSection
+            key={`teardown-${activeConfig.id}`}
             templateId={templateId}
             versionId={versionId}
             config={activeConfig}

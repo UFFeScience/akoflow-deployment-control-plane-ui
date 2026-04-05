@@ -63,7 +63,9 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
             if (cfg.terraform?.main_tf.trim())
               await templatesApi.upsertProviderConfigTerraform(templateId, String(newVersion.id), String(created.id), payload.terraform as any)
             if (cfg.ansible?.playbook_yaml.trim())
-              await templatesApi.upsertProviderConfigAnsible(templateId, String(newVersion.id), String(created.id), payload.ansible as any)
+              await templatesApi.upsertProviderConfigAnsible(templateId, String(newVersion.id), String(created.id), payload.ansible as any, "provision")
+            if (cfg.ansible_teardown?.playbook_yaml.trim())
+              await templatesApi.upsertProviderConfigAnsible(templateId, String(newVersion.id), String(created.id), payload.ansible_teardown as any, "teardown")
           }
         }
       }

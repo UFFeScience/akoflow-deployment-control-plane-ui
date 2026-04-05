@@ -39,6 +39,7 @@ export interface ProviderConfigDraft {
   applies_to_providers: string[]
   terraform: TerraformConfigDraft | null
   ansible: AnsibleConfigDraft | null
+  ansible_teardown: AnsibleConfigDraft | null
 }
 
 export function defaultTerraformDraft(): TerraformConfigDraft {
@@ -64,7 +65,7 @@ export function defaultAnsibleDraft(): AnsibleConfigDraft {
 }
 
 export function defaultProviderConfigDraft(): ProviderConfigDraft {
-  return { name: "Default", applies_to_providers: [], terraform: defaultTerraformDraft(), ansible: null }
+  return { name: "Default", applies_to_providers: [], terraform: defaultTerraformDraft(), ansible: null, ansible_teardown: null }
 }
 
 export function providerConfigIsConfigured(draft: ProviderConfigDraft): boolean {
@@ -77,6 +78,7 @@ export function providerConfigDraftToPayload(draft: ProviderConfigDraft) {
     applies_to_providers: draft.applies_to_providers,
     terraform: draft.terraform ? buildTfPayload(draft.terraform) : null,
     ansible: draft.ansible ? buildAnsPayload(draft.ansible) : null,
+    ansible_teardown: draft.ansible_teardown ? buildAnsPayload(draft.ansible_teardown) : null,
   }
 }
 
@@ -107,6 +109,18 @@ export function providerConfigFromApi(cfg: ProviderConfiguration): ProviderConfi
         ? JSON.stringify(cfg.ansible_playbook.outputs_mapping_json, null, 2)
         : JSON.stringify({ resources: [] }, null, 2),
       roles_json: cfg.ansible_playbook.roles_json ? JSON.stringify(cfg.ansible_playbook.roles_json, null, 2) : "[]",
+    } : null,
+    ansible_teardown: cfg.teardown_playbook ? {
+      playbook_yaml:        cfg.teardown_playbook.playbook_yaml ?? "",
+      inventory_template:   cfg.teardown_playbook.inventory_template ?? "",
+      credential_env_keys:  cfg.teardown_playbook.credential_env_keys ?? [],
+      vars_mapping_json:    cfg.teardown_playbook.vars_mapping_json
+        ? JSON.stringify(cfg.teardown_playbook.vars_mapping_json, null, 2)
+        : JSON.stringify({ environment_configuration: {} }, null, 2),
+      outputs_mapping_json: cfg.teardown_playbook.outputs_mapping_json
+        ? JSON.stringify(cfg.teardown_playbook.outputs_mapping_json, null, 2)
+        : JSON.stringify({ resources: [] }, null, 2),
+      roles_json: cfg.teardown_playbook.roles_json ? JSON.stringify(cfg.teardown_playbook.roles_json, null, 2) : "[]",
     } : null,
   }
 }
