@@ -20,8 +20,8 @@ export function DeploymentScaleCard({ deployment, savingId, onScale, onGroupScal
     <div className="rounded-md border border-border p-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs font-semibold text-foreground">{deployment.name || deployment.role || deployment.id}</span>
-        <StatusBadge type="provider" value={deployment.providerName || deployment.providerId} />
-        <StatusBadge type="status" value={deployment.status} />
+        <StatusBadge type="provider" value={(deployment as any).providerName || (deployment as any).provider_name || deployment.providerId || deployment.provider_id || "Provider"} />
+        <StatusBadge type="status" value={deployment.status?.toLowerCase?.() || deployment.status || "unknown"} />
         <span className="text-[11px] text-muted-foreground">{deployment.region}</span>
       </div>
 

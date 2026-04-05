@@ -20,7 +20,7 @@ type DeploymentCardProps = {
 }
 
 export function DeploymentCard({ deployment, resources }: DeploymentCardProps) {
-  const running = resources.filter((r) => r.status.toLowerCase() === "running").length
+  const running = resources.filter((r) => r.status?.toLowerCase?.() === "running" || r.status === "running").length
 
   // Summarize by kind
   const kindCounts = resources.reduce<Record<string, number>>((acc, r) => {
@@ -37,14 +37,14 @@ export function DeploymentCard({ deployment, resources }: DeploymentCardProps) {
         <span className="text-xs font-semibold text-foreground truncate max-w-[140px]">
           {deployment.name || `deployment-${deployment.id}`}
         </span>
-        <StatusBadge type="status" value={deployment.status.toLowerCase()} />
+        <StatusBadge type="status" value={deployment.status?.toLowerCase?.() || deployment.status || "unknown"} />
       </div>
 
       {(deployment.region || deployment.providerId || deployment.provider_id) && (
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <Server className="h-3 w-3" />
           <span className="uppercase font-medium">
-            {deployment.providerName ?? (deployment.providerId || deployment.provider_id)}
+            {(deployment as any).providerName || (deployment as any).provider_name || (deployment as any).provider_type || (deployment as any).providerType || (deployment as any).provider_slug || (deployment as any).providerSlug || deployment.providerId || deployment.provider_id || "LOCAL"}
           </span>
           {deployment.region && (
             <>

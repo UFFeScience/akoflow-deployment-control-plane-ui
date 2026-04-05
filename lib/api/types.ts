@@ -251,8 +251,16 @@ export interface Deployment {
   provider_credentials?: DeploymentProviderCredential[]
   deployment_template_id?: string | null
   environment_type?: string
+  provider_type?: string
+  provider_name?: string
+  provider_slug?: string
+  provider_id?: string | null
   // camelCase normalized
   environmentId?: string
+  providerType?: string
+  providerName?: string
+  providerSlug?: string
+  providerId?: string
   region?: string | null
   name?: string
   status: string

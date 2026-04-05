@@ -29,7 +29,7 @@ export const InstanceCellRenderers: InstanceRenderers = {
   provider(row) {
     return (
       <span className="py-1.5">
-        <StatusBadge type="provider" value={row.provider || "unknown"} />
+        <StatusBadge type="provider" value={row.provider || "—"} />
       </span>
     )
   },
