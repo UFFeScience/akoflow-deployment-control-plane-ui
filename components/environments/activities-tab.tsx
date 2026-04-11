@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { RunLogModal } from "@/components/environments/run-log-modal"
 import type { RunLogResource } from "@/components/environments/run-log-modal"
 import { PlaybookYamlViewer } from "@/components/environments/playbook-yaml-viewer"
+import { ActivityExecutionDetails } from "@/components/environments/activity-execution-details"
 
 interface ActivitiesTabProps {
   projectId: string
@@ -213,6 +214,8 @@ export function ActivitiesTab({ projectId, environmentId, templateId, versionId,
           </span>
         </div>
       )}
+
+      <ActivityExecutionDetails runs={runs} />
 
       {loading ? (
         <div className="flex justify-center py-6">

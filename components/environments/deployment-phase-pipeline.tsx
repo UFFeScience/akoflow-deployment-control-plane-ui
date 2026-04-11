@@ -7,11 +7,12 @@ import { templatesApi } from "@/lib/api/templates"
 import { logsApi } from "@/lib/api/logs"
 import { parseAnsibleGraph, parseAnsibleTaskStatusFromLogs } from "@/components/templates/topology-tab/parse-ansible"
 import type { AnsibleTask, AnsibleTaskStatus } from "@/components/templates/topology-tab/parse-ansible"
-import type { Deployment, ProvisionedResource, AnsibleRun, Playbook, PlaybookRun, TerraformRun } from "@/lib/api/types"
+import type { Deployment, ProvisionedResource, AnsibleRun, Playbook, PlaybookRun, PlaybookRunTaskHostStatus, TerraformRun } from "@/lib/api/types"
 import { PhaseCard } from "./phase-card"
 import { PhaseConnector } from "./phase-connector"
 import { terraformPhaseStatus, afterProvisionPhaseStatus, teardownPhaseStatus, destroyPhaseStatus } from "./phase-status-helpers"
 import { PlaybookYamlViewer } from "@/components/environments/playbook-yaml-viewer"
+import { TasksList } from "@/components/environments/tasks-list"
 
 interface DeploymentPhasePipelineProps {
   projectId: string
@@ -26,6 +27,8 @@ interface DeploymentPhasePipelineProps {
   onStatusChange?: (isActive: boolean) => void
   /** Hide the after-provision phase card (used in create flow). */
   showAfterProvisionPhase?: boolean
+  /** Open the Activities tab for detailed host/task execution view. */
+  onOpenActivitiesTab?: () => void
 }
 
 export function DeploymentPhasePipeline({
@@ -37,13 +40,28 @@ export function DeploymentPhasePipeline({
   pollInterval,
   onStatusChange,
   showAfterProvisionPhase = true,
+  onOpenActivitiesTab,
 }: DeploymentPhasePipelineProps) {
+  const getRunRecencyMs = (run: PlaybookRun): number => {
+    const timestamp = run.updated_at ?? run.finished_at ?? run.started_at ?? run.created_at
+    if (!timestamp) return 0
+    const ms = Date.parse(timestamp)
+    return Number.isNaN(ms) ? 0 : ms
+  }
+
+  const compareRunRecencyDesc = (a: PlaybookRun, b: PlaybookRun): number => {
+    const diff = getRunRecencyMs(b) - getRunRecencyMs(a)
+    if (diff !== 0) return diff
+    return String(b.id ?? "").localeCompare(String(a.id ?? ""))
+  }
+
   const [tfRuns, setTfRuns] = useState<TerraformRun[]>([])
   const [ansibleRuns, setAnsibleRuns] = useState<AnsibleRun[]>([])
   const [playbookRuns, setPlaybookRuns] = useState<PlaybookRun[]>([])
   const [afterProvisionPlaybooks, setAfterProvisionPlaybooks] = useState<Playbook[]>([])
   const [teardownTasks, setTeardownTasks] = useState<AnsibleTask[]>([])
   const [teardownTaskStatuses, setTeardownTaskStatuses] = useState<Record<string, AnsibleTaskStatus>>({})
+  const [fallbackTaskStatusesByPlaybook, setFallbackTaskStatusesByPlaybook] = useState<Record<string, Record<string, AnsibleTaskStatus>>>({})
   const [destroyExpanded, setDestroyExpanded] = useState(false)
   const [openPlaybookId, setOpenPlaybookId] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -147,18 +165,62 @@ export function DeploymentPhasePipeline({
   const destroyTfRun = tfRuns.find((r) => r.action === "destroy") ?? null
   const teardownAns  = ansibleRuns.find((r) => r.action === "teardown")  ?? null
 
-  const afterProvisionRuns = playbookRuns
-    .filter((r) => r.trigger === "after_provision")
-    .filter((r) => {
-      const runDeploymentId = r.deployment_id != null ? String(r.deployment_id) : null
-      if (!deployment.id || !runDeploymentId) return true
-      return runDeploymentId === String(deployment.id)
-    })
-    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
+  const afterProvisionRuns = useMemo(() => {
+    const allAfterProvision = playbookRuns
+      .filter((r) => r.trigger === "after_provision")
+      .sort(compareRunRecencyDesc)
+
+    if (!deployment.id) return allAfterProvision
+
+    const deploymentId = String(deployment.id)
+    const scopedToDeployment = allAfterProvision.filter(
+      (r) => r.deployment_id != null && String(r.deployment_id) === deploymentId,
+    )
+
+    // Prefer runs explicitly tied to the current deployment.
+    // Fallback to unscoped history only when scoped data does not exist.
+    return scopedToDeployment.length > 0 ? scopedToDeployment : allAfterProvision
+  }, [playbookRuns, deployment.id])
   const latestAfterProvisionRun = afterProvisionRuns[0] ?? null
 
   const latestAfterProvisionRunByPlaybook = (playbookId: string) =>
     afterProvisionRuns.find((r) => String(r.playbook_id ?? r.activity_id) === playbookId) ?? null
+
+  useEffect(() => {
+    if (afterProvisionRuns.length === 0 || afterProvisionPlaybooks.length === 0) {
+      setFallbackTaskStatusesByPlaybook({})
+      return
+    }
+
+    let active = true
+
+    async function loadFallbackTaskStatuses() {
+      const next: Record<string, Record<string, AnsibleTaskStatus>> = {}
+
+      for (const playbook of afterProvisionPlaybooks) {
+        const playbookId = String(playbook.id)
+        const run = latestAfterProvisionRunByPlaybook(playbookId)
+        if (!run) continue
+
+        const persistedRows = (run.task_host_statuses ?? []) as PlaybookRunTaskHostStatus[]
+        if (persistedRows.length > 0) continue
+
+        const tasks = (playbook.tasks ?? []).map((t) => ({ name: t.name, module: t.module ?? undefined }))
+        if (tasks.length === 0) continue
+
+        const runId = String(run.id)
+        const entries = await logsApi.playbookRunLogs(projectId, environmentId, runId).catch(() => [])
+        if (!active) return
+
+        next[playbookId] = parseAnsibleTaskStatusFromLogs(entries.map((e) => e.message), tasks)
+      }
+
+      if (active) setFallbackTaskStatusesByPlaybook(next)
+    }
+
+    loadFallbackTaskStatuses()
+    return () => { active = false }
+  }, [afterProvisionRuns, afterProvisionPlaybooks, projectId, environmentId])
 
   const runStatusClass = (status?: string) => {
     const s = (status ?? "").toUpperCase()
@@ -166,6 +228,16 @@ export function DeploymentPhasePipeline({
     if (s === "FAILED") return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
     if (["RUNNING", "QUEUED", "INITIALIZING"].includes(s)) return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
     return "bg-muted text-muted-foreground"
+  }
+
+  const aggregateTaskStatus = (rows: PlaybookRunTaskHostStatus[]): AnsibleTaskStatus => {
+    const statuses = rows.map((r) => (r.status ?? "").toUpperCase())
+    if (statuses.some((s) => s === "FAILED" || s === "UNREACHABLE")) return "failed"
+    if (statuses.some((s) => s === "RUNNING")) return "running"
+    if (statuses.some((s) => s === "CHANGED")) return "changed"
+    if (statuses.some((s) => s === "OK")) return "ok"
+    if (statuses.some((s) => s === "SKIPPED")) return "skipped"
+    return "pending"
   }
 
   const tfStatus       = terraformPhaseStatus(deployment.status, applyTfRun)
@@ -225,6 +297,47 @@ export function DeploymentPhasePipeline({
                         const pid = String(playbook.id)
                         const run = latestAfterProvisionRunByPlaybook(pid)
                         const isOpen = openPlaybookId === pid
+                        const persistedRows = ((run?.task_host_statuses ?? []) as PlaybookRunTaskHostStatus[])
+                          .slice()
+                          .sort((a, b) => {
+                            const pa = a.position ?? Number.MAX_SAFE_INTEGER
+                            const pb = b.position ?? Number.MAX_SAFE_INTEGER
+                            if (pa !== pb) return pa - pb
+                            return String(a.host ?? "").localeCompare(String(b.host ?? ""))
+                          })
+
+                        const groupedByTask = persistedRows.reduce<Record<string, PlaybookRunTaskHostStatus[]>>((acc, row) => {
+                          const key = row.task_name || "Unnamed task"
+                          if (!acc[key]) acc[key] = []
+                          acc[key].push(row)
+                          return acc
+                        }, {})
+
+                        const taskNamesFromRun = Object.keys(groupedByTask)
+                        const taskNames = taskNamesFromRun.length > 0
+                          ? taskNamesFromRun
+                          : (playbook.tasks ?? []).map((t) => t.name)
+
+                        const fallbackTaskStatuses = fallbackTaskStatusesByPlaybook[pid] ?? {}
+
+                        const aggregatedTaskStatuses = Object.fromEntries(
+                          taskNames.map((taskName) => {
+                            const rows = groupedByTask[taskName] ?? []
+                            return [
+                              taskName,
+                              rows.length > 0
+                                ? aggregateTaskStatus(rows)
+                                : (fallbackTaskStatuses[taskName] ?? "pending"),
+                            ]
+                          }),
+                        ) as Record<string, AnsibleTaskStatus>
+
+                        const playbookTasksForView: AnsibleTask[] = taskNames.map((taskName) => ({
+                          name: taskName,
+                          module: (playbook.tasks ?? []).find((t) => t.name === taskName)?.module ??
+                            groupedByTask[taskName]?.[0]?.module ??
+                            undefined,
+                        }))
 
                         return (
                           <div key={pid} className="rounded border border-border/70 bg-background px-2 py-1.5">
@@ -240,6 +353,15 @@ export function DeploymentPhasePipeline({
                                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${runStatusClass(run?.status)}`}>
                                   {run?.status ?? "PENDING"}
                                 </span>
+                                {onOpenActivitiesTab && (
+                                  <button
+                                    type="button"
+                                    onClick={onOpenActivitiesTab}
+                                    className="inline-flex h-6 items-center rounded border border-border px-2 text-[10px] text-muted-foreground hover:text-foreground"
+                                  >
+                                    Details
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => setOpenPlaybookId((curr) => (curr === pid ? null : pid))}

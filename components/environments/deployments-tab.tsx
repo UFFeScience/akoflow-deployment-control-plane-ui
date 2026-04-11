@@ -22,6 +22,7 @@ interface DeploymentsTabProps {
   isLoading?: boolean
   onDeploymentsChange: (deployments: Deployment[]) => void
   onRefresh?: () => Promise<void>
+  onOpenActivitiesTab?: () => void
 }
 
 export function DeploymentsTab({
@@ -33,6 +34,7 @@ export function DeploymentsTab({
   isLoading = false,
   onDeploymentsChange,
   onRefresh,
+  onOpenActivitiesTab,
 }: DeploymentsTabProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [isDestroying, setIsDestroying] = useState(false)
@@ -126,6 +128,7 @@ export function DeploymentsTab({
                   null
                 }
                 resources={resources}
+                onOpenActivitiesTab={onOpenActivitiesTab}
               />
 
               {/* Resource summary footer */}

@@ -472,6 +472,24 @@ export interface PlaybookRun {
   workspace_path?: string
   extra_vars?: Record<string, unknown>
   output?: Record<string, unknown>
+  task_host_statuses?: PlaybookRunTaskHostStatus[]
+  started_at?: string | null
+  finished_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PlaybookRunTaskHostStatus {
+  id: string | number
+  ansible_playbook_run_id: string | number
+  ansible_playbook_task_id?: string | number | null
+  host: string
+  task_name: string
+  module?: string | null
+  position?: number | null
+  /** PENDING | RUNNING | OK | CHANGED | FAILED | SKIPPED | UNREACHABLE */
+  status: string
+  output?: string | null
   started_at?: string | null
   finished_at?: string | null
   created_at?: string

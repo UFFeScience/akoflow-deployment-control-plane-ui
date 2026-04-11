@@ -140,6 +140,7 @@ export function EnvironmentTabs({
           isLoading={isLoadingResources}
           onDeploymentsChange={onDeploymentsChange}
           onRefresh={onRefreshDeployments}
+          onOpenActivitiesTab={() => setActiveTab("activities")}
         />
       </TabsContent>
 
