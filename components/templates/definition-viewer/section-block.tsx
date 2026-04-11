@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import type { FormSection } from "@/lib/api/types"
-import { FieldCard } from "./field-card"
+import { FieldCard, FieldRow } from "./field-card"
 
 export function SectionBlock({ section }: { section: FormSection }) {
   const [open, setOpen] = useState(true)
@@ -45,5 +45,4 @@ export function SectionRows({ section }: { section: FormSection }) {
   )
 }
 
-// FieldRow is imported from field-card but re-exported here for convenience
 export { FieldRow } from "./field-card"

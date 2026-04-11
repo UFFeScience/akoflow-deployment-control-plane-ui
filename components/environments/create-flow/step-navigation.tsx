@@ -31,12 +31,12 @@ export function StepNavigation({
         Step {activeIdx + 1} of {steps.length}
       </div>
       <div className="flex items-center gap-2">
-        {activeStep !== "basics" && activeStep !== "provisioning" && activeStep !== "runbooks" && (
+        {activeStep !== "basics" && (
           <Button variant="outline" size="sm" className="text-xs" onClick={onBack}>
             Back
           </Button>
         )}
-        {activeStep !== "runbooks" && activeStep !== "deployment" && (
+        {activeStep !== "deployment" && (
           <Button
             size="sm"
             className="text-xs"
@@ -60,19 +60,8 @@ export function StepNavigation({
                 Creating...
               </>
             ) : (
-              "Create & continue"
+              "Create environment"
             )}
-          </Button>
-        )}
-        {activeStep === "runbooks" && (
-          <Button
-            size="sm"
-            variant="default"
-            className="text-xs"
-            onClick={onFinish}
-            disabled={false}
-          >
-            Finish
           </Button>
         )}
       </div>

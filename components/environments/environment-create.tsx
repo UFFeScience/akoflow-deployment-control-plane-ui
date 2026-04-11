@@ -10,8 +10,6 @@ import { BasicsStep } from "./create-flow/basics-step"
 import { TemplateStep } from "./create-flow/template-step"
 import { ConfigStep } from "./create-flow/config-step"
 import { DeploymentStep } from "./create-flow/deployment-step"
-import { ProvisioningStep } from "./create-flow/provisioning-step"
-import { RunbooksStep } from "./create-flow/runbooks-step"
 import { useEnvironmentCreate } from "./create-flow/use-environment-create"
 
 export function EnvironmentCreateFlow() {
@@ -29,7 +27,7 @@ export function EnvironmentCreateFlow() {
     configErrors, showConfigErrors, setShowConfigErrors,
     isLoadingData, isSubmitting,
     nextStep, prevStep, canProceed, handleFinish,
-    templates, createdEnvironmentId,
+    templates,
     autoSetupNotice,
   } = useEnvironmentCreate()
 
@@ -80,18 +78,6 @@ export function EnvironmentCreateFlow() {
             providers={providers} credentials={credentials} credentialsBySlug={credentialsBySlug} />
         )}
 
-        {activeStep === "provisioning" && createdEnvironmentId && (
-          <ProvisioningStep projectId={projectId} environmentId={createdEnvironmentId} />
-        )}
-
-        {activeStep === "runbooks" && createdEnvironmentId && selectedTemplateVersionId && (
-          <RunbooksStep
-            projectId={projectId}
-            environmentId={createdEnvironmentId}
-            templateId={environmentTemplateId}
-            versionId={selectedTemplateVersionId}
-          />
-        )}
       </div>
 
       <StepNavigation activeStep={activeStep} canProceed={canProceed()} isSubmitting={isSubmitting}

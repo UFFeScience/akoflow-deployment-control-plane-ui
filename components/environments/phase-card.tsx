@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, Loader2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import { cn } from "@/lib/utils"
-import type { AnsibleRun, ProvisionedResource, TerraformRun } from "@/lib/api/types"
+import type { AnsibleRun, PlaybookRun, ProvisionedResource, TerraformRun } from "@/lib/api/types"
 import type { AnsibleTask, AnsibleTaskStatus } from "@/components/templates/topology-tab/parse-ansible"
 import { toast } from "sonner"
 import { PhaseIcon } from "./phase-icon"
@@ -41,7 +41,8 @@ export interface PhaseCardProps {
   title: string
   description: string
   status: PhaseStatus
-  run?: TerraformRun | AnsibleRun | null
+  run?: TerraformRun | AnsibleRun | PlaybookRun | null
+  extraContent?: React.ReactNode
   resources?: ProvisionedResource[]
   retryLabel?: string
   onRetry?: () => Promise<void>
@@ -49,7 +50,7 @@ export interface PhaseCardProps {
   taskStatuses?: Record<string, AnsibleTaskStatus>
 }
 
-export function PhaseCard({ icon, title, description, status, run, resources = [], retryLabel, onRetry, tasks = [], taskStatuses }: PhaseCardProps) {
+export function PhaseCard({ icon, title, description, status, run, extraContent, resources = [], retryLabel, onRetry, tasks = [], taskStatuses }: PhaseCardProps) {
   const [retrying, setRetrying] = useState(false)
   const badge = phaseLabel(status)
 
@@ -134,6 +135,9 @@ export function PhaseCard({ icon, title, description, status, run, resources = [
 
       {/* Tasks list */}
       {tasks.length > 0 && <TasksList tasks={tasks} taskStatuses={taskStatuses} />}
+
+      {/* Optional extra details (used by Phase 2 playbooks list) */}
+      {extraContent}
 
       {/* Retry */}
       {status === "error" && onRetry && (

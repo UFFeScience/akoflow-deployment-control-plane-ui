@@ -12,18 +12,15 @@ import {
   PROVIDER_TYPES,
   defaultProviderConfigDraft,
   defaultTerraformDraft,
-  defaultAnsibleDraft,
   type ProviderConfigDraft,
 } from "./provider-config-step/types"
 import { TerraformDraftEditor } from "./provider-config-step/terraform-draft-editor"
-import { AnsibleDraftEditor } from "./provider-config-step/ansible-draft-editor"
 
 // Re-export everything so existing imports keep working
-export type { TerraformConfigDraft, AnsibleConfigDraft, ProviderConfigDraft } from "./provider-config-step/types"
+export type { TerraformConfigDraft, ProviderConfigDraft } from "./provider-config-step/types"
 export {
   PROVIDER_TYPES,
   defaultTerraformDraft,
-  defaultAnsibleDraft,
   defaultProviderConfigDraft,
   providerConfigIsConfigured,
   providerConfigDraftToPayload,
@@ -139,28 +136,6 @@ export function ProviderConfigStep({ definition, value, onChange }: Props) {
         enabled={current.terraform !== null}
         onToggle={(enabled) => patch({ terraform: enabled ? defaultTerraformDraft() : null })}
         expFields={expFields}
-      />
-
-      <Separator />
-
-      <AnsibleDraftEditor
-        value={current.ansible ?? defaultAnsibleDraft()}
-        onChange={(ans) => patch({ ansible: ans })}
-        enabled={current.ansible !== null}
-        onToggle={(enabled) => patch({ ansible: enabled ? defaultAnsibleDraft() : null })}
-        expFields={expFields}
-      />
-
-      <Separator />
-
-      <AnsibleDraftEditor
-        value={current.ansible_teardown ?? defaultAnsibleDraft()}
-        onChange={(ans) => patch({ ansible_teardown: ans })}
-        enabled={current.ansible_teardown !== null}
-        onToggle={(enabled) => patch({ ansible_teardown: enabled ? defaultAnsibleDraft() : null })}
-        expFields={expFields}
-        label="Ansible Teardown"
-        hint="runs before Terraform destroy"
       />
     </div>
   )

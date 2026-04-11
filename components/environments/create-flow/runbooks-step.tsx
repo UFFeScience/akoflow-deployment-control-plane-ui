@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Loader2, Play, RefreshCw, ListChecks, CheckCircle2, XCircle, Clock } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Loader2, RefreshCw, ListChecks, CheckCircle2, XCircle, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { environmentsApi } from "@/lib/api/environments"
 import { templatesApi } from "@/lib/api/templates"
-import type { Runbook, RunbookRun } from "@/lib/api/types"
+import type { Playbook, PlaybookRun } from "@/lib/api/types"
 
 interface RunbooksStepProps {
   projectId: string
@@ -31,15 +31,11 @@ function statusClass(status: string) {
 }
 
 interface RunbookCardProps {
-  runbook: Runbook
-  runs: RunbookRun[]
-  onTrigger: (runbookId: string) => Promise<void>
-  triggering: boolean
+  runbook: Playbook
+  runs: PlaybookRun[]
 }
 
-function RunbookCard({ runbook, runs, onTrigger, triggering }: RunbookCardProps) {
-  const lastRun = runs[0] ?? null
-
+function RunbookCard({ runbook, runs }: RunbookCardProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
       <div className="flex items-center justify-between gap-2">
@@ -50,16 +46,9 @@ function RunbookCard({ runbook, runs, onTrigger, triggering }: RunbookCardProps)
             <span className="text-xs text-muted-foreground">— {runbook.description}</span>
           )}
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1.5 shrink-0"
-          onClick={() => onTrigger(String(runbook.id))}
-          disabled={triggering}
-        >
-          {triggering ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-          Run
-        </Button>
+        <span className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          Auto · after_provision
+        </span>
       </div>
 
       {runs.length > 0 && (
@@ -80,62 +69,62 @@ function RunbookCard({ runbook, runs, onTrigger, triggering }: RunbookCardProps)
       )}
 
       {runs.length === 0 && (
-        <p className="text-xs text-muted-foreground italic">No runs yet. Click Run to trigger.</p>
+        <p className="text-xs text-muted-foreground italic">No runs yet. Waiting for automatic trigger after provisioning.</p>
       )}
     </div>
   )
 }
 
 export function RunbooksStep({ projectId, environmentId, templateId, versionId }: RunbooksStepProps) {
-  const [runbooks, setRunbooks] = useState<Runbook[]>([])
-  const [runs, setRuns] = useState<RunbookRun[]>([])
+  const [runbooks, setRunbooks] = useState<Playbook[]>([])
+  const [runs, setRuns] = useState<PlaybookRun[]>([])
   const [loading, setLoading] = useState(true)
-  const [triggeringId, setTriggeringId] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const [configs, runsData] = await Promise.all([
         templatesApi.listProviderConfigurations(templateId, versionId).catch(() => []),
-        environmentsApi.listRunbookRuns(projectId, environmentId).catch(() => []),
+        environmentsApi.listPlaybookRuns(projectId, environmentId).catch(() => []),
       ])
-      const allRunbooks: Runbook[] = []
+      const allRunbooks: Playbook[] = []
       for (const cfg of configs) {
-        const rb = await templatesApi.listRunbooks(templateId, versionId, cfg.id).catch(() => [])
-        allRunbooks.push(...rb)
+        const playbooks = await templatesApi.listPlaybooks(templateId, versionId, cfg.id).catch(() => [])
+        allRunbooks.push(...playbooks.filter((p) => p.trigger === "after_provision" && p.enabled !== false))
       }
-      setRunbooks(allRunbooks)
-      setRuns(runsData)
+      const uniqueRunbooks = Array.from(new Map(allRunbooks.map((r) => [String(r.id), r])).values())
+      setRunbooks(uniqueRunbooks)
+      setRuns(runsData.filter((r) => r.trigger === "after_provision"))
     } finally {
       setLoading(false)
     }
-  }
+  }, [templateId, versionId, projectId, environmentId])
 
   useEffect(() => {
     if (!environmentId || !templateId || !versionId) return
     load()
-  }, [environmentId, templateId, versionId]) // eslint-disable-line
-
-  const handleTrigger = async (runbookId: string) => {
-    setTriggeringId(runbookId)
-    try {
-      await environmentsApi.triggerRunbookRun(projectId, environmentId, runbookId)
-      await load()
-    } finally {
-      setTriggeringId(null)
+    pollRef.current = setInterval(() => {
+      environmentsApi
+        .listPlaybookRuns(projectId, environmentId)
+        .then((runsData) => setRuns(runsData.filter((r) => r.trigger === "after_provision")))
+        .catch(() => {})
+    }, 5000)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
     }
-  }
+  }, [environmentId, templateId, versionId, load, projectId])
 
   const runsByRunbook = (runbookId: string) =>
-    runs.filter((r) => String(r.runbook_id) === runbookId)
+    runs.filter((r) => String(r.playbook_id ?? r.activity_id) === runbookId)
       .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-base font-semibold">Runbooks</h2>
+        <h2 className="text-base font-semibold">Phase 2 — After Provision Playbooks</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          On-demand playbooks available for this environment. Trigger them manually to perform post-configuration tasks.
+          These playbooks are triggered automatically after provisioning completes.
         </p>
       </div>
 
@@ -153,7 +142,7 @@ export function RunbooksStep({ projectId, environmentId, templateId, versionId }
       ) : runbooks.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
           <ListChecks className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No runbooks configured for this template.</p>
+          <p className="text-sm text-muted-foreground">No playbooks configured with trigger after_provision for this template.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -162,8 +151,6 @@ export function RunbooksStep({ projectId, environmentId, templateId, versionId }
               key={rb.id}
               runbook={rb}
               runs={runsByRunbook(String(rb.id))}
-              onTrigger={handleTrigger}
-              triggering={triggeringId === String(rb.id)}
             />
           ))}
         </div>

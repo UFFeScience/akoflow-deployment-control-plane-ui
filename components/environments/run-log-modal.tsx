@@ -7,8 +7,9 @@ import { LogTerminal } from "./log-terminal"
 import type { LogEntry } from "@/lib/api/types"
 
 export type RunLogResource =
-  | { type: "runbook"; projectId: string; environmentId: string; runId: string; title?: string }
+  | { type: "runbook";  projectId: string; environmentId: string; runId: string; title?: string }
   | { type: "ansible";  projectId: string; environmentId: string; runId: string; title?: string }
+  | { type: "activity"; projectId: string; environmentId: string; runId: string; title?: string }
 
 interface RunLogModalProps {
   open: boolean
@@ -30,6 +31,13 @@ export function RunLogModal({ open, onClose, resource }: RunLogModalProps) {
 
       if (resource.type === "runbook") {
         newEntries = await logsApi.runbookRunLogs(
+          resource.projectId,
+          resource.environmentId,
+          resource.runId,
+          reset ? null : afterIdRef.current,
+        )
+      } else if (resource.type === "activity") {
+        newEntries = await logsApi.playbookRunLogs(
           resource.projectId,
           resource.environmentId,
           resource.runId,
@@ -77,7 +85,9 @@ export function RunLogModal({ open, onClose, resource }: RunLogModalProps) {
   }, [entries])
 
   const terminalTitle = resource?.title
-    ?? (resource?.type === "runbook" ? "Runbook Run · latest" : "Ansible Run · latest")
+    ?? (resource?.type === "runbook"  ? "Runbook Run · latest"
+      : resource?.type === "activity" ? "Playbook Run · latest"
+      : "Ansible Run · latest")
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>

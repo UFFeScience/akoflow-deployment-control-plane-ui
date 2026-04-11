@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { SectionCard } from "@/components/templates/provider-config/section-card"
 import { CredentialKeysEditor } from "@/components/templates/provider-config/credential-keys-editor"
 import { PlaybookTasksEditor } from "@/components/templates/provider-config/playbook-tasks-editor"
+import { PlaybookTriggerSelect } from "@/components/templates/playbook-trigger-select"
 import type { TaskDraft } from "@/components/templates/provider-config/playbook-task-card"
 import type { RunbookDraft } from "./types"
 
@@ -28,6 +29,11 @@ export function RunbookDraftCard({ value, onChange, onDelete }: RunbookDraftCard
       badge={value.playbook_yaml.trim() ? "Configured" : undefined}
       defaultOpen={!value.playbook_yaml.trim()}
     >
+      <PlaybookTriggerSelect
+        value={value.trigger}
+        onChange={(trigger) => onChange({ ...value, trigger })}
+      />
+
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs font-semibold">Name</Label>
         <Input
@@ -68,7 +74,7 @@ export function RunbookDraftCard({ value, onChange, onDelete }: RunbookDraftCard
 
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs font-semibold">
-          Ansible Galaxy Roles <span className="font-normal text-muted-foreground">optional</span>
+          Playbook Roles <span className="font-normal text-muted-foreground">optional</span>
         </Label>
         <Textarea
           className="font-mono text-xs min-h-[50px] resize-y"

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Loader2, Plus, Settings2, Code2, Terminal, X } from "lucide-react"
+import { Loader2, Plus, Settings2, Code2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -102,7 +102,6 @@ export function ProviderConfigTab({ templateId, versionId, version }: Props) {
               <span className="text-[10px] opacity-70 font-normal">({cfg.applies_to_providers.join(", ")})</span>
             )}
             {cfg.terraform_module && <Code2 className="h-2.5 w-2.5 shrink-0 opacity-70" />}
-            {cfg.ansible_playbook && <Terminal className="h-2.5 w-2.5 shrink-0 opacity-70" />}
             <button
               className={cn(
                 "ml-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity",
@@ -147,7 +146,7 @@ export function ProviderConfigTab({ templateId, versionId, version }: Props) {
       {configs.length === 0 && (
         <div className="flex items-center gap-2 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
           <Settings2 className="h-4 w-4" />
-          No provider configurations yet. Add one to define Terraform HCL and Ansible playbooks.
+          No provider configurations yet. Add one to define Terraform HCL.
         </div>
       )}
 

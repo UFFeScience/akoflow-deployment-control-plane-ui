@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import type { TemplateDefinition } from "@/lib/api/types"
 import { OutputsMappingEditor } from "./outputs-mapping-editor"
+import { PlaybookTriggerSelect } from "./playbook-trigger-select"
 import {
   ANSIBLE_PROVIDER_TYPES, INVENTORY_PROVIDERS,
   defaultAnsibleDraft, parseVarsMappingJson, varsMappingToJson, parseRoles,
@@ -107,7 +108,7 @@ export function AnsiblePlaybookStep({ definition, value, onChange }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Provider tab bar */}
-      <Section title="Ansible per Provider" description="Select a provider tab to configure its playbook and variable mapping.">
+      <Section title="Playbook per Provider" description="Select a provider tab to configure its playbook and variable mapping.">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex gap-0 rounded-lg border border-border overflow-hidden text-xs">
             {value.map((draft, i) => (
@@ -143,7 +144,13 @@ export function AnsiblePlaybookStep({ definition, value, onChange }: Props) {
 
       <Separator />
 
-      <Section title="Playbook YAML" description={`The main playbook.yml that Ansible will execute for ${providerLabel(current.provider_type)}.`}>
+      <Section title="Playbook YAML" description={`The main playbook.yml that will execute for ${providerLabel(current.provider_type)}.`}>
+        <div className="flex flex-col gap-3 mb-4">
+          <PlaybookTriggerSelect
+            value={current.trigger}
+            onChange={(trigger) => patchCurrent({ trigger })}
+          />
+        </div>
         <PlaybookTasksEditor
           yaml={current.playbook_yaml}
           onYamlChange={(yaml) => patchCurrent({ playbook_yaml: yaml })}
@@ -165,7 +172,7 @@ export function AnsiblePlaybookStep({ definition, value, onChange }: Props) {
 
       <Separator />
 
-      <Section title="Variables Mapping" description="Map definition form fields to Ansible extra_vars names."
+      <Section title="Variables Mapping" description="Map definition form fields to playbook variable names."
         action={
           <button type="button" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setVarsMappingMode((m) => (m === "visual" ? "raw" : "visual"))}>
@@ -224,7 +231,7 @@ export function AnsiblePlaybookStep({ definition, value, onChange }: Props) {
 
       <Separator />
 
-      <Section title="Ansible Galaxy Roles" description="Roles to install via ansible-galaxy before running the playbook.">
+      <Section title="Playbook Roles" description="Roles to install before running the playbook.">
         <div className="flex flex-col gap-2">
           {parseRoles(current.roles_json).map((role, i) => (
             <div key={i} className="flex gap-2">

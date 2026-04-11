@@ -8,11 +8,9 @@ import { Label } from "@/components/ui/label"
 import { templatesApi } from "@/lib/api/templates"
 import { parseOutputsMappingJson } from "../outputs-mapping-editor"
 import type { ProviderConfiguration, TemplateDefinition } from "@/lib/api/types"
-import { defaultTfForm, defaultAnsibleForm, ProviderMultiSelect } from "./shared"
-import type { TerraformForm, AnsibleForm } from "./shared"
+import { defaultTfForm, ProviderMultiSelect } from "./shared"
+import type { TerraformForm } from "./shared"
 import { TerraformSection } from "./terraform-section"
-import { AnsibleSection } from "./ansible-section"
-import { RunbookSection } from "./runbook-section"
 
 interface ConfigEditorProps {
   templateId: string
@@ -26,8 +24,6 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
   const [name, setName] = useState(config.name)
   const [providers, setProviders] = useState<string[]>(config.applies_to_providers)
   const [tfForm, setTfForm] = useState<TerraformForm>(defaultTfForm(config.terraform_module ?? undefined))
-  const [ansibleForm, setAnsibleForm] = useState<AnsibleForm>(defaultAnsibleForm(config.ansible_playbook ?? undefined))
-  const [teardownForm, setTeardownForm] = useState<AnsibleForm>(defaultAnsibleForm(config.teardown_playbook ?? undefined))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,40 +56,7 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
         outputs_mapping_json: tfOutputsJson ?? undefined,
       })
 
-      let varsMappingJson: unknown = null
-      try { varsMappingJson = JSON.parse(ansibleForm.vars_mapping_json) } catch { /* ignore */ }
-      let ansOutputsJson: unknown = null
-      try { ansOutputsJson = parseOutputsMappingJson(ansibleForm.outputs_mapping_json) } catch { /* ignore */ }
-      let rolesValue: unknown = null
-      try { rolesValue = JSON.parse(ansibleForm.roles_json) } catch { /* ignore */ }
-
-      const finalConfig = await templatesApi.upsertProviderConfigAnsible(templateId, versionId, config.id, {
-        playbook_yaml: ansibleForm.playbook_yaml || undefined,
-        inventory_template: ansibleForm.inventory_template || undefined,
-        credential_env_keys: ansibleForm.credential_env_keys.filter(Boolean),
-        vars_mapping_json: varsMappingJson ?? undefined,
-        outputs_mapping_json: ansOutputsJson ?? undefined,
-        roles_json: rolesValue ?? undefined,
-      }, "provision")
-
-      // Save teardown playbook
-      let teardownVarsJson: unknown = null
-      try { teardownVarsJson = JSON.parse(teardownForm.vars_mapping_json) } catch { /* ignore */ }
-      let teardownOutputsJson: unknown = null
-      try { teardownOutputsJson = parseOutputsMappingJson(teardownForm.outputs_mapping_json) } catch { /* ignore */ }
-      let teardownRoles: unknown = null
-      try { teardownRoles = JSON.parse(teardownForm.roles_json) } catch { /* ignore */ }
-
-      await templatesApi.upsertProviderConfigAnsible(templateId, versionId, config.id, {
-        playbook_yaml: teardownForm.playbook_yaml || undefined,
-        inventory_template: teardownForm.inventory_template || undefined,
-        credential_env_keys: teardownForm.credential_env_keys.filter(Boolean),
-        vars_mapping_json: teardownVarsJson ?? undefined,
-        outputs_mapping_json: teardownOutputsJson ?? undefined,
-        roles_json: teardownRoles ?? undefined,
-      }, "teardown")
-
-      onUpdated(finalConfig as ProviderConfiguration)
+      onUpdated(updatedConfig as ProviderConfiguration)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e: any) {
@@ -124,25 +87,6 @@ export function ConfigEditor({ templateId, versionId, config, definition, onUpda
         onTfFormChange={setTfForm}
         expFields={expFields}
       />
-
-      <AnsibleSection
-        config={config}
-        ansibleForm={ansibleForm}
-        onAnsibleFormChange={setAnsibleForm}
-        expFields={expFields}
-      />
-
-      <AnsibleSection
-        config={config}
-        ansibleForm={teardownForm}
-        onAnsibleFormChange={setTeardownForm}
-        expFields={expFields}
-        title="Ansible Teardown"
-        hint="runs before Terraform destroy"
-        badge={config.teardown_playbook?.has_custom_playbook ? "Configured" : undefined}
-      />
-
-      <RunbookSection templateId={templateId} versionId={versionId} config={config} />
 
       <div className="flex items-center gap-3">
         <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleSave} disabled={saving}>

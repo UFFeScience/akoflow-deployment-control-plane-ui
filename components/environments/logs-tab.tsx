@@ -2,21 +2,21 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import type { ProvisionedResource, LogEntry } from "@/lib/api/types"
-import { logsApi, TERRAFORM_RUN_SELECTOR, ANSIBLE_RUN_SELECTOR, RUNBOOK_RUN_SELECTOR_PREFIX, parseRunbookRunSelector } from "@/lib/api/logs"
+import { logsApi, TERRAFORM_RUN_SELECTOR, PLAYBOOK_RUN_SELECTOR_PREFIX, makePlaybookRunSelector, parsePlaybookRunSelector } from "@/lib/api/logs"
 import { LogsFilters } from "./logs-filters"
-import type { RunbookRunOption } from "./logs-filters"
+import type { ActivityRunOption } from "./logs-filters"
 import { LogTerminal } from "./log-terminal"
 
 interface LogsTabProps {
   resources: ProvisionedResource[]
   projectId: string
   environmentId: string
-  runbookRuns?: RunbookRunOption[]
+  activityRuns?: ActivityRunOption[]
 }
 
 const POLL_INTERVAL_MS = 5_000
 
-export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] }: LogsTabProps) {
+export function LogsTab({ resources, projectId, environmentId, activityRuns = [] }: LogsTabProps) {
   const [logs, setLogs]                         = useState<LogEntry[]>([])
   const [filterLevel, setFilterLevel]           = useState<string>("all")
   const [selectedInstance, setSelectedInstance] = useState<string>(TERRAFORM_RUN_SELECTOR)
@@ -27,9 +27,17 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
   const lastIdRef = useRef<number | null>(null)  // last seen log id for this selection
   const runIdRef  = useRef<string | null>(null)  // resolved terraform run id
 
-  const isTerraformRun = selectedInstance === TERRAFORM_RUN_SELECTOR
-  const isAnsibleRun   = selectedInstance === ANSIBLE_RUN_SELECTOR
-  const isRunbookRun   = selectedInstance.startsWith(RUNBOOK_RUN_SELECTOR_PREFIX)
+  const isTerraformRun  = selectedInstance === TERRAFORM_RUN_SELECTOR
+  const isActivityRun   = selectedInstance.startsWith(PLAYBOOK_RUN_SELECTOR_PREFIX)
+
+  // Prefer playbook run logs by default when available.
+  useEffect(() => {
+    if (activityRuns.length === 0) return
+    const selectedIsLegacyOrDefault = selectedInstance === TERRAFORM_RUN_SELECTOR
+    if (selectedIsLegacyOrDefault) {
+      setSelectedInstance(makePlaybookRunSelector(activityRuns[0].id))
+    }
+  }, [activityRuns, selectedInstance])
 
   // ── Reset when the selected source changes ──────────────────────────────────
   useEffect(() => {
@@ -60,25 +68,11 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
     [selectedInstance],
   )
 
-  const fetchAnsibleLogs = useCallback(
+  const fetchActivityRunLogs = useCallback(
     async (afterId: number | null): Promise<LogEntry[]> => {
-      const { entries, runId } = await logsApi.ansibleRunLogs(
-        projectId,
-        environmentId,
-        runIdRef.current,
-        afterId,
-      )
-      if (runId) runIdRef.current = runId
-      return entries
-    },
-    [projectId, environmentId],
-  )
-
-  const fetchRunbookRunLogs = useCallback(
-    async (afterId: number | null): Promise<LogEntry[]> => {
-      const runId = parseRunbookRunSelector(selectedInstance)
+      const runId = parsePlaybookRunSelector(selectedInstance)
       if (!runId) return []
-      return logsApi.runbookRunLogs(projectId, environmentId, runId, afterId)
+      return logsApi.playbookRunLogs(projectId, environmentId, runId, afterId)
     },
     [projectId, environmentId, selectedInstance],
   )
@@ -93,10 +87,8 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
       try {
         const entries = isTerraformRun
           ? await fetchTerraformLogs(afterId)
-          : isAnsibleRun
-          ? await fetchAnsibleLogs(afterId)
-          : isRunbookRun
-          ? await fetchRunbookRunLogs(afterId)
+          : isActivityRun
+          ? await fetchActivityRunLogs(afterId)
           : await fetchResourceLogs(afterId)
 
         if (!active) return
@@ -130,7 +122,7 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
       active = false
       clearInterval(intervalId)
     }
-  }, [selectedInstance, isTerraformRun, isAnsibleRun, isRunbookRun, fetchTerraformLogs, fetchAnsibleLogs, fetchAnsibleLogs, fetchRunbookRunLogs, fetchResourceLogs])
+  }, [selectedInstance, isTerraformRun, isActivityRun, fetchTerraformLogs, fetchActivityRunLogs, fetchResourceLogs])
 
   // ── Filtered view ───────────────────────────────────────────────────────────
   const displayLogs = logs.filter(
@@ -153,18 +145,17 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement("a")
     a.href     = url
-    a.download = isTerraformRun ? "terraform-provision-logs.txt" : isAnsibleRun ? "ansible-configure-logs.txt" : "logs.txt"
+    a.download = isTerraformRun ? "terraform-provision-logs.txt" : isActivityRun ? "playbook-run-logs.txt" : "logs.txt"
     a.click()
     URL.revokeObjectURL(url)
   }
 
   function getTerminalTitle(): string {
     if (isTerraformRun) return "Terraform Run · Provision · latest"
-    if (isAnsibleRun)   return "Ansible Run · Configure Environment · latest"
-    if (isRunbookRun) {
-      const runId = parseRunbookRunSelector(selectedInstance)
-      const opt   = runbookRuns.find(r => r.id === runId)
-      return opt?.label ?? `Runbook Run · ${runId}`
+    if (isActivityRun) {
+      const runId = parsePlaybookRunSelector(selectedInstance)
+      const opt   = activityRuns.find(r => r.id === runId)
+      return opt?.label ?? `Playbook Run · ${runId}`
     }
     if (!selectedInstance) return "No resource selected"
     const res  = resources.find(r => r.id === selectedInstance)
@@ -184,7 +175,7 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
         setAutoScroll={setAutoScroll}
         handleDownload={handleDownload}
         resources={resources}
-        runbookRuns={runbookRuns}
+        activityRuns={activityRuns}
         isLoading={isLoading}
       />
 
@@ -193,10 +184,8 @@ export function LogsTab({ resources, projectId, environmentId, runbookRuns = [] 
         <span className="text-[10px] font-medium text-muted-foreground">
           {isTerraformRun
             ? "Terraform Run Logs"
-            : isAnsibleRun
-            ? "Ansible Run Logs"
-            : isRunbookRun
-            ? "Runbook Run Logs"
+            : isActivityRun
+            ? "Playbook Run Logs"
             : selectedInstance
             ? "Resource Logs"
             : "Select a resource"}{" "}

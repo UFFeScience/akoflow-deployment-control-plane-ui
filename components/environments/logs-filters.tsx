@@ -3,9 +3,14 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { ProvisionedResource } from "@/lib/api/types"
-import { TERRAFORM_RUN_SELECTOR, ANSIBLE_RUN_SELECTOR, makeRunbookRunSelector } from "@/lib/api/logs"
+import { TERRAFORM_RUN_SELECTOR, makePlaybookRunSelector } from "@/lib/api/logs"
 
 export interface RunbookRunOption {
+  id: string
+  label: string
+}
+
+export type ActivityRunOption = {
   id: string
   label: string
 }
@@ -19,7 +24,7 @@ type LogsFiltersProps = {
   setAutoScroll: (v: boolean) => void
   handleDownload: () => void
   resources: ProvisionedResource[]
-  runbookRuns?: RunbookRunOption[]
+  activityRuns?: ActivityRunOption[]
   isLoading: boolean
 }
 
@@ -32,7 +37,7 @@ export function LogsFilters({
   setAutoScroll,
   handleDownload,
   resources,
-  runbookRuns = [],
+  activityRuns = [],
   isLoading,
 }: LogsFiltersProps) {
   return (
@@ -54,11 +59,20 @@ export function LogsFilters({
           <SelectValue placeholder="Select resource" />
         </SelectTrigger>
         <SelectContent>
+            {activityRuns.length > 0 && (
+              <>
+                <div className="px-2 pt-2 pb-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Playbook Runs
+                </div>
+                {activityRuns.map((r) => (
+                  <SelectItem key={r.id} value={makePlaybookRunSelector(r.id)} className="text-xs">
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </>
+            )}
           <SelectItem value={TERRAFORM_RUN_SELECTOR} className="text-xs">
             Terraform · Provision
-          </SelectItem>
-          <SelectItem value={ANSIBLE_RUN_SELECTOR} className="text-xs">
-            Ansible · Configure
           </SelectItem>
           {resources.map((r) => {
             const name = r.name || r.provider_resource_id || `resource-${r.id}`
@@ -70,18 +84,6 @@ export function LogsFilters({
               </SelectItem>
             )
           })}
-          {runbookRuns.length > 0 && (
-            <>
-              <div className="px-2 pt-2 pb-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                Runbook Runs
-              </div>
-              {runbookRuns.map((r) => (
-                <SelectItem key={r.id} value={makeRunbookRunSelector(r.id)} className="text-xs">
-                  {r.label}
-                </SelectItem>
-              ))}
-            </>
-          )}
         </SelectContent>
       </Select>
       <div className="flex items-center gap-1.5 ml-auto">

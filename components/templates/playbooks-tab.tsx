@@ -5,9 +5,7 @@ import { Loader2, Terminal, Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { templatesApi } from "@/lib/api/templates"
 import type { ProviderConfiguration, TemplateVersion } from "@/lib/api/types"
-import { ConfigPlaybookSection } from "./playbooks-tab/config-playbook-section"
-import { TeardownPlaybookSection } from "./playbooks-tab/teardown-playbook-section"
-import { RunbooksSection } from "./playbooks-tab/runbooks-section"
+import { ActivitiesSection } from "./playbooks-tab/activities-section"
 
 interface PlaybooksTabProps {
   templateId: string
@@ -46,6 +44,7 @@ export function PlaybooksTab({ templateId, versionId, version }: PlaybooksTabPro
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Provider config selector */}
       <div className="flex items-center gap-2 flex-wrap">
         {configs.map((cfg) => (
           <button
@@ -69,32 +68,12 @@ export function PlaybooksTab({ templateId, versionId, version }: PlaybooksTabPro
       </div>
 
       {activeConfig && (
-        <div className="flex flex-col gap-5">
-          <ConfigPlaybookSection
-            key={`playbook-${activeConfig.id}`}
-            templateId={templateId}
-            versionId={versionId}
-            config={activeConfig}
-          />
-
-          <div className="h-px bg-border" />
-
-          <TeardownPlaybookSection
-            key={`teardown-${activeConfig.id}`}
-            templateId={templateId}
-            versionId={versionId}
-            config={activeConfig}
-          />
-
-          <div className="h-px bg-border" />
-
-          <RunbooksSection
-            key={`runbooks-${activeConfig.id}`}
-            templateId={templateId}
-            versionId={versionId}
-            config={activeConfig}
-          />
-        </div>
+        <ActivitiesSection
+          key={activeConfig.id}
+          templateId={templateId}
+          versionId={versionId}
+          config={activeConfig}
+        />
       )}
     </div>
   )

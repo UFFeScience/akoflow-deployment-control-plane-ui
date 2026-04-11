@@ -1,14 +1,23 @@
 import { request } from "./client"
 import type { LogEntry, TerraformRun, AnsibleRun } from "./types"
 
-export const TERRAFORM_RUN_SELECTOR      = "__terraform_run__"
-export const ANSIBLE_RUN_SELECTOR        = "__ansible_run__"
-export const RUNBOOK_RUN_SELECTOR_PREFIX = "__runbook_run__"
+export const TERRAFORM_RUN_SELECTOR       = "__terraform_run__"
+export const ANSIBLE_RUN_SELECTOR         = "__ansible_run__"
+export const RUNBOOK_RUN_SELECTOR_PREFIX  = "__runbook_run__"
+export const PLAYBOOK_RUN_SELECTOR_PREFIX = "__playbook_run__"
+export const ACTIVITY_RUN_SELECTOR_PREFIX = PLAYBOOK_RUN_SELECTOR_PREFIX
 
 export const makeRunbookRunSelector = (runId: string | number) =>
   `${RUNBOOK_RUN_SELECTOR_PREFIX}${runId}`
 export const parseRunbookRunSelector = (s: string): string | null =>
   s.startsWith(RUNBOOK_RUN_SELECTOR_PREFIX) ? s.slice(RUNBOOK_RUN_SELECTOR_PREFIX.length) : null
+
+export const makePlaybookRunSelector = (runId: string | number) =>
+  `${PLAYBOOK_RUN_SELECTOR_PREFIX}${runId}`
+export const parsePlaybookRunSelector = (s: string): string | null =>
+  s.startsWith(PLAYBOOK_RUN_SELECTOR_PREFIX) ? s.slice(PLAYBOOK_RUN_SELECTOR_PREFIX.length) : null
+export const makeActivityRunSelector = makePlaybookRunSelector
+export const parseActivityRunSelector = parsePlaybookRunSelector
 
 // ── API shape returned by the new /logs endpoints ────────────────────────────
 
@@ -128,9 +137,32 @@ export const logsApi = {
     afterId?: number | null,
   ): Promise<LogEntry[]> => {
     const url = afterId
-      ? `/projects/${projectId}/environments/${environmentId}/runbook-runs/${runId}/logs?after_id=${afterId}`
-      : `/projects/${projectId}/environments/${environmentId}/runbook-runs/${runId}/logs`
+      ? `/projects/${projectId}/environments/${environmentId}/playbook-runs/${runId}/logs?after_id=${afterId}`
+      : `/projects/${projectId}/environments/${environmentId}/playbook-runs/${runId}/logs`
     const raw = await request<RunLogApiEntry[]>(url)
     return raw.map(toLogEntry)
   },
+
+  /**
+   * Fetch logs for a playbook run.
+   */
+  playbookRunLogs: async (
+    projectId: string,
+    environmentId: string,
+    runId: string,
+    afterId?: number | null,
+  ): Promise<LogEntry[]> => {
+    const url = afterId
+      ? `/projects/${projectId}/environments/${environmentId}/playbook-runs/${runId}/logs?after_id=${afterId}`
+      : `/projects/${projectId}/environments/${environmentId}/playbook-runs/${runId}/logs`
+    const raw = await request<RunLogApiEntry[]>(url)
+    return raw.map(toLogEntry)
+  },
+
+  activityRunLogs: async (
+    projectId: string,
+    environmentId: string,
+    runId: string,
+    afterId?: number | null,
+  ): Promise<LogEntry[]> => logsApi.playbookRunLogs(projectId, environmentId, runId, afterId),
 }

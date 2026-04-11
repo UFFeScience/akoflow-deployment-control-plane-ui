@@ -414,11 +414,66 @@ export interface Runbook {
   provider_configuration_id: string
   name: string
   description?: string | null
+  trigger?: PlaybookTrigger
   playbook_yaml?: string | null
   vars_mapping_json?: Record<string, unknown> | null
   credential_env_keys?: string[]
   roles_json?: Array<{ name: string; version?: string } | string> | null
   position?: number
+  created_at?: string
+  updated_at?: string
+}
+
+/** Trigger values for AnsiblePlaybook */
+export type PlaybookTrigger = "after_provision" | "when_ready" | "manual" | "before_teardown"
+
+export interface Playbook {
+  id: string
+  provider_configuration_id: string
+  name: string
+  description?: string | null
+  trigger: PlaybookTrigger
+  playbook_slug?: string | null
+  playbook_yaml?: string | null
+  inventory_template?: string | null
+  vars_mapping_json?: Record<string, unknown> | null
+  outputs_mapping_json?: Record<string, unknown> | null
+  credential_env_keys?: string[]
+  roles_json?: Array<{ name: string; version?: string } | string> | null
+  position?: number
+  enabled?: boolean
+  tasks?: Array<{
+    id?: string
+    name: string
+    module?: string | null
+    module_args_json?: Record<string, unknown> | null
+    when_condition?: string | null
+    become?: boolean
+    tags_json?: string[] | null
+    enabled?: boolean
+    position?: number
+  }>
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PlaybookRun {
+  id: string
+  deployment_id: string | number
+  playbook_id?: string | number | null
+  playbook_name?: string
+  activity_id?: string | number | null
+  activity_name?: string
+  trigger: PlaybookTrigger
+  triggered_by?: string
+  /** QUEUED | INITIALIZING | RUNNING | COMPLETED | FAILED */
+  status: string
+  provider_type?: string
+  workspace_path?: string
+  extra_vars?: Record<string, unknown>
+  output?: Record<string, unknown>
+  started_at?: string | null
+  finished_at?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -432,6 +487,8 @@ export interface ProviderConfiguration {
   ansible_playbook?: AnsiblePlaybook | null
   teardown_playbook?: AnsiblePlaybook | null
   runbooks?: Runbook[]
+  playbooks?: Playbook[]
+  activities?: Playbook[]
   created_at?: string
   updated_at?: string
 }
@@ -609,3 +666,10 @@ export interface RunbookRun {
   created_at?: string
   updated_at?: string
 }
+
+export type ActivityTrigger = PlaybookTrigger
+export type Activity = Playbook
+export type ActivityRun = PlaybookRun
+export type { Playbook as PlaybookActivity, PlaybookRun as PlaybookActivityRun }
+export type { PlaybookRun as AnsiblePlaybookRun }
+export type { PlaybookRun as AnsibleActivityRun, Playbook as AnsibleActivity }

@@ -7,8 +7,6 @@ const steps = [
   { id: "template",     title: "Template",         description: "Pick a template and version" },
   { id: "config",       title: "Configuration",    description: "Provider, template variables and lifecycle hooks" },
   { id: "deployment",   title: "Deployment",       description: "Credentials for selected providers" },
-  { id: "provisioning", title: "Provisioning",     description: "Terraform and Ansible runs" },
-  { id: "runbooks",     title: "Runbooks",         description: "On-demand post-configuration playbooks" },
 ] as const
 
 export type StepId = (typeof steps)[number]["id"]

@@ -1,9 +1,9 @@
 import { Info, Layers, CheckCircle2, Settings2 } from "lucide-react"
 
 export const STEPS = [
-  { id: 0, key: "basic",            label: "Basic Information",       icon: Info,         optional: false },
+  { id: 0, key: "basic",            label: "Basic Info",              icon: Info,         optional: false },
   { id: 1, key: "definition",       label: "Definition",              icon: Layers,       optional: false },
-  { id: 2, key: "provider-configs", label: "Provider Configurations", icon: Settings2,    optional: true  },
+  { id: 2, key: "provider-configs", label: "Provision",               icon: Settings2,    optional: true  },
   { id: 3, key: "review",           label: "Review",                  icon: CheckCircle2, optional: false },
 ] as const
 

@@ -122,7 +122,7 @@ export function TopologyTab({ templateId, versionId }: Props) {
       <GitBranch className="h-7 w-7 text-muted-foreground/40" />
       <p className="text-sm font-medium">No provider configurations</p>
       <p className="text-xs text-muted-foreground/70">
-        Add a provider configuration with Terraform HCL or an Ansible playbook to visualize the topology.
+        Add a provider configuration with Terraform HCL or a playbook to visualize the topology.
       </p>
     </div>
   )
@@ -222,7 +222,7 @@ export function TopologyTab({ templateId, versionId }: Props) {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5">
             <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground">Ansible Automation</span>
+            <span className="text-xs font-medium text-muted-foreground">Playbook Automation</span>
           </div>
           <AnsibleFlow graph={ansibleGraph} />
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CloudUpload, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { environmentsApi } from "@/lib/api/environments"
@@ -13,13 +13,15 @@ interface ProvisioningStepProps {
   environmentId: string
   templateId?: string
   versionId?: string
+  onCompleted?: () => void
 }
 
-export function ProvisioningStep({ projectId, environmentId, templateId, versionId }: ProvisioningStepProps) {
+export function ProvisioningStep({ projectId, environmentId, templateId, versionId, onCompleted }: ProvisioningStepProps) {
   const [tfRuns, setTfRuns] = useState<TerraformRun[]>([])
   const [ansibleRuns, setAnsibleRuns] = useState<AnsibleRun[]>([])
   const [isActive, setIsActive] = useState(false)
   const [loading, setLoading] = useState(true)
+  const hasRedirected = useRef(false)
 
   // Load runs just to drive the banner status — DeploymentPhasePipeline handles its own loading
   const loadStatus = async () => {
@@ -41,21 +43,32 @@ export function ProvisioningStep({ projectId, environmentId, templateId, version
     loadStatus()
   }, [environmentId]) // eslint-disable-line
 
+  const latestApplyRun = tfRuns.find((r) => r.action?.toLowerCase() === "apply") ?? tfRuns[0] ?? null
+
   // Derive a synthetic deployment status from runs for use in phase helpers
   const derivedStatus = (() => {
     const latestAns = ansibleRuns[0]
-    const latestTf  = tfRuns[0]
+    const latestTf  = latestApplyRun
     if (latestAns?.status?.toLowerCase() === "completed") return "running"
     if (["running", "initializing"].includes(latestAns?.status?.toLowerCase() ?? "")) return "configuring"
     if (latestTf?.status?.toLowerCase() === "failed" || latestAns?.status?.toLowerCase() === "failed") return "error"
-    if (latestTf?.status?.toLowerCase() === "applied") return "configuring"
+    if (["applied", "completed"].includes(latestTf?.status?.toLowerCase() ?? "")) return "configuring"
     if (latestTf) return "provisioning"
     return "pending"
   })()
 
-  const tfStatus  = terraformPhaseStatus(derivedStatus, tfRuns[0] ?? null)
+  const tfStatus  = terraformPhaseStatus(derivedStatus, latestApplyRun)
   const ansStatus = ansiblePhaseStatus(derivedStatus, ansibleRuns[0] ?? null)
   const isProvisioning = tfStatus === "running" || ansStatus === "running" || isActive
+  const terraformApplyCompleted = ["applied", "completed"].includes(latestApplyRun?.status?.toLowerCase() ?? "")
+
+  useEffect(() => {
+    if (hasRedirected.current) return
+    if (!onCompleted) return
+    if (!terraformApplyCompleted) return
+    hasRedirected.current = true
+    onCompleted()
+  }, [terraformApplyCompleted, onCompleted])
 
   // Synthetic deployment object so DeploymentPhasePipeline can work
   const syntheticDeployment: Deployment = {
@@ -87,9 +100,9 @@ export function ProvisioningStep({ projectId, environmentId, templateId, version
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold">Provisioning</h2>
+          <h2 className="text-base font-semibold">Phase 1 — Provisioning</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Track Terraform and Ansible runs triggered for this environment.
+            Track Terraform provisioning for this environment. After it completes, Phase 2 playbooks run automatically.
           </p>
         </div>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={loadStatus} disabled={loading}>
@@ -104,10 +117,11 @@ export function ProvisioningStep({ projectId, environmentId, templateId, version
         environmentId={environmentId}
         deployment={syntheticDeployment}
         templateVersionId={versionId ?? null}
+        showAfterProvisionPhase={false}
         pollInterval={5000}
         onStatusChange={(active) => {
           setIsActive(active)
-          if (active) loadStatus()
+          loadStatus()
         }}
       />
     </div>

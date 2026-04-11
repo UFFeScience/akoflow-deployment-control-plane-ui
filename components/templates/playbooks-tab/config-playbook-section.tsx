@@ -32,7 +32,7 @@ export function ConfigPlaybookSection({ templateId, versionId, config }: ConfigP
         credential_env_keys: credKeys,
       }, "provision")
       if (tasks.length > 0) {
-        await templatesApi.syncPlaybookTasks(templateId, versionId, config.id, tasks)
+        await templatesApi.syncProviderPlaybookTasks(templateId, versionId, config.id, tasks)
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -43,10 +43,10 @@ export function ConfigPlaybookSection({ templateId, versionId, config }: ConfigP
 
   return (
     <SectionCard
-      title="Configure Playbook"
+      title="Playbook"
       icon={<Terminal className="h-3.5 w-3.5 text-green-500" />}
       badge={config.ansible_playbook?.has_custom_playbook ? "Configured" : undefined}
-      hint="ansible"
+      hint="playbook"
     >
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs font-semibold">

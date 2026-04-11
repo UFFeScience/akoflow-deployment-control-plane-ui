@@ -1,4 +1,4 @@
-import type { AnsibleRun, TerraformRun } from "@/lib/api/types"
+import type { AnsibleRun, PlaybookRun, TerraformRun } from "@/lib/api/types"
 
 export type PhaseStatus = "idle" | "running" | "success" | "error"
 
@@ -6,9 +6,9 @@ export function terraformPhaseStatus(deploymentStatus: string, tfRun?: Terraform
   const ds = deploymentStatus.toLowerCase()
   if (tfRun) {
     const s = tfRun.status.toLowerCase()
-    if (s === "applied") return "success"
+    if (["applied", "completed"].includes(s)) return "success"
     if (s === "failed")  return "error"
-    if (["initializing", "planning", "applying"].includes(s)) return "running"
+    if (["queued", "initializing", "planning", "applying", "running"].includes(s)) return "running"
   }
   if (ds === "provisioning") return "running"
   if (ds === "configuring" || ds === "running") return "success"
@@ -33,6 +33,31 @@ export function ansiblePhaseStatus(deploymentStatus: string, ansibleRun?: Ansibl
     if (ansibleRun && ansibleRun.status.toLowerCase() === "failed") return "error"
     return "idle"
   }
+  return "idle"
+}
+
+export function afterProvisionPhaseStatus(
+  deploymentStatus: string,
+  runs: PlaybookRun[],
+  expectedCount = 0,
+): PhaseStatus {
+  const ds = deploymentStatus.toLowerCase()
+  const hasFailed = runs.some((r) => r.status?.toLowerCase() === "failed")
+  if (hasFailed) return "error"
+
+  const hasActive = runs.some((r) => ["queued", "initializing", "running"].includes(r.status?.toLowerCase()))
+  if (hasActive) return "running"
+
+  const completedCount = runs.filter((r) => r.status?.toLowerCase() === "completed").length
+  if (expectedCount > 0) {
+    if (completedCount >= expectedCount) return "success"
+    if (["running", "completed", "configuring"].includes(ds)) return "running"
+    if (ds === "error") return "error"
+    return "idle"
+  }
+
+  if (completedCount > 0) return "success"
+  if (["running", "completed"].includes(ds)) return "success"
   return "idle"
 }
 

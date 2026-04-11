@@ -1,5 +1,5 @@
 import { request } from "./client"
-import type { AnsibleRun, Environment, RunbookRun, TerraformRun } from "./types"
+import type { AnsibleRun, Environment, PlaybookRun, RunbookRun, TerraformRun } from "./types"
 
 export const environmentsApi = {
   listAll: (orgId: string) => request<Environment[]>(`/organizations/${orgId}/environments`),
@@ -69,11 +69,30 @@ export const environmentsApi = {
 
   // ── Runbook runs ───────────────────────────────────────────────────────────
   listRunbookRuns: (projectId: string, environmentId: string) =>
-    request<RunbookRun[]>(`/projects/${projectId}/environments/${environmentId}/runbook-runs`),
+    request<RunbookRun[]>(`/projects/${projectId}/environments/${environmentId}/playbook-runs`),
 
   triggerRunbookRun: (projectId: string, environmentId: string, runbookId: string, deploymentId?: string) =>
     request<RunbookRun>(
-      `/projects/${projectId}/environments/${environmentId}/runbook-runs`,
-      { method: "POST", body: { runbook_id: runbookId, ...(deploymentId ? { deployment_id: deploymentId } : {}) } },
+      `/projects/${projectId}/environments/${environmentId}/playbook-runs`,
+      { method: "POST", body: { playbook_id: runbookId, ...(deploymentId ? { deployment_id: deploymentId } : {}) } },
+    ),
+
+  // ── Playbook runs ───────────────────────────────────────────────────────────
+  listPlaybookRuns: (projectId: string, environmentId: string) =>
+    request<PlaybookRun[]>(`/projects/${projectId}/environments/${environmentId}/playbook-runs`),
+
+  listActivityRuns: (projectId: string, environmentId: string) =>
+    request<PlaybookRun[]>(`/projects/${projectId}/environments/${environmentId}/playbook-runs`),
+
+  triggerPlaybookRun: (projectId: string, environmentId: string, playbookId: string, deploymentId?: string) =>
+    request<PlaybookRun>(
+      `/projects/${projectId}/environments/${environmentId}/playbook-runs`,
+      { method: "POST", body: { playbook_id: playbookId, ...(deploymentId ? { deployment_id: deploymentId } : {}) } },
+    ),
+
+  triggerActivityRun: (projectId: string, environmentId: string, activityId: string, deploymentId?: string) =>
+    request<PlaybookRun>(
+      `/projects/${projectId}/environments/${environmentId}/playbook-runs`,
+      { method: "POST", body: { playbook_id: activityId, ...(deploymentId ? { deployment_id: deploymentId } : {}) } },
     ),
 }

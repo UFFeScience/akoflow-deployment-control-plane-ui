@@ -8,9 +8,9 @@ import { ResourcesTab } from "@/components/environments/resources-tab"
 import { LogsTab } from "@/components/environments/logs-tab"
 import { ConfigurationTab } from "@/components/environments/configuration-tab"
 import { IframeTab } from "@/components/environments/iframe-tab"
-import { RunbooksTab } from "@/components/environments/runbooks-tab"
+import { ActivitiesTab } from "@/components/environments/activities-tab"
 import { environmentsApi } from "@/lib/api/environments"
-import type { RunbookRunOption } from "@/components/environments/logs-filters"
+import type { ActivityRunOption } from "@/components/environments/logs-filters"
 import type { Deployment, Environment, Provider, ProvisionedResource, Template } from "@/lib/api/types"
 
 interface EnvironmentTabsProps {
@@ -41,19 +41,19 @@ export function EnvironmentTabs({
   onRefreshDeployments,
 }: EnvironmentTabsProps) {
   const [activeTab, setActiveTab] = useState<string>("deployments")
-  const [runbookRuns, setRunbookRuns] = useState<RunbookRunOption[]>([])
+  const [activityRuns, setActivityRuns] = useState<ActivityRunOption[]>([])
 
   const allResources = Object.values(resourcesByDeployment).flat()
 
-  // Load runbook runs once — used to populate the Logs tab selector
+  // Load playbook runs once — used to populate the Logs tab selector
   useEffect(() => {
     environmentsApi
-      .listRunbookRuns(projectId, environmentId)
+      .listPlaybookRuns(projectId, environmentId)
       .then((runs) => {
-        setRunbookRuns(
+        setActivityRuns(
           runs.map((r) => ({
             id: String(r.id),
-            label: `${r.runbook_name ?? "Runbook"} · ${r.created_at ? new Date(r.created_at).toLocaleString() : String(r.id)}`,
+            label: `${r.playbook_name ?? r.activity_name ?? "Playbook"} · ${r.created_at ? new Date(r.created_at).toLocaleString() : String(r.id)}`,
           }))
         )
       })
@@ -124,8 +124,8 @@ export function EnvironmentTabs({
           </TabsTrigger>
         )}
         {resolvedTemplateId && resolvedVersionId && (
-          <TabsTrigger value="runbooks" className="text-xs h-6 px-3">
-            Runbooks
+          <TabsTrigger value="activities" className="text-xs h-6 px-3">
+            Activities
           </TabsTrigger>
         )}
       </TabsList>
@@ -153,7 +153,7 @@ export function EnvironmentTabs({
       </TabsContent>
 
       <TabsContent value="logs" className="mt-3">
-        <LogsTab resources={allResources} projectId={projectId} environmentId={environmentId} runbookRuns={runbookRuns} />
+        <LogsTab resources={allResources} projectId={projectId} environmentId={environmentId} activityRuns={activityRuns} />
       </TabsContent>
 
       <TabsContent value="configuration" className="mt-3">
@@ -164,9 +164,9 @@ export function EnvironmentTabs({
         <IframeTab resources={allResources} />
       </TabsContent>
 
-      <TabsContent value="runbooks" className="mt-3">
+      <TabsContent value="activities" className="mt-3">
         {environment && resolvedTemplateId && resolvedVersionId && (
-          <RunbooksTab
+          <ActivitiesTab
             projectId={projectId}
             environmentId={environmentId}
             templateId={resolvedTemplateId}

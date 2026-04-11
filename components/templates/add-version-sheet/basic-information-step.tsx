@@ -16,7 +16,7 @@ export function BasicInformationStep({ version, setVersion, isActive, setIsActiv
   return (
     <div className="flex flex-col gap-6 max-w-lg">
       <StepHeader
-        title="Basic Information"
+        title="Basic Info"
         description="Set the version tag and whether it should be the active version of this template."
       />
       <div className="flex flex-col gap-2">

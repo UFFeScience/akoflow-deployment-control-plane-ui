@@ -196,10 +196,22 @@ export function useEnvironmentCreate() {
   function validateConfigFields(): Record<string, string> {
     const errors: Record<string, string> = {}
     if (!definition) return errors
+    const selectedProviders = activeSlugs.map((s) => s.toLowerCase())
     const expConfig = (definition as any).environment_configuration
     if (expConfig?.sections) {
       for (const section of expConfig.sections) {
         for (const field of section.fields || []) {
+          const fieldProviders = Array.isArray(field.providers)
+            ? field.providers.map((p: string) => String(p).toLowerCase())
+            : []
+
+          // Validate provider-scoped fields only for selected providers.
+          if (fieldProviders.length > 0) {
+            if (selectedProviders.length === 0) continue
+            const appliesToSelection = fieldProviders.some((p: string) => selectedProviders.includes(p))
+            if (!appliesToSelection) continue
+          }
+
           if (field.required) {
             const val = environmentVariables[field.name] ?? field.default
             if (val === undefined || val === null || val === "") errors[field.name] = `${field.label} is required`
@@ -238,10 +250,6 @@ export function useEnvironmentCreate() {
   }
 
   async function handleFinish() {
-    if (activeStep === "runbooks") {
-      router.push(`/projects/${projectId}/environments/${createdEnvironmentId}`)
-      return
-    }
     if (isSubmitting) return; setIsSubmitting(true)
     try {
       const configurationJson: Record<string, unknown> = {}
@@ -260,7 +268,7 @@ export function useEnvironmentCreate() {
       const result = await environmentsApi.provision(projectId, payload)
       toast.success("Environment created")
       setCreatedEnvironmentId(result.id)
-      setActiveStep("provisioning")
+      router.push(`/projects/${projectId}/environments/${result.id}`)
       setIsSubmitting(false)
     } catch { toast.error("Failed to create environment"); setIsSubmitting(false) }
   }

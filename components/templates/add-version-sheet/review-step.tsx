@@ -18,7 +18,7 @@ export function ReviewStep({ version, isActive, defFieldCount, configuredProvide
     <div className="flex flex-col gap-5 max-w-2xl">
       <StepHeader title="Review" description="Check the summary before publishing the version." />
       <div className="flex flex-col gap-3">
-        <ReviewCard icon={<Info className="h-4 w-4 text-muted-foreground" />} title="Basic Information" onEdit={() => setStep(0)}>
+        <ReviewCard icon={<Info className="h-4 w-4 text-muted-foreground" />} title="Basic Info" onEdit={() => setStep(0)}>
           <ReviewRow label="Tag" value={<code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">v{version}</code>} />
           <ReviewRow label="Active" value={isActive ? "Yes" : "No"} />
         </ReviewCard>
@@ -31,7 +31,7 @@ export function ReviewStep({ version, isActive, defFieldCount, configuredProvide
           )}
         </ReviewCard>
 
-        <ReviewCard icon={<Settings2 className="h-4 w-4 text-blue-500" />} title="Provider Configurations" optional onEdit={() => setStep(2)}>
+        <ReviewCard icon={<Settings2 className="h-4 w-4 text-blue-500" />} title="Provision (Terraform)" optional onEdit={() => setStep(2)}>
           {configuredProviderConfigs.length > 0 ? (
             configuredProviderConfigs.map((cfg, i) => (
               <ReviewRow

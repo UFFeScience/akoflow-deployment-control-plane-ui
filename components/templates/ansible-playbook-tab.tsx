@@ -116,7 +116,7 @@ export function AnsiblePlaybookTab({ templateId, versionId, version }: Props) {
 
       {!activeProvider && (
         <div className="flex items-center gap-2 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-          <Terminal className="h-4 w-4" />Select or add a provider type to configure its Ansible playbook.
+          <Terminal className="h-4 w-4" />Select or add a provider type to configure its playbook.
         </div>
       )}
 
@@ -124,7 +124,7 @@ export function AnsiblePlaybookTab({ templateId, versionId, version }: Props) {
         <>
           {missingPlaybook && (
             <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />No Ansible playbook configured for <strong>{activeProvider}</strong> yet.
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />No playbook configured for <strong>{activeProvider}</strong> yet.
             </div>
           )}
           <div className="flex flex-col gap-2">
@@ -144,7 +144,7 @@ export function AnsiblePlaybookTab({ templateId, versionId, version }: Props) {
           <Separator />
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div><h4 className="text-xs font-semibold">Input Variables Mapping</h4><p className="text-[11px] text-muted-foreground mt-0.5">Maps environment_configuration to Ansible extra_vars</p></div>
+              <div><h4 className="text-xs font-semibold">Input Variables Mapping</h4><p className="text-[11px] text-muted-foreground mt-0.5">Maps environment_configuration to playbook variables</p></div>
               <div className="flex items-center rounded border border-border text-[11px] overflow-hidden">
                 <button className={cn("px-2 py-0.5 transition-colors", varsMode === "visual" ? "bg-muted font-medium" : "hover:bg-muted/50")} onClick={() => setVarsMode("visual")}>Visual</button>
                 <button className={cn("px-2 py-0.5 transition-colors", varsMode === "raw" ? "bg-muted font-medium" : "hover:bg-muted/50")} onClick={() => setVarsMode("raw")}>Raw JSON</button>
@@ -170,7 +170,7 @@ export function AnsiblePlaybookTab({ templateId, versionId, version }: Props) {
           </div>
           <Separator />
           <div className="flex flex-col gap-2">
-            <h4 className="text-xs font-semibold">Ansible Galaxy Roles <span className="font-normal text-muted-foreground">(optional)</span></h4>
+            <h4 className="text-xs font-semibold">Playbook Roles <span className="font-normal text-muted-foreground">(optional)</span></h4>
             <Textarea className="font-mono text-xs min-h-[80px] resize-y" placeholder={'[{"name": "geerlingguy.docker", "version": "6.1.0"}]'} value={form.roles_json} onChange={(e) => setForm((f) => ({ ...f, roles_json: e.target.value }))} />
           </div>
           <div className="flex items-center gap-3 pt-1">

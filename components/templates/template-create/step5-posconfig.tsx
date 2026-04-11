@@ -14,7 +14,7 @@ export function Step5PosConfig({ runbooks, setRunbooks }: Props) {
   return (
     <div className="p-6 flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-semibold">Pos Configuration &amp; Runbooks</h2>
+        <h2 className="text-lg font-semibold">Pos Configuration</h2>
         <p className="text-sm text-muted-foreground">
           Define runbooks — on-demand playbooks that can be triggered after the environment is provisioned.
           These are saved alongside the template and can be executed at any time from the environment panel.

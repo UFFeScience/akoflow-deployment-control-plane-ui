@@ -1,4 +1,5 @@
 import { parseOutputsMappingJson } from "../outputs-mapping-editor"
+import type { PlaybookTrigger } from "@/lib/api/types"
 
 export const ANSIBLE_PROVIDER_TYPES: { value: string; label: string }[] = [
   { value: "hpc",     label: "HPC" },
@@ -13,6 +14,7 @@ export const INVENTORY_PROVIDERS = new Set(["hpc", "on_prem"])
 
 export interface AnsibleDraft {
   provider_type: string
+  trigger: PlaybookTrigger
   playbook_yaml: string
   inventory_template: string
   credential_env_keys: string[]
@@ -24,6 +26,7 @@ export interface AnsibleDraft {
 export function defaultAnsibleDraft(): AnsibleDraft {
   return {
     provider_type: "hpc",
+    trigger: "after_provision",
     playbook_yaml: "",
     inventory_template: "",
     credential_env_keys: [],
@@ -43,6 +46,7 @@ export function ansibleDraftToPayload(draft: AnsibleDraft): Record<string, unkno
 
   return {
     provider_type: draft.provider_type || undefined,
+    trigger: draft.trigger,
     playbook_yaml: draft.playbook_yaml || undefined,
     inventory_template: draft.inventory_template || undefined,
     credential_env_keys: draft.credential_env_keys.filter(Boolean),

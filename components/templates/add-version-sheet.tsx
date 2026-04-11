@@ -62,10 +62,6 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
             const payload = providerConfigDraftToPayload(cfg)
             if (cfg.terraform?.main_tf.trim())
               await templatesApi.upsertProviderConfigTerraform(templateId, String(newVersion.id), String(created.id), payload.terraform as any)
-            if (cfg.ansible?.playbook_yaml.trim())
-              await templatesApi.upsertProviderConfigAnsible(templateId, String(newVersion.id), String(created.id), payload.ansible as any, "provision")
-            if (cfg.ansible_teardown?.playbook_yaml.trim())
-              await templatesApi.upsertProviderConfigAnsible(templateId, String(newVersion.id), String(created.id), payload.ansible_teardown as any, "teardown")
           }
         }
       }
@@ -110,13 +106,13 @@ export function AddVersionSheet({ open, onOpenChange, templateId, activeVersion,
           )}
           {step === 1 && (
             <div className="flex flex-col gap-5">
-              <StepHeader title="Environment Definition" description="Configure the sections and fields users will fill when creating an environment. These fields will be mapped to Terraform and Ansible variables." />
+              <StepHeader title="Definition" description="Configure the sections and fields users will fill when creating an environment. These fields will be mapped to Terraform variables." />
               <DefinitionBuilder value={draft} onChange={setDraft} />
             </div>
           )}
           {step === 2 && (
             <div className="flex flex-col gap-5">
-              <StepHeader title="Provider Configurations" description="Define Terraform HCL and Ansible playbooks. A configuration with no providers selected acts as default fallback for all providers." optional />
+              <StepHeader title="Provision (Terraform)" description="Define Terraform HCL. A configuration with no providers selected acts as default fallback for all providers." optional />
               <ProviderConfigStep definition={definition} value={providerConfigDrafts} onChange={setProviderConfigDrafts} />
             </div>
           )}

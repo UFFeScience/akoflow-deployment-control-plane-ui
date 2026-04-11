@@ -93,7 +93,7 @@ export function RunbookCard({ templateId, versionId, configId, runbook, onUpdate
 
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs font-semibold">
-          Ansible Galaxy Roles <span className="font-normal text-muted-foreground">optional</span>
+          Playbook Roles <span className="font-normal text-muted-foreground">optional</span>
         </Label>
         <Textarea
           className="font-mono text-xs min-h-[60px] resize-y"

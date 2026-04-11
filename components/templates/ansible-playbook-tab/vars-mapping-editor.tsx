@@ -35,7 +35,7 @@ export function VarsMappingEditor({ value, onChange }: VarsMappingEditorProps) {
     <div className="flex flex-col gap-2">
       {entries.length > 0 && (
         <div className="grid grid-cols-[1fr_1fr_auto] gap-x-2 gap-y-1.5 text-[11px] text-muted-foreground pb-1">
-          <span>config field</span><span>ansible variable</span><span />
+          <span>config field</span><span>playbook variable</span><span />
           {entries.map(([cfgKey, ansVar]) => (
             <React.Fragment key={cfgKey}>
               <Input value={cfgKey} readOnly className="h-7 text-xs font-mono bg-muted/40" />

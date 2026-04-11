@@ -14,7 +14,6 @@ import { Step1BasicInfo } from "./template-create/step1-basic-info"
 import { Step2Definition } from "./template-create/step2-definition"
 import { Step3Terraform } from "./template-create/step3-terraform"
 import { Step4Ansible } from "./template-create/step4-ansible"
-import { Step5PosConfig } from "./template-create/step5-posconfig"
 import { Step5Review } from "./template-create/step5-review"
 
 export function TemplateCreate() {
@@ -67,6 +66,7 @@ export function TemplateCreate() {
             await templatesApi.createRunbook(template.id, version.id, configId, {
               name: rb.name.trim(),
               description: rb.description || undefined,
+              trigger: rb.trigger,
               playbook_yaml: rb.playbook_yaml || undefined,
               credential_env_keys: rb.credential_env_keys.filter(Boolean),
               roles_json: parsedRoles as any,
@@ -81,17 +81,16 @@ export function TemplateCreate() {
   }
 
   return (
-    <div className="flex justify-center py-8 px-4">
-      <div className="w-full max-w-3xl flex flex-col gap-8">
+    <div className="flex min-h-screen w-full flex-col gap-8 px-6 py-6">
+      <div className="w-full flex flex-col gap-8">
         <TemplateStepper step={step} setStep={setStep} />
 
-        <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="w-full rounded-xl border border-border bg-card shadow-sm">
           {step === 1 && <Step1BasicInfo info={info} setInfo={setInfo} setName={setName} />}
           {step === 2 && <Step2Definition draft={draft} setDraft={setDraft} />}
           {step === 3 && <Step3Terraform draft={draft} tfDrafts={tfDrafts} setTfDrafts={setTfDrafts} />}
-          {step === 4 && <Step4Ansible draft={draft} ansibleDrafts={ansibleDrafts} setAnsibleDrafts={setAnsibleDrafts} />}
-          {step === 5 && <Step5PosConfig runbooks={runbookDrafts} setRunbooks={setRunbookDrafts} />}
-          {step === 6 && <Step5Review info={info} draft={draft} tfDrafts={tfDrafts} ansibleDrafts={ansibleDrafts} />}
+          {step === 4 && <Step4Ansible draft={draft} ansibleDrafts={ansibleDrafts} setAnsibleDrafts={setAnsibleDrafts} runbooks={runbookDrafts} setRunbooks={setRunbookDrafts} />}
+          {step === 5 && <Step5Review info={info} draft={draft} tfDrafts={tfDrafts} ansibleDrafts={ansibleDrafts} runbookDrafts={runbookDrafts} />}
         </div>
 
         {error && <p className="text-sm text-destructive text-center">{error}</p>}

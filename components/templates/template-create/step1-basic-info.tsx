@@ -12,9 +12,9 @@ interface Props {
 
 export function Step1BasicInfo({ info, setInfo, setName }: Props) {
   return (
-    <div className="p-6 flex flex-col gap-6">
+    <div className="w-full p-6 flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-semibold">Basic Information</h2>
+        <h2 className="text-lg font-semibold">Basic Info</h2>
         <p className="text-sm text-muted-foreground">Configure the template's metadata and runtime environment.</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
