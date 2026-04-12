@@ -125,7 +125,7 @@ export function EnvironmentTabs({
         )}
         {resolvedTemplateId && resolvedVersionId && (
           <TabsTrigger value="activities" className="text-xs h-6 px-3">
-            Activities
+            Playbooks
           </TabsTrigger>
         )}
       </TabsList>

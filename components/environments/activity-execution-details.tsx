@@ -8,6 +8,59 @@ interface ActivityExecutionDetailsProps {
   activities?: Activity[]
 }
 
+interface ParsedPlaybook {
+  taskToPlay: Record<string, string>
+  playOrder: Record<string, number>
+}
+
+function normalizeYamlName(value: string): string {
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
+function parsePlaybookStructure(playbookYaml?: string | null): ParsedPlaybook {
+  if (!playbookYaml) return { taskToPlay: {}, playOrder: {} }
+
+  const taskToPlay: Record<string, string> = {}
+  const playOrder: Record<string, number> = {}
+  const lines = playbookYaml.split(/\r?\n/)
+  let currentPlay = "General"
+  let nextPlayOrder = 0
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\t/g, "    ")
+    const indent = line.match(/^\s*/)?.[0]?.length ?? 0
+    const nameMatch = line.match(/^\s*-\s*name\s*:\s*(.+)$/)
+    if (!nameMatch) continue
+
+    const name = normalizeYamlName(nameMatch[1])
+    if (!name) continue
+
+    if (indent <= 2) {
+      currentPlay = name
+      if (!(currentPlay in playOrder)) {
+        playOrder[currentPlay] = nextPlayOrder
+        nextPlayOrder += 1
+      }
+      continue
+    }
+
+    if (!(currentPlay in playOrder)) {
+      playOrder[currentPlay] = nextPlayOrder
+      nextPlayOrder += 1
+    }
+    if (!(name in taskToPlay)) taskToPlay[name] = currentPlay
+  }
+
+  return { taskToPlay, playOrder }
+}
+
 function getRunRecencyMs(run: ActivityRun): number {
   const timestamp = run.updated_at ?? run.finished_at ?? run.started_at ?? run.created_at
   if (!timestamp) return 0
@@ -25,8 +78,8 @@ function statusClass(status: string) {
 
 export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExecutionDetailsProps) {
   const [detailsRunId, setDetailsRunId] = useState<string>("latest")
-  const [detailsViewMode, setDetailsViewMode] = useState<"activity" | "host">("activity")
-  const [selectedActivity, setSelectedActivity] = useState<string>("all")
+  const [detailsViewMode, setDetailsViewMode] = useState<"play" | "host">("play")
+  const [selectedPlay, setSelectedPlay] = useState<string>("all")
 
   const sortedRuns = useMemo(
     () => [...runs].sort((a, b) => {
@@ -50,6 +103,16 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
     [selectedRun],
   )
 
+  const selectedRunActivity = useMemo(
+    () => activities.find((a) => String(a.id) === String(selectedRun?.playbook_id ?? selectedRun?.activity_id)),
+    [activities, selectedRun],
+  )
+
+  const parsedPlaybook = useMemo(
+    () => parsePlaybookStructure(selectedRunActivity?.playbook_yaml),
+    [selectedRunActivity],
+  )
+
   // Canonical task order: task_name → position.
   // Primary: row.position (set by backend from ansible_playbook_tasks.position — most reliable).
   // Secondary: activity.tasks from allPlaybooks (fills gaps for not-yet-started tasks).
@@ -62,11 +125,8 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
       }
     }
 
-    if (selectedRun) {
-      const activity = activities.find(
-        (a) => String(a.id) === String(selectedRun.playbook_id ?? selectedRun.activity_id)
-      )
-      ;[...(activity?.tasks ?? [])]
+    if (selectedRunActivity) {
+      ;[...(selectedRunActivity.tasks ?? [])]
         .sort((a, b) => (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER))
         .forEach((t, idx) => {
           if (!(t.name in map)) map[t.name] = t.position ?? idx
@@ -74,11 +134,22 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
     }
 
     return map
-  }, [selectedRunRows, selectedRun, activities])
+  }, [selectedRunRows, selectedRunActivity])
 
   const getTaskPosition = (taskName: string, fallback?: number | null): number => {
     if (taskName in taskPositionMap) return taskPositionMap[taskName]
     return fallback ?? Number.MAX_SAFE_INTEGER
+  }
+
+  const getTaskPlay = (taskName?: string | null): string => {
+    const normalizedTaskName = String(taskName ?? "").trim()
+    if (!normalizedTaskName) return "General"
+    return parsedPlaybook.taskToPlay[normalizedTaskName] ?? "General"
+  }
+
+  const getPlayOrder = (playName: string): number => {
+    if (playName in parsedPlaybook.playOrder) return parsedPlaybook.playOrder[playName]
+    return Number.MAX_SAFE_INTEGER
   }
 
   const groupedByTask = useMemo(
@@ -101,16 +172,36 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
     [selectedRunRows],
   )
 
-  const activityOptions = useMemo(
+  const sortedTaskEntries = useMemo(
     () =>
-      Object.keys(groupedByTask).sort((a, b) => {
-        const pa = getTaskPosition(a, Math.min(...(groupedByTask[a]?.map((r) => r.position ?? Number.MAX_SAFE_INTEGER) ?? [Number.MAX_SAFE_INTEGER])))
-        const pb = getTaskPosition(b, Math.min(...(groupedByTask[b]?.map((r) => r.position ?? Number.MAX_SAFE_INTEGER) ?? [Number.MAX_SAFE_INTEGER])))
+      Object.entries(groupedByTask).sort(([, rowsA], [, rowsB]) => {
+        const pa = getTaskPosition(rowsA[0]?.task_name ?? "", Math.min(...rowsA.map((r) => r.position ?? Number.MAX_SAFE_INTEGER)))
+        const pb = getTaskPosition(rowsB[0]?.task_name ?? "", Math.min(...rowsB.map((r) => r.position ?? Number.MAX_SAFE_INTEGER)))
         if (pa !== pb) return pa - pb
-        return a.localeCompare(b, undefined, { numeric: true })
+        return (rowsA[0]?.task_name ?? "").localeCompare(rowsB[0]?.task_name ?? "", undefined, { numeric: true })
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [groupedByTask, taskPositionMap],
+  )
+
+  const groupedByPlay = useMemo(
+    () => sortedTaskEntries.reduce<Record<string, Array<[string, PlaybookRunTaskHostStatus[]]>>>((acc, [taskName, rows]) => {
+      const playName = getTaskPlay(taskName)
+      if (!acc[playName]) acc[playName] = []
+      acc[playName].push([taskName, rows])
+      return acc
+    }, {}),
+    [sortedTaskEntries, parsedPlaybook],
+  )
+
+  const playOptions = useMemo(
+    () => Object.keys(groupedByPlay).sort((a, b) => {
+      const pa = getPlayOrder(a)
+      const pb = getPlayOrder(b)
+      if (pa !== pb) return pa - pb
+      return a.localeCompare(b, undefined, { numeric: true })
+    }),
+    [groupedByPlay, parsedPlaybook],
   )
 
   return (
@@ -140,10 +231,10 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
           <div className="inline-flex rounded border border-border/70 bg-background/70 p-0.5 text-[11px]">
             <button
               type="button"
-              onClick={() => setDetailsViewMode("activity")}
-              className={`rounded px-2 py-1 ${detailsViewMode === "activity" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setDetailsViewMode("play")}
+              className={`rounded px-2 py-1 ${detailsViewMode === "play" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
-              By activity
+              By play
             </button>
             <button
               type="button"
@@ -154,15 +245,15 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
             </button>
           </div>
 
-          {detailsViewMode === "activity" && (
+          {detailsViewMode === "play" && (
             <select
-              value={selectedActivity}
-              onChange={(e) => setSelectedActivity(e.target.value)}
+              value={selectedPlay}
+              onChange={(e) => setSelectedPlay(e.target.value)}
               className="h-8 rounded border border-border bg-background px-2 text-xs text-foreground"
             >
-              <option value="all">All activities</option>
-              {activityOptions.map((taskName) => (
-                <option key={taskName} value={taskName}>{taskName}</option>
+              <option value="all">All plays</option>
+              {playOptions.map((playName) => (
+                <option key={playName} value={playName}>{playName}</option>
               ))}
             </select>
           )}
@@ -175,40 +266,53 @@ export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExec
         <p className="text-xs text-muted-foreground italic">Selected run has no task-by-host details yet.</p>
       ) : (
         <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
-          {detailsViewMode === "activity" ? (
-            Object.entries(groupedByTask)
-              .sort(([, rowsA], [, rowsB]) => {
-                const pa = getTaskPosition(rowsA[0]?.task_name ?? "", Math.min(...rowsA.map((r) => r.position ?? Number.MAX_SAFE_INTEGER)))
-                const pb = getTaskPosition(rowsB[0]?.task_name ?? "", Math.min(...rowsB.map((r) => r.position ?? Number.MAX_SAFE_INTEGER)))
+          {detailsViewMode === "play" ? (
+            Object.entries(groupedByPlay)
+              .sort(([playA], [playB]) => {
+                const pa = getPlayOrder(playA)
+                const pb = getPlayOrder(playB)
                 if (pa !== pb) return pa - pb
-                return (rowsA[0]?.task_name ?? "").localeCompare(rowsB[0]?.task_name ?? "", undefined, { numeric: true })
+                return playA.localeCompare(playB, undefined, { numeric: true })
               })
-              .filter(([taskName]) => selectedActivity === "all" || taskName === selectedActivity)
-              .map(([taskName, rows], idx) => {
-                const pos = getTaskPosition(taskName, rows[0]?.position)
-                const stepNum = pos !== Number.MAX_SAFE_INTEGER ? pos + 1 : idx + 1
+              .filter(([playName]) => selectedPlay === "all" || playName === selectedPlay)
+              .map(([playName, tasks]) => {
                 return (
-                  <div key={taskName} className="rounded border border-border/60 bg-muted/20 p-2">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="shrink-0 inline-flex items-center justify-center rounded bg-muted text-muted-foreground font-mono text-[10px] w-5 h-5">{stepNum}</span>
-                        <span className="text-xs font-medium text-foreground truncate">{taskName}</span>
-                      </div>
-                      <span className="text-[11px] text-muted-foreground shrink-0">{rows.length} host{rows.length === 1 ? "" : "s"}</span>
+                  <div key={playName} className="rounded border border-border/60 bg-muted/20 p-2">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-foreground truncate">{playName}</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{tasks.length} task{tasks.length === 1 ? "" : "s"}</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {rows
-                        .slice()
-                        .sort((a, b) =>
-                          String(a.host ?? "").localeCompare(String(b.host ?? ""), undefined, { numeric: true })
-                        )
-                        .map((row) => (
-                          <div key={row.id} className="inline-flex items-center gap-1 rounded border border-border/70 bg-background px-1.5 py-1 text-[10px]">
-                            <span className="font-mono text-muted-foreground">{row.host}</span>
-                            <span className={`rounded px-1.5 py-0.5 font-medium ${statusClass(row.status)}`}>{row.status}</span>
+                    <div className="flex flex-col gap-2">
+                      {tasks.map(([taskName, rows], idx) => {
+                        const pos = getTaskPosition(taskName, rows[0]?.position)
+                        const stepNum = pos !== Number.MAX_SAFE_INTEGER ? pos + 1 : idx + 1
+                        return (
+                          <div key={taskName} className="rounded border border-border/50 bg-background/60 p-2">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="shrink-0 inline-flex items-center justify-center rounded bg-muted text-muted-foreground font-mono text-[10px] w-5 h-5">{stepNum}</span>
+                                <span className="text-xs font-medium text-foreground truncate">{taskName}</span>
+                              </div>
+                              <span className="text-[11px] text-muted-foreground shrink-0">{rows.length} host{rows.length === 1 ? "" : "s"}</span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {rows
+                                .slice()
+                                .sort((a, b) =>
+                                  String(a.host ?? "").localeCompare(String(b.host ?? ""), undefined, { numeric: true })
+                                )
+                                .map((row) => (
+                                  <div key={row.id} className="inline-flex items-center gap-1 rounded border border-border/70 bg-background px-1.5 py-1 text-[10px]">
+                                    <span className="font-mono text-muted-foreground">{row.host}</span>
+                                    <span className={`rounded px-1.5 py-0.5 font-medium ${statusClass(row.status)}`}>{row.status}</span>
+                                  </div>
+                                ))}
+                            </div>
                           </div>
-                        ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )
