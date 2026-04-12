@@ -1,10 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { ActivityRun, PlaybookRunTaskHostStatus } from "@/lib/api/types"
+import type { Activity, ActivityRun, PlaybookRunTaskHostStatus } from "@/lib/api/types"
 
 interface ActivityExecutionDetailsProps {
   runs: ActivityRun[]
+  activities?: Activity[]
 }
 
 function getRunRecencyMs(run: ActivityRun): number {
@@ -22,7 +23,7 @@ function statusClass(status: string) {
   return "bg-muted text-muted-foreground"
 }
 
-export function ActivityExecutionDetails({ runs }: ActivityExecutionDetailsProps) {
+export function ActivityExecutionDetails({ runs, activities = [] }: ActivityExecutionDetailsProps) {
   const [detailsRunId, setDetailsRunId] = useState<string>("latest")
   const [detailsViewMode, setDetailsViewMode] = useState<"activity" | "host">("activity")
   const [selectedActivity, setSelectedActivity] = useState<string>("all")
@@ -42,10 +43,43 @@ export function ActivityExecutionDetails({ runs }: ActivityExecutionDetailsProps
     return sortedRuns.find((r) => String(r.id) === detailsRunId) ?? sortedRuns[0]
   }, [sortedRuns, detailsRunId])
 
+  // Rows pre-sorted by position so groupedByTask insertion order reflects execution order.
   const selectedRunRows = useMemo(
-    () => ((selectedRun?.task_host_statuses ?? []) as PlaybookRunTaskHostStatus[]).slice(),
+    () => [...((selectedRun?.task_host_statuses ?? []) as PlaybookRunTaskHostStatus[])]
+      .sort((a, b) => (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER)),
     [selectedRun],
   )
+
+  // Canonical task order: task_name → position.
+  // Primary: row.position (set by backend from ansible_playbook_tasks.position — most reliable).
+  // Secondary: activity.tasks from allPlaybooks (fills gaps for not-yet-started tasks).
+  const taskPositionMap = useMemo(() => {
+    const map: Record<string, number> = {}
+
+    for (const row of selectedRunRows) {
+      if (row.task_name && row.position != null && !(row.task_name in map)) {
+        map[row.task_name] = row.position
+      }
+    }
+
+    if (selectedRun) {
+      const activity = activities.find(
+        (a) => String(a.id) === String(selectedRun.playbook_id ?? selectedRun.activity_id)
+      )
+      ;[...(activity?.tasks ?? [])]
+        .sort((a, b) => (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER))
+        .forEach((t, idx) => {
+          if (!(t.name in map)) map[t.name] = t.position ?? idx
+        })
+    }
+
+    return map
+  }, [selectedRunRows, selectedRun, activities])
+
+  const getTaskPosition = (taskName: string, fallback?: number | null): number => {
+    if (taskName in taskPositionMap) return taskPositionMap[taskName]
+    return fallback ?? Number.MAX_SAFE_INTEGER
+  }
 
   const groupedByTask = useMemo(
     () => selectedRunRows.reduce<Record<string, PlaybookRunTaskHostStatus[]>>((acc, row) => {
@@ -68,8 +102,15 @@ export function ActivityExecutionDetails({ runs }: ActivityExecutionDetailsProps
   )
 
   const activityOptions = useMemo(
-    () => Object.keys(groupedByTask).sort((a, b) => a.localeCompare(b)),
-    [groupedByTask],
+    () =>
+      Object.keys(groupedByTask).sort((a, b) => {
+        const pa = getTaskPosition(a, Math.min(...(groupedByTask[a]?.map((r) => r.position ?? Number.MAX_SAFE_INTEGER) ?? [Number.MAX_SAFE_INTEGER])))
+        const pb = getTaskPosition(b, Math.min(...(groupedByTask[b]?.map((r) => r.position ?? Number.MAX_SAFE_INTEGER) ?? [Number.MAX_SAFE_INTEGER])))
+        if (pa !== pb) return pa - pb
+        return a.localeCompare(b, undefined, { numeric: true })
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groupedByTask, taskPositionMap],
   )
 
   return (
@@ -137,40 +178,44 @@ export function ActivityExecutionDetails({ runs }: ActivityExecutionDetailsProps
           {detailsViewMode === "activity" ? (
             Object.entries(groupedByTask)
               .sort(([, rowsA], [, rowsB]) => {
-                const pa = Math.min(...rowsA.map((r) => r.position ?? Number.MAX_SAFE_INTEGER))
-                const pb = Math.min(...rowsB.map((r) => r.position ?? Number.MAX_SAFE_INTEGER))
+                const pa = getTaskPosition(rowsA[0]?.task_name ?? "", Math.min(...rowsA.map((r) => r.position ?? Number.MAX_SAFE_INTEGER)))
+                const pb = getTaskPosition(rowsB[0]?.task_name ?? "", Math.min(...rowsB.map((r) => r.position ?? Number.MAX_SAFE_INTEGER)))
                 if (pa !== pb) return pa - pb
-                return (rowsA[0]?.task_name ?? "").localeCompare(rowsB[0]?.task_name ?? "")
+                return (rowsA[0]?.task_name ?? "").localeCompare(rowsB[0]?.task_name ?? "", undefined, { numeric: true })
               })
               .filter(([taskName]) => selectedActivity === "all" || taskName === selectedActivity)
-              .map(([taskName, rows]) => (
-                <div key={taskName} className="rounded border border-border/60 bg-muted/20 p-2">
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-foreground">{taskName}</span>
-                    <span className="text-[11px] text-muted-foreground">{rows.length} host{rows.length === 1 ? "" : "s"}</span>
-                  </div>
+              .map(([taskName, rows], idx) => {
+                const pos = getTaskPosition(taskName, rows[0]?.position)
+                const stepNum = pos !== Number.MAX_SAFE_INTEGER ? pos + 1 : idx + 1
+                return (
+                  <div key={taskName} className="rounded border border-border/60 bg-muted/20 p-2">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="shrink-0 inline-flex items-center justify-center rounded bg-muted text-muted-foreground font-mono text-[10px] w-5 h-5">{stepNum}</span>
+                        <span className="text-xs font-medium text-foreground truncate">{taskName}</span>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{rows.length} host{rows.length === 1 ? "" : "s"}</span>
+                    </div>
 
-                  <div className="flex flex-wrap gap-1.5">
-                    {rows
-                      .slice()
-                      .sort((a, b) => {
-                        const pa = a.position ?? Number.MAX_SAFE_INTEGER
-                        const pb = b.position ?? Number.MAX_SAFE_INTEGER
-                        if (pa !== pb) return pa - pb
-                        return String(a.host ?? "").localeCompare(String(b.host ?? ""))
-                      })
-                      .map((row) => (
-                        <div key={row.id} className="inline-flex items-center gap-1 rounded border border-border/70 bg-background px-1.5 py-1 text-[10px]">
-                          <span className="font-mono text-muted-foreground">{row.host}</span>
-                          <span className={`rounded px-1.5 py-0.5 font-medium ${statusClass(row.status)}`}>{row.status}</span>
-                        </div>
-                      ))}
+                    <div className="flex flex-wrap gap-1.5">
+                      {rows
+                        .slice()
+                        .sort((a, b) =>
+                          String(a.host ?? "").localeCompare(String(b.host ?? ""), undefined, { numeric: true })
+                        )
+                        .map((row) => (
+                          <div key={row.id} className="inline-flex items-center gap-1 rounded border border-border/70 bg-background px-1.5 py-1 text-[10px]">
+                            <span className="font-mono text-muted-foreground">{row.host}</span>
+                            <span className={`rounded px-1.5 py-0.5 font-medium ${statusClass(row.status)}`}>{row.status}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
           ) : (
             Object.entries(groupedByHost)
-              .sort(([hostA], [hostB]) => hostA.localeCompare(hostB))
+              .sort(([hostA], [hostB]) => hostA.localeCompare(hostB, undefined, { numeric: true }))
               .map(([host, rows]) => (
                 <div key={host} className="rounded border border-border/60 bg-muted/20 p-2">
                   <div className="mb-1 flex items-center justify-between gap-2">
@@ -182,13 +227,14 @@ export function ActivityExecutionDetails({ runs }: ActivityExecutionDetailsProps
                     {rows
                       .slice()
                       .sort((a, b) => {
-                        const pa = a.position ?? Number.MAX_SAFE_INTEGER
-                        const pb = b.position ?? Number.MAX_SAFE_INTEGER
+                        const pa = getTaskPosition(a.task_name, a.position)
+                        const pb = getTaskPosition(b.task_name, b.position)
                         if (pa !== pb) return pa - pb
-                        return String(a.task_name ?? "").localeCompare(String(b.task_name ?? ""))
+                        return String(a.task_name ?? "").localeCompare(String(b.task_name ?? ""), undefined, { numeric: true })
                       })
                       .map((row) => (
-                        <div key={row.id} className="flex items-center gap-2 text-xs">
+                        <div key={row.id} className="flex items-center gap-1.5 text-xs">
+                          <span className="shrink-0 inline-flex items-center justify-center rounded bg-muted text-muted-foreground font-mono text-[10px] w-5 h-5">{getTaskPosition(row.task_name, row.position) + 1}</span>
                           <span className="font-medium text-foreground">{row.task_name}</span>
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${statusClass(row.status)}`}>{row.status}</span>
                         </div>

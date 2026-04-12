@@ -138,16 +138,26 @@ export function DeploymentsTab({
                   <span>{resources.length} resource{resources.length !== 1 ? "s" : ""}</span>
                   <span>·</span>
                   <span>{resources.filter((r) => r.status.toUpperCase() === "RUNNING").length} running</span>
-                  {resources.some((r) => r.public_ip) && (
-                    <>
-                      <span>·</span>
-                      {resources.filter((r) => r.public_ip).map((r) => (
-                        <Badge key={r.id} variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
-                          {r.public_ip}
-                        </Badge>
-                      ))}
-                    </>
-                  )}
+                  {resources.some((r) => r.public_ip) && (() => {
+                    const ips = resources.filter((r) => r.public_ip)
+                    const visible = ips.slice(0, 4)
+                    const overflow = ips.length - visible.length
+                    return (
+                      <>
+                        <span>·</span>
+                        {visible.map((r) => (
+                          <Badge key={r.id} variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+                            {r.public_ip}
+                          </Badge>
+                        ))}
+                        {overflow > 0 && (
+                          <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
+                            +{overflow} more
+                          </Badge>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               )}
             </div>

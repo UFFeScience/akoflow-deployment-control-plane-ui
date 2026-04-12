@@ -79,11 +79,11 @@ export function PhaseCard({ icon, title, description, status, run, extraContent,
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">{icon}</span>
-          <div>
-            <p className="text-xs font-semibold text-foreground">{title}</p>
-            <p className="text-[11px] text-muted-foreground">{description}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-muted-foreground shrink-0">{icon}</span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">{title}</p>
+            <p className="text-[11px] text-muted-foreground line-clamp-2">{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">

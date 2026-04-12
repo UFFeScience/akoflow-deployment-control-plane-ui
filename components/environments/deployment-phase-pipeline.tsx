@@ -254,7 +254,7 @@ export function DeploymentPhasePipeline({
   return (
     <div className="flex flex-col gap-4">
       {/* ── Provision / Configure pipeline ── */}
-      <div className={`grid items-start gap-2 ${showAfterProvisionPhase ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-1"}`}>
+      <div className={`grid items-start gap-2 ${showAfterProvisionPhase ? "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "grid-cols-1"}`}>
         <PhaseCard
           icon={<Server className="h-4 w-4" />}
           title="Phase 1 — Provision"
@@ -419,7 +419,7 @@ export function DeploymentPhasePipeline({
         </button>
 
         {destroyExpanded && (
-          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
             <PhaseCard
               icon={<Trash2 className="h-4 w-4" />}
               title="Phase 3 — Teardown"

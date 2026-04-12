@@ -124,6 +124,7 @@ function ActivityCard({ activity, runs, onTrigger, onViewLogs, triggering, disab
 
 export function ActivitiesTab({ projectId, environmentId, templateId, versionId, deployments, environment, resourcesByDeployment }: ActivitiesTabProps) {
   const [activities, setActivities] = useState<Activity[]>([])
+  const [allPlaybooks, setAllPlaybooks] = useState<Activity[]>([])
   const [runs, setRuns] = useState<ActivityRun[]>([])
   const [loading, setLoading] = useState(true)
   const [triggeringId, setTriggeringId] = useState<string | null>(null)
@@ -140,12 +141,15 @@ export function ActivitiesTab({ projectId, environmentId, templateId, versionId,
         environmentsApi.listPlaybookRuns(projectId, environmentId).catch(() => []),
       ])
       const allActivities: Activity[] = []
+      const allPlays: Activity[] = []
       for (const cfg of configs) {
         const acts = await templatesApi.listPlaybooks(templateId, versionId, cfg.id).catch(() => [])
+        allPlays.push(...acts)
         // Only show manual trigger activities in the runtime tab
         allActivities.push(...acts.filter((a) => a.trigger === "manual" && (a.enabled !== false)))
       }
       setActivities(allActivities)
+      setAllPlaybooks(allPlays)
       setRuns(runsData)
     } finally {
       setLoading(false)
@@ -205,6 +209,8 @@ export function ActivitiesTab({ projectId, environmentId, templateId, versionId,
         </Button>
       </div>
 
+      <ActivityExecutionDetails runs={runs} activities={allPlaybooks} />
+
       {!hasRunningDeployment && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -215,7 +221,6 @@ export function ActivitiesTab({ projectId, environmentId, templateId, versionId,
         </div>
       )}
 
-      <ActivityExecutionDetails runs={runs} />
 
       {loading ? (
         <div className="flex justify-center py-6">
