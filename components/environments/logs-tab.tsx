@@ -26,17 +26,24 @@ export function LogsTab({ resources, projectId, environmentId, activityRuns = []
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastIdRef = useRef<number | null>(null)  // last seen log id for this selection
   const runIdRef  = useRef<string | null>(null)  // resolved terraform run id
+  const didAutoSelectActivityRunRef = useRef(false)
 
   const isTerraformRun  = selectedInstance === TERRAFORM_RUN_SELECTOR
   const isActivityRun   = selectedInstance.startsWith(PLAYBOOK_RUN_SELECTOR_PREFIX)
 
+  // Reset one-time defaults when changing environment.
+  useEffect(() => {
+    didAutoSelectActivityRunRef.current = false
+  }, [projectId, environmentId])
+
   // Prefer playbook run logs by default when available.
   useEffect(() => {
+    if (didAutoSelectActivityRunRef.current) return
     if (activityRuns.length === 0) return
-    const selectedIsLegacyOrDefault = selectedInstance === TERRAFORM_RUN_SELECTOR
-    if (selectedIsLegacyOrDefault) {
-      setSelectedInstance(makePlaybookRunSelector(activityRuns[0].id))
-    }
+    if (selectedInstance !== TERRAFORM_RUN_SELECTOR) return
+
+    didAutoSelectActivityRunRef.current = true
+    setSelectedInstance(makePlaybookRunSelector(activityRuns[0].id))
   }, [activityRuns, selectedInstance])
 
   // ── Reset when the selected source changes ──────────────────────────────────
